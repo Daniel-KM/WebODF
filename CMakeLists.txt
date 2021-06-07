@@ -1,10 +1,11 @@
 # This makefile 'compiles' WebODF using various tools, instruments the code and
 # builds and packages programs that use WebODF.
 
-# WebODF is mostly a JavaScript project. CMake needs to know about the C++ parts
-project (WebODF C CXX)
+cmake_minimum_required(VERSION 3.0.0)
+message("CMake version: ${CMAKE_VERSION}")
 
-cmake_minimum_required(VERSION 2.8.11)
+# WebODF is mostly a JavaScript project. CMake needs to know about the C++ parts
+project(WebODF C CXX)
 
 # Require separate build dir
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
