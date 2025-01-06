@@ -616,15 +616,17 @@ function BrowserRuntime() {
      * @return {undefined}
      */
     function readFile(path, encoding, callback) {
+        if (encoding === 'base64') {
+          callback(null, path);
+          return;
+        }
         var  /**@type{!XMLHttpRequest}*/xhr, /**@type{!Uint8Array}*/zipData, /**@type{!string}*/decoded,/**@type{!function(!string):!string}*/atob = window.atob;
         if(path.split(',')[0].length > 1 && path.split(',')[0].indexOf('base64') >= 0){
             decoded = atob(path.split(',')[1]);
             zipData = byteArrayFromString(decoded);
             return callback(null, zipData);
         }
-    
-        xhr = createXHR(path, encoding, true);
-
+        var xhr = createXHR(path, encoding, true);
         function handleResult() {
             var r;
             if (xhr.readyState === 4) {
