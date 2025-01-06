@@ -1,0 +1,31 @@
+{
+  "name"           : "node-webodf",
+  "author"         : "KO GmbH <http://www.kogmbh.com/>",
+  "description"    : "WebODF - JavaScript Document Engine http://webodf.org/",
+  "version"        : "0.5.11",
+  "contributors"   : [
+    {
+      "name": "KO GmbH",
+      "site": "http://webodf.org/"
+    },
+    {
+      "name" : "Jeffrey van Norden",
+      "email": "jeffrey@grexx.net"
+    }
+  ],
+  "license"        : "AGPL-3.0",
+  "keywords"       : [
+    "OpenDocument", "ODF", "PDF",
+    "Text", "Document", "Slides", "Presentation",
+    "ODT", "OTT", "FODT",
+    "ODP", "OTP", "FODP",
+    "Viewer"
+  ],
+  "repository"     : {
+    "type": "git",
+    "url" : "git://github.com/vandernorth/WebODF.git"
+  },
+  "dependencies"   : {
+    "xmldom": "*"
+  }
+}
