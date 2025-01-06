@@ -1162,7 +1162,7 @@ function NodeJSRuntime() {
     };
     function init() {
         var /**@type{function(new:DOMParser)}*/
-            DOMParser = require('xmldom').DOMParser;
+            DOMParser = require('@xmldom/xmldom').DOMParser;
         parser = new DOMParser();
         domImplementation = self.parseXML("<a/>").implementation;
     }
