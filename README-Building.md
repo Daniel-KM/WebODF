@@ -11,20 +11,26 @@ Downloaded requirements will be cached in the build directory.
 
 With the requirements installed, either download the zip file from https://github.com/kogmbh/WebODF/archive/master.zip and unzip it
 
-    wget https://github.com/kogmbh/WebODF/archive/master.zip
-    unzip master.zip
-    mv WebODF-master webodf
+```sh
+wget https://github.com/kogmbh/WebODF/archive/master.zip
+unzip master.zip
+mv WebODF-master webodf
+```
 
 or get the complete repo with git:
 
-    git clone https://github.com/kogmbh/WebODF.git webodf
+```sh
+git clone https://github.com/kogmbh/WebODF.git webodf
+```
 
 For building now in the same directory where either of above commands were done the following commands should be entered:
 
-    mkdir build
-    cd build
-    cmake ../webodf
-    make webodf.js-target
+```sh
+mkdir build
+cd build
+cmake -S ../webodf
+make webodf.js-target
+```
 
 A successful run will yield the file "webodf.js" in the subfolder "build/webodf/" (among other things), from where you can then copy it and use for your website.
 
@@ -32,8 +38,9 @@ A successful run will yield the file "webodf.js" in the subfolder "build/webodf/
 
 For a Ubuntu 18.04 distribution you can satisfy the build dependencies with:
 
-    apt-get install libqt5webkit5-dev default-jdk
-
+```sh
+apt-get install libqt5webkit5-dev default-jdk
+```
 
 ## Building WebODF on Windows
 
@@ -71,21 +78,26 @@ Add the following directories to the PATH variable
 ### Building webodf.js
 These commands should be entered from the Visual Studio 2010 command prompt so that msbuild will be added to the PATH
 
-    git clone https://github.com/kogmbh/WebODF.git webodf
-    md build
-    cd build
-    cmake -G "Visual Studio 10" ..\webodf
-    msbuild WebODF.sln
-
+```sh
+git clone https://github.com/kogmbh/WebODF.git webodf
+md build
+cd build
+cmake -G "Visual Studio 10" ..\webodf
+msbuild WebODF.sln
+```
 
 ## Building WebODF on OSX 10.7.5 (Lion) or OSX 10.9.5 (Mavericks)
 
 Qt5 can be installed via homebrew, but will not be linked by default. CMake must be instructed where to find this package by
 specifying the Qt5 location in CMAKE_PATH_PREFIX environment variable:
 
-    cmake -DCMAKE_PREFIX_PATH=/usr/local/Cellar/qt5/5.4.1 ../webodf
-    
+```sh
+cmake -DCMAKE_PREFIX_PATH=/usr/local/Cellar/qt5/5.4.1 ../webodf
+```
+
 If the build process returns an error `(libuv) Failed to create kqueue (24)`, 
 this can be resolved by increasing the limit on the number of open file descriptors:
 
-    ulimit -n 8192
+```sh
+ulimit -n 8192
+```

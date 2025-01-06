@@ -9,7 +9,9 @@ This product bundles the file webodf.js, the debug version webodf-debug.js and A
 
 With a prepared setup for building, you execute this command:
 
-    make product-library
+```sh
+make product-library
+```
 
 This creates a file "webodf.js-x.y.z.zip" in the same folder, which can be copied and unzipped on a system where you want to develop using the webodf.js library.
 
@@ -24,7 +26,9 @@ This product bundles a [HOWTO](https://github.com/kogmbh/WebODF/blob/master/prog
 
 With a prepared setup for building, you execute this command:
 
-    make product-wodotexteditor
+```sh
+make product-wodotexteditor
+```
 
 It creates a file "wodotexteditor-x.y.z.zip", which can be copied and used on a system where you want to develop using the component.
 Unzip it there and read the included HOWTO.md file.
@@ -41,7 +45,9 @@ This product bundles a subdirectory with all files belonging to the component in
 
 With a prepared setup for building, you execute this command:
 
-    make product-wodocollabtexteditor
+```sh
+make product-wodocollabtexteditor
+```
 
 It creates a file "wodocollabtexteditor-x.y.z.zip", which can be copied and used on a system where you want to develop using the component.
 Unzip it there and move the subdirectory "wodo" to your deployment.
@@ -55,7 +61,9 @@ This Firefox add-on enables to view files in the OpenDocument format directly in
 
 With a prepared setup for building, you execute this command:
 
-    make product-firefoxextension
+```sh
+make product-firefoxextension
+```
 
 This creates a file "firefox-extension-odfviewer-x.y.z.xpi", which can be directly installed as add-on in Firefox browsers.
 
