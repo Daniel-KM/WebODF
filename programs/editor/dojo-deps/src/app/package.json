@@ -3,7 +3,7 @@
 	"version": "1.0",
 	"main": "main",
 	"dependencies": {
-		"dojo": "1.8.0",
+		"dojo": "1.16.3",
 		"dijit": "1.8.0",
 		"dojox": "1.8.0",
 		"util": "1.8.0"
