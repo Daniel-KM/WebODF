@@ -1209,9 +1209,15 @@ function NodeJSRuntime() {
         domImplementation = self.parseXML("<a/>").implementation;
         // A browser exposes the dom interfaces globally and the whole library
         // uses their constants. The package xmldom provides Node, but not
-        // NodeFilter, that is only a set of constants.
-        global.Node = xmldomPackage.Node;
+        // NodeFilter, that is only a set of constants. They are not replaced
+        // when they exist already, for example under a full dom like jsdom.
+        if (!global.Node) {
+            global.Node = xmldomPackage.Node;
+        }
         addElementTraversal(xmldomPackage.Node.prototype);
+        if (global.NodeFilter) {
+            return;
+        }
         global.NodeFilter = {
             SHOW_ALL: 4294967295,
             SHOW_ELEMENT: 1,

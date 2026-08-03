@@ -386,10 +386,11 @@
             if (node.firstElementChild) {
                 return node.firstElementChild;
             }
-            while (node !== rootElement && !node.nextElementSibling) {
+            // The loop stops on a node out of the tree too, that has no parent.
+            while (node && node !== rootElement && !node.nextElementSibling) {
                 node = /**@type{!Element}*/(node.parentNode);
             }
-            return node === rootElement ? null : node.nextElementSibling;
+            return !node || node === rootElement ? null : node.nextElementSibling;
         }
         /**
          * Iterates through the subtree of rootElement and adds annotation-end

@@ -655,6 +655,18 @@ window.externs;
 var global = {};
 
 /**
+ * The dom interfaces that a browser exposes globally, added to the global
+ * object of NodeJS by the runtime.
+ * @type {(function(new:Node)|undefined)}
+ */
+global.Node;
+
+/**
+ * @type {(!Object|undefined)}
+ */
+global.NodeFilter;
+
+/**
  * Make externs a globally accessible package in NodeJS
  * @const
  */
