@@ -1215,6 +1215,9 @@
              */
             function next() { pos += 1; return tokens[pos - 1]; }
 
+            /**
+             * @return {!number}
+             */
             function parsePrimary() {
                 var token = next(), value, args, name;
                 if (token === "(") {
@@ -1256,6 +1259,9 @@
                 return resolve(token);
             }
 
+            /**
+             * @return {!number}
+             */
             function parseMultiplication() {
                 var value = parsePrimary(), op;
                 while (peek() === "*" || peek() === "/") {
@@ -1269,6 +1275,9 @@
                 return value;
             }
 
+            /**
+             * @return {!number}
+             */
             function parseAdditionInner() {
                 var value = parseMultiplication(), op;
                 while (peek() === "+" || peek() === "-") {
@@ -1283,6 +1292,9 @@
             }
 
             // hoisted reference so parsePrimary can recurse into the top rule
+            /**
+             * @return {!number}
+             */
             function parseAddition() { return parseAdditionInner(); }
 
             return parseAddition();
@@ -1472,16 +1484,26 @@
      * @return {!Array.<!{d:!string,fill:!boolean,stroke:!boolean}>}
      */
     function parseEnhancedPath(path, ctx, mappedPts) {
-        var tokens = path.match(/[A-Za-z]|\?[a-zA-Z0-9]+|\$[0-9]+|[a-z]+|-?[0-9]*\.?[0-9]+/g) || [],
+        var /**@type{!Array.<!string>}*/
+            tokens = path.match(/[A-Za-z]|\?[a-zA-Z0-9]+|\$[0-9]+|[a-z]+|-?[0-9]*\.?[0-9]+/g) || [],
             commandRe = /^[MLCZNFSTUABWVXYQ]$/,
+            /**@type{!Array.<!{d:!string,fill:!boolean,stroke:!boolean}>}*/
             subPaths = [],
+            /**@type{!Array.<!string>}*/
             d = [],
+            /**@type{!boolean}*/
             fill = true,
+            /**@type{!boolean}*/
             stroke = true,
+            /**@type{!number}*/
             curX = 0,
+            /**@type{!number}*/
             curY = 0,
+            /**@type{!number}*/
             pos = 0,
+            /**@type{!number}*/
             ptIdx = 0,
+            /**@type{(!string|undefined)}*/
             command,
             count = 0;
 
