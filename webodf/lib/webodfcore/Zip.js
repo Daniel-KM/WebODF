@@ -22,7 +22,7 @@
  * @source: https://github.com/kogmbh/WebODF/
  */
 
-/*global runtime, webodfcore, DOMParser, externs*/
+/*global runtime, webodfcore, externs*/
 /*jslint bitwise: true*/
 
 /**
@@ -132,9 +132,9 @@ webodfcore.Zip = function Zip(url, entriesReadCallback) {
                 callback(err, null);
                 return;
             }
-            var parser = new DOMParser(),
-                dom = parser.parseFromString(xmldata, "text/xml");
-            callback(null, dom);
+            // runtime.parseXML uses the parser of the browser or the one of
+            // node, unlike the global DOMParser, that exists in a browser only.
+            callback(null, runtime.parseXML(xmldata));
         });
     }
     /**
