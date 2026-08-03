@@ -2431,6 +2431,16 @@
         return m ? { v: parseFloat(m[1]), u: m[2] || "" } : { v: 0, u: "" };
     }
     /**
+     * Parse the viewBox of a draw:marker, with the default used by ODF.
+     * @param {!Element} marker
+     * @return {!Array.<!number>}
+     */
+    function parseMarkerViewBox(marker) {
+        var vbAttr = (marker.getAttributeNS(svgns, "viewBox") || "0 0 20 20").trim().split(/\s+/);
+        return [parseFloat(vbAttr[0]) || 0, parseFloat(vbAttr[1]) || 0,
+            parseFloat(vbAttr[2]) || 20, parseFloat(vbAttr[3]) || 20];
+    }
+    /**
      * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} name
      * @param {!string} id
@@ -2442,29 +2452,16 @@
      */
     function buildLineMarker(rootElement, name, id, orient, width, color, centered) {
         var marker = findDrawMarker(rootElement, name),
-            /**@type{!Array.<!string>}*/vbAttr,
-            /**@type{!Array.<!number>}*/vb,
-            /**@type{?string}*/d,
-            /**@type{!number}*/vbW,
-            /**@type{!number}*/vbH,
-            /**@type{!number}*/height,
-            /**@type{!number}*/refX,
-            /**@type{!number}*/refY;
-        if (!marker || !width) {
+            /**@type{?string}*/d = marker && marker.getAttributeNS(svgns, "d"),
+            /**@type{!Array.<!number>}*/vb = marker ? parseMarkerViewBox(marker) : [],
+            /**@type{!number}*/vbW = vb[2] || 20,
+            /**@type{!number}*/vbH = vb[3] || 20,
+            /**@type{!number}*/height = width * (vbH / vbW),
+            /**@type{!number}*/refX = centered ? vbW / 2 : vbW,
+            /**@type{!number}*/refY = vbH / 2;
+        if (!marker || !width || !d) {
             return "";
         }
-        vbAttr = (marker.getAttributeNS(svgns, "viewBox") || "0 0 20 20").trim().split(/\s+/);
-        vb = [parseFloat(vbAttr[0]) || 0, parseFloat(vbAttr[1]) || 0,
-            parseFloat(vbAttr[2]) || 20, parseFloat(vbAttr[3]) || 20];
-        d = marker.getAttributeNS(svgns, "d");
-        if (!d) {
-            return "";
-        }
-        vbW = vb[2];
-        vbH = vb[3];
-        height = width * (vbH / vbW);
-        refX = centered ? vbW / 2 : vbW;
-        refY = vbH / 2;
         return '<marker id="' + id + '" viewBox="' + vb.join(" ")
             + '" markerUnits="userSpaceOnUse" markerWidth="' + width
             + '" markerHeight="' + height + '" refX="' + refX + '" refY="' + refY
