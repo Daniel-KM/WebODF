@@ -1163,11 +1163,73 @@ function NodeJSRuntime() {
     this.cancelAnimationFrame = function (requestId) {
         clearTimeout(requestId);
     };
+    /**
+     * Add the properties of interface ElementTraversal to a dom when missing.
+     *
+     * They are native in a browser, but the package xmldom does not implement
+     * them, and the library uses them to walk the odf trees.
+     * @param {!Object} proto  prototype of the nodes of the dom
+     * @return {undefined}
+     */
+    function addElementTraversal(proto) {
+        /**
+         * @this {!Node}
+         * @return {?Node}
+         */
+        function firstElementChild() {
+            var /**@type{?Node}*/node = this.firstChild;
+            while (node && node.nodeType !== 1) {
+                node = node.nextSibling;
+            }
+            return node;
+        }
+        /**
+         * @this {!Node}
+         * @return {?Node}
+         */
+        function nextElementSibling() {
+            var /**@type{?Node}*/node = this.nextSibling;
+            while (node && node.nodeType !== 1) {
+                node = node.nextSibling;
+            }
+            return node;
+        }
+        if (proto.hasOwnProperty("firstElementChild")) {
+            return;
+        }
+        Object.defineProperty(proto, "firstElementChild", {get: firstElementChild});
+        Object.defineProperty(proto, "nextElementSibling", {get: nextElementSibling});
+    }
     function init() {
-        var /**@type{function(new:DOMParser)}*/
-            DOMParser = require('@xmldom/xmldom').DOMParser;
+        var /**@type{!XmlDom}*/
+            xmldomPackage = /**@type{!XmlDom}*/(require('@xmldom/xmldom')),
+            /**@type{function(new:DOMParser)}*/
+            DOMParser = xmldomPackage.DOMParser;
         parser = new DOMParser();
         domImplementation = self.parseXML("<a/>").implementation;
+        // A browser exposes the dom interfaces globally and the whole library
+        // uses their constants. The package xmldom provides Node, but not
+        // NodeFilter, that is only a set of constants.
+        global.Node = xmldomPackage.Node;
+        addElementTraversal(xmldomPackage.Node.prototype);
+        global.NodeFilter = {
+            SHOW_ALL: 4294967295,
+            SHOW_ELEMENT: 1,
+            SHOW_ATTRIBUTE: 2,
+            SHOW_TEXT: 4,
+            SHOW_CDATA_SECTION: 8,
+            SHOW_ENTITY_REFERENCE: 16,
+            SHOW_ENTITY: 32,
+            SHOW_PROCESSING_INSTRUCTION: 64,
+            SHOW_COMMENT: 128,
+            SHOW_DOCUMENT: 256,
+            SHOW_DOCUMENT_TYPE: 512,
+            SHOW_DOCUMENT_FRAGMENT: 1024,
+            SHOW_NOTATION: 2048,
+            FILTER_ACCEPT: 1,
+            FILTER_REJECT: 2,
+            FILTER_SKIP: 3
+        };
     }
     init();
 }
