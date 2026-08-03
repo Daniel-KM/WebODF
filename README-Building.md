@@ -101,3 +101,28 @@ this can be resolved by increasing the limit on the number of open file descript
 ```sh
 ulimit -n 8192
 ```
+
+## Javascript dependencies
+
+Unlike most node projects, the directory "node_modules" is versioned in this
+repository. It contains only the single runtime dependency "@xmldom/xmldom"
+(about 400 kB) and it has been so since 2012 (commit "include node_modules
+directory with xmldom"), so that WebODF can be built and run from a simple
+checkout, without npm, without network access and without any dependency
+resolution. The file ".gitignore" excludes "node_modules/.bin/" only.
+
+This dependency is used by the file "webodf/lib/runtime.js", that needs a
+DOMParser when WebODF runs inside node, for example for the command line tools.
+A browser uses its own native parser, so this dependency is never included in
+the compiled file "webodf.js".
+
+As a consequence, an update of a dependency must commit the versioned copy
+along with the file "package.json":
+
+```sh
+npm install
+git add package.json package-lock.json node_modules
+```
+
+Without it, a fresh checkout keeps running the previous version, whatever the
+file "package.json" says.
