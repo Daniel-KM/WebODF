@@ -697,8 +697,10 @@
      * @return {?Element}
      */
     function findDrawingPageStyle(rootElement, name) {
-        var roots = [rootElement.automaticStyles, rootElement.styles],
+        var /**@type{!Array.<?Element>}*/
+            roots = [rootElement.automaticStyles, rootElement.styles],
             i,
+            /**@type{?Element}*/
             node;
         if (!name) {
             return null;
@@ -743,8 +745,10 @@
      * @return {?Element}
      */
     function findGraphicStyle(rootElement, name) {
-        var roots = [rootElement.automaticStyles, rootElement.styles],
+        var /**@type{!Array.<?Element>}*/
+            roots = [rootElement.automaticStyles, rootElement.styles],
             i,
+            /**@type{?Element}*/
             node;
         if (!name) {
             return null;
@@ -868,15 +872,19 @@
      * @return {?Element}
      */
     function findDrawMarker(rootElement, name) {
-        var roots = [rootElement.automaticStyles, rootElement.styles],
+        var /**@type{!Array.<?Element>}*/
+            roots = [rootElement.automaticStyles, rootElement.styles],
             i,
+            /**@type{?Element}*/
+            root,
             markers,
             j;
         if (!name) {
             return null;
         }
         for (i = 0; i < roots.length; i += 1) {
-            markers = roots[i] ? domUtils.getElementsByTagNameNS(roots[i], drawns, "marker") : [];
+            root = roots[i];
+            markers = root ? domUtils.getElementsByTagNameNS(root, drawns, "marker") : [];
             for (j = 0; j < markers.length; j += 1) {
                 if (markers[j].getAttributeNS(drawns, "name") === name) {
                     return /**@type{!Element}*/(markers[j]);
