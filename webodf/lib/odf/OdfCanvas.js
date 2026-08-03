@@ -884,6 +884,7 @@
             /**@type{?Element}*/
             root,
             markers,
+            /**@type{!Element}*/marker,
             j;
         if (!name) {
             return null;
@@ -892,8 +893,9 @@
             root = roots[i];
             markers = root ? domUtils.getElementsByTagNameNS(root, drawns, "marker") : [];
             for (j = 0; j < markers.length; j += 1) {
-                if (markers[j].getAttributeNS(drawns, "name") === name) {
-                    return /**@type{!Element}*/(markers[j]);
+                marker = /**@type{!Element}*/(markers[j]);
+                if (marker.getAttributeNS(drawns, "name") === name) {
+                    return marker;
                 }
             }
         }
@@ -1027,7 +1029,7 @@
         }
         try {
             part = container.getPart(href);
-            part.onchange = function (p) {
+            part.onchange = function (/**@type{!odf.OdfPart}*/p) {
                 callback(p.url);
             };
             part.load();
