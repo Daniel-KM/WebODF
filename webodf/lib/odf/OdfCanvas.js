@@ -2216,10 +2216,11 @@
     /**
      * A "nice" axis maximum and step for a value range 0..maxVal.
      * @param {!number} maxVal
+     * @param {!boolean} preferExactMax
      * @return {!{max:!number,step:!number}}
      */
     function niceAxis(maxVal, preferExactMax) {
-        var exact,
+        var /**@type{?{max:!number,step:!number}}*/exact,
             target = (maxVal <= 0 ? 1 : maxVal) * (preferExactMax ? 1 : 1.05),
             rough = target / 5,
             pow = Math.pow(10, Math.floor(Math.log(rough) / Math.LN10)),
@@ -3480,16 +3481,18 @@
          */
         function collectAutofitStyleNames(container) {
             var rootElement = container.rootElement,
+                /**@type{!Array.<?Element>}*/
                 roots = [rootElement.automaticStyles, rootElement.styles],
-                directly = {},
-                parent = {},
-                names = [],
-                result = null,
-                r,
+                /**@type{!Object.<!string,!boolean>}*/directly = {},
+                /**@type{!Object.<!string,!string>}*/parent = {},
+                /**@type{!Array.<!string>}*/names = [],
+                /**@type{?Object.<!string,!boolean>}*/result = null,
+                /**@type{?Element}*/root,
+                /**@type{!number}*/r,
                 styles,
-                j,
+                /**@type{!number}*/j,
                 s,
-                name,
+                /**@type{?string}*/name,
                 gp;
 
             /**
@@ -3508,10 +3511,11 @@
             }
 
             for (r = 0; r < roots.length; r += 1) {
-                if (!roots[r]) {
+                root = roots[r];
+                if (!root) {
                     continue;
                 }
-                styles = domUtils.getElementsByTagNameNS(roots[r], stylens, 'style');
+                styles = domUtils.getElementsByTagNameNS(root, stylens, 'style');
                 for (j = 0; j < styles.length; j += 1) {
                     s = styles[j];
                     if (s.getAttributeNS(stylens, 'family') !== 'graphic') {
