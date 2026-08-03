@@ -1188,7 +1188,7 @@
      * (draw:modifiers) of a draw:enhanced-geometry, exposing a resolver for the
      * predefined identifiers, the modifiers ($N) and the named equations (?fN).
      * @param {!Element} geometry  <draw:enhanced-geometry>
-     * @return {!{evaluate:function(!string):!number,viewBox:!Array.<!number>}}
+     * @return {!{evaluate:function((!string|undefined)):!number,viewBox:!Array.<!number>,stretchX:!number,stretchY:!number}}
      */
     function createShapeContext(geometry) {
         var viewBoxAttr = (geometry.getAttributeNS(svgns, "viewBox") || "0 0 21600 21600").trim().split(/\s+/),
@@ -1212,7 +1212,7 @@
                 xstretch: 0, ystretch: 0, hasstroke: 1, hasfill: 1, pi: Math.PI
             },
             node = geometry.firstElementChild,
-            ctx = {};
+            /**@type{!{evaluate:function((!string|undefined)):!number,viewBox:!Array.<!number>,stretchX:!number,stretchY:!number}}*/ctx;
 
         while (node) {
             if (node.namespaceURI === drawns && node.localName === "equation") {
@@ -1375,16 +1375,17 @@
             return result;
         }
 
-        ctx.viewBox = vb;
+        ctx = {
+            evaluate: resolve,
+            viewBox: vb,
+            stretchX: NaN,
+            stretchY: NaN
+        };
         // The stretch point keeps a shape's corners a fixed size while only the
         // straight edges between them grow when the shape's box is not square
         // (e.g. a rounded-rectangle "pill"). NaN when not specified.
         ctx.stretchX = parseFloat(geometry.getAttributeNS(drawns, "path-stretchpoint-x"));
         ctx.stretchY = parseFloat(geometry.getAttributeNS(drawns, "path-stretchpoint-y"));
-        ctx.evaluate = function (token) {
-            // A path value is a single token (number, ?fN, $N or identifier).
-            return resolve(token);
-        };
         return ctx;
     }
     /**
@@ -2133,8 +2134,8 @@
             titleEl,
             cls,
             table,
-            headerRows,
-            bodyRows,
+            /**@type{(!Element|undefined)}*/headerRows,
+            /**@type{!Array.<!Element>}*/bodyRows = [],
             /**@type{!Array.<!Element>}*/headerCells = [],
             /**@type{!Array.<!string>}*/categories = [],
             /**@type{!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}*/
@@ -2146,7 +2147,8 @@
             /**@type{!Element}*/sEl,
             /**@type{!Array.<!Element>}*/pts = [],
             /**@type{!Array.<!string>}*/pointColors = [],
-            /**@type{?string}*/styleName = null;
+            /**@type{?string}*/styleName = null,
+            /**@type{(!Element|undefined)}*/header;
         if (!chart) {
             return null;
         }
@@ -2183,6 +2185,7 @@
             styleName = sEl.getAttributeNS(chartns, "style-name");
             // per-point colours (pie/ring give each slice its own style)
             pointColors = [];
+            header = headerCells[j + 1];
             pts = domUtils.getElementsByTagNameNS(sEl, chartns, "data-point");
             for (i = 0; i < pts.length; i += 1) {
                 if (pts[i].getAttributeNS(chartns, "style-name")
@@ -2192,8 +2195,7 @@
                 }
             }
             series.push({
-                label: headerCells[j + 1]
-                    ? (headerCells[j + 1].textContent || "").trim()
+                label: header ? (header.textContent || "").trim()
                     : ("Series " + (j + 1)),
                 color: (colors[styleName] && (colors[styleName].fill || colors[styleName].stroke))
                     || chartPalette[j % chartPalette.length],
