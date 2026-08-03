@@ -53,6 +53,30 @@
             'A': 'upper-latin',
             'i': 'lower-roman',
             'I': 'upper-roman'
+        },
+        /**@const
+           @type{!RegExp}*/
+        // Symbol/dingbat fonts whose glyphs are encoded as plain ASCII letters.
+        // They are proprietary and cannot be bundled, so on a device without
+        // them the bullet shows up as a stray letter (e.g. Wingdings "n" => a
+        // black square renders as the literal "n").
+        symbolFontRe = /wingding|webding|stardings|starsymbol|opensymbol|monotype sorts|zapf\s*dingbats|dingbats/i,
+        /**@const
+           @type{!Object.<string,string>}*/
+        // The handful of dingbat code points commonly used as list bullets,
+        // mapped to Unicode look-alikes that render in any normal font.
+        symbolBulletMap = {
+            "n": "■", // black square (Wingdings)
+            "o": "□", // white square
+            "p": "❑", // shadowed square
+            "l": "●", // black circle
+            "m": "○", // white circle
+            "u": "◆", // black diamond
+            "v": "❖", // black diamond minus white X
+            "§": "▪", // small black square
+            "ü": "✓", // check mark
+            "û": "☐", // ballot box
+            "Ø": "➔"  // heavy wide-headed rightwards arrow
         };
 
     /**
@@ -445,7 +469,30 @@
          * @return {!string}
          */
         function getBulletRule(node) {
-            var bulletChar = node.getAttributeNS(textns, "bullet-char");
+            var bulletChar = node.getAttributeNS(textns, "bullet-char"),
+                textProperties = node.getElementsByTagNameNS(stylens, "text-properties")[0],
+                fontName = textProperties
+                    && (textProperties.getAttributeNS(fons, "font-family")
+                        || textProperties.getAttributeNS(stylens, "font-name")),
+                rule;
+            if (fontName && symbolFontRe.test(fontName)) {
+                // Remap a known dingbat glyph, fall back to a plain disc for the
+                // rest, and render it in a normal font instead of the missing
+                // symbol font.
+                if (symbolBulletMap.hasOwnProperty(bulletChar)) {
+                    bulletChar = symbolBulletMap[bulletChar];
+                } else if (bulletChar && bulletChar.charCodeAt(0) < 0x2000) {
+                    // A glyph code (ASCII/Latin-1) with no mapping: use a disc.
+                    bulletChar = "•";
+                }
+                rule = 'content: "' + escapeCSSString(bulletChar) + '"';
+                rule += '; font-family: sans-serif';
+                // The Unicode look-alike in a text font reads smaller than the
+                // symbol it replaces (its visible disc is well under 1em), so
+                // nudge it up to read as a proper bullet rather than a dot.
+                rule += '; font-size: 1.5em';
+                return rule;
+            }
             return 'content: "' + escapeCSSString(bulletChar) + '"';
         }
 
@@ -614,6 +661,20 @@
             listItemRule += 'margin-left: ' + (-leftOffset) + 'px;';
             listItemRule += '}';
             appendRule(styleSheet, listItemRule);
+
+            if (listLevelPositionSpaceMode !== "label-alignment") {
+                // In label-width-and-position mode the list level alone fixes the
+                // indent (leftOffset above, plus the hanging label below). A
+                // presentation paragraph exported from PowerPoint also carries
+                // the same indent as fo:margin-left / fo:text-indent on its own
+                // paragraph style; applying both stacks them and pushes the text
+                // ~twice as far from the bullet. Neutralise the paragraph's own
+                // horizontal indent for list paragraphs so only the list level
+                // counts.
+                listItemRule = selector + ' > text|list-item > :not(text|list)';
+                listItemRule += '{ margin-left: 0; text-indent: 0; }';
+                appendRule(styleSheet, listItemRule);
+            }
 
             // insert the list label before every immediate child of the list-item, except for lists
             listItemRule = selector + ' > text|list-item > :not(text|list):first-child:before';

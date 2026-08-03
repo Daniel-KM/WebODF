@@ -106,6 +106,16 @@
              * @type{!boolean}
              */
             requiresCustomScrollBars = runtime.getWindow().hasOwnProperty('ontouchstart'),
+            /**
+             * Whether ZoomHelper handles touch gestures itself. When false, no
+             * touch listeners are attached and pinch-zoom/pan is left to the
+             * host (e.g. the native WebView viewport). Programmatic zoom via
+             * setZoomLevel still works. Hosts that embed the canvas in a
+             * natively-scrolling container disable this so two zoom systems do
+             * not fight over the same gestures.
+             * @type{!boolean}
+             */
+            gesturesEnabled = true,
             /**@type{?string}*/
             parentOverflow = "";
 
@@ -119,19 +129,15 @@
          * @return {undefined}
          */
         function applyCSSTransform(x, y, scale, is3D) {
-            var transformCommand;
-
-            if (is3D) {
-                transformCommand = 'translate3d(' + x + 'px, ' + y + 'px, 0) scale3d(' + scale + ', ' + scale + ', 1)';
-            } else {
-                transformCommand = 'translate(' + x + 'px, ' + y + 'px) scale(' + scale + ')';
-            }
-
-            zoomableElement.style.WebkitTransform = transformCommand;
-            zoomableElement.style.MozTransform = transformCommand;
-            zoomableElement.style.msTransform = transformCommand;
-            zoomableElement.style.OTransform = transformCommand;
-            zoomableElement.style.transform = transformCommand;
+            // Scale the page with the CSS `zoom` property rather than a CSS
+            // transform. A transform promotes the (very tall) page onto a
+            // composited GPU layer, which mobile WebViews rasterise in tiles;
+            // tiles far from the viewport are left unpainted, so the white page
+            // background shows up only in patches and flickers while zooming.
+            // `zoom` rescales the layout box itself, so the page stays a normal
+            // painted element (like the RTF preview) with a solid background.
+            // Panning (x/y) is handled by native scrolling, so it is ignored.
+            zoomableElement.style.zoom = scale;
         }
 
         /**
@@ -455,13 +461,31 @@
         };
 
         /**
+         * Enable or disable ZoomHelper's own touch-gesture handling
+         * (pinch-zoom and pan). When disabled, any attached listeners are
+         * removed and none are re-attached on subsequent setZoomableElement
+         * calls, leaving gestures to the host. Programmatic setZoomLevel is
+         * unaffected.
+         * @param {!boolean} enabled
+         * @return {undefined}
+         */
+        this.setGestureSupportEnabled = function (enabled) {
+            gesturesEnabled = enabled;
+            if (enabled) {
+                registerGestureListeners();
+            } else {
+                unregisterGestureListeners();
+            }
+        };
+
+        /**
          * Adds touchstart, touchmove, and touchend
          * event listeners to the element's scrollable
          * container.
          * @return {undefined}
          */
         function registerGestureListeners() {
-            if (offsetParent) {
+            if (offsetParent && gesturesEnabled) {
                 // There is no reliable way of detecting if the browser
                 // supports these touch events. Therefore the only thing
                 // we can do is simply attach listeners to these events

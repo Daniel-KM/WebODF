@@ -63,7 +63,13 @@ text|p::after, text|h::after {
   position: relative;
 }
 text|s {
-    white-space: pre;
+    /* pre-wrap (not pre) so a run of ODF spaces still wraps and, crucially,
+       spaces left at a soft-wrap boundary "hang" instead of indenting the
+       next line. With plain pre, the trailing part of e.g. <text:s c="21"/>
+       used between text and a URL pushed the wrapped URL far to the right;
+       word processors (PowerPoint/LibreOffice) hang those spaces so the URL
+       starts flush at the left of its line. */
+    white-space: pre-wrap;
 }
 text|tab {
   display: inline;
@@ -81,6 +87,11 @@ office|text {
   text-align: left;
   overflow: visible;
   word-wrap: break-word;
+  /* Establish a stacking context so a frame sent to the background
+     (style:run-through="background", given z-index:-1) is layered behind the
+     body text but still in front of the page's own background, instead of
+     dropping behind the whole page and vanishing. */
+  isolation: isolate;
 }
 
 office|text::selection {
@@ -100,7 +111,10 @@ office|text::selection {
 office|text * draw|text-box {
 /** only for text documents */
     display: block;
-    border: 1px solid #d3d3d3;
+    /* No decorative outline: in a read-only preview the editor's text-box
+       boundary box is just noise (real frame borders come from the frame's
+       own fo:border via its graphic style, on the draw:frame element). */
+    border: none;
 }
 office|text draw|frame {
   /** make sure frames are above the main text. */
@@ -148,6 +162,16 @@ office|spreadsheet text|p {
 }
 office|spreadsheet table|table {
   margin: 3px;
+  /* Honour the sheet's declared column widths (style:column-width, mapped onto
+     the table-column elements). With the default auto layout the engine ignores
+     them and squeezes wide text columns to a sliver — worse with break-all,
+     which lets a column collapse to a single glyph. Fixed layout makes the
+     column widths authoritative and text wraps within them. */
+  table-layout: fixed;
+  /* Close the grid's outer top/left edge (cells only draw their right+bottom
+     hairline), so the first row/column isn't left open. */
+  border-top: 1px solid #d4d4d4;
+  border-left: 1px solid #d4d4d4;
 }
 office|spreadsheet table|table:after {
   /* show sheet name the end of the sheet */
@@ -164,8 +188,17 @@ office|spreadsheet table|table-row:before {
   content: counter(row);
   display: table-cell;
 }
+/* Excel-style minimal gridlines: a right + bottom hairline per cell, drawn as a
+   background (not a border) so it sits behind the cell's real fo:border and
+   never merges with it under border-collapse (which used to produce a
+   patchwork). Painting requires the cell to exist, so OdfCanvas.modifyTables
+   pads every row out to the table's column count — otherwise sparse rows (a
+   trailing repeated empty cell that WebODF renders as a single cell) leave the
+   grid open past column A. */
 office|spreadsheet table|table-cell {
-  border: 1px solid #cccccc;
+  background-image:
+    linear-gradient(to left, #d4d4d4 1px, transparent 1px),
+    linear-gradient(to top, #d4d4d4 1px, transparent 1px);
 }
 table|table {
   display: table;
@@ -187,7 +220,11 @@ table|table-column {
 table|table-cell {
   width: 0.889in;
   display: table-cell;
-  word-break: break-all; /* prevent long words from extending out the table cell */
+  /* Wrap at word boundaries, not mid-glyph; only break a single
+     over-long token (e.g. a URL) as a last resort. break-all wrapped
+     ordinary prose character-by-character ("Time-sav\ning to\nols"). */
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 draw|frame {
   display: block;
