@@ -2248,7 +2248,7 @@
 
     /**
      * Render the parsed chart model to an SVG string at the given cm size.
-     * @param {!Object} c  parsed chart model
+     * @param {!{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}} c  parsed chart model
      * @param {!number} wcm
      * @param {!number} hcm
      * @return {!string}
@@ -2272,6 +2272,7 @@
         /**
          * Legend at the right; returns its width and appends to body.
          * @param {!Array.<!{label:!string,color:!string}>} items
+         * @param {!number} top
          * @return {undefined}
          */
         function drawLegend(items, top) {
