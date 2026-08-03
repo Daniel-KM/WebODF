@@ -470,10 +470,13 @@
          */
         function getBulletRule(node) {
             var bulletChar = node.getAttributeNS(textns, "bullet-char"),
+                /**@type{?Element}*/
                 textProperties = node.getElementsByTagNameNS(stylens, "text-properties")[0],
+                /**@type{?string}*/
                 fontName = textProperties
-                    && (textProperties.getAttributeNS(fons, "font-family")
-                        || textProperties.getAttributeNS(stylens, "font-name")),
+                    ? (textProperties.getAttributeNS(fons, "font-family")
+                        || textProperties.getAttributeNS(stylens, "font-name"))
+                    : null,
                 rule;
             if (fontName && symbolFontRe.test(fontName)) {
                 // Remap a known dingbat glyph, fall back to a plain disc for the

@@ -473,24 +473,29 @@
             windowExtY,
             svgWidth,
             svgHeight,
-            objects = [],
-            pen = {stroke: "none", width: 0},
-            brush = {fill: "none"},
+            /**@type{!Array.<?{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}>}*/objects = [],
+            /**@type{!{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}}*/pen = {type: "pen", stroke: "none", width: 0, fill: undefined},
+            /**@type{!{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}}*/brush = {type: "brush", fill: "none", stroke: undefined, width: undefined},
             fillRule = "evenodd",
             body = "",
-            recordSize,
-            fn,
-            params,
-            i,
-            count,
-            points,
-            style,
-            color,
-            width,
-            objectIndex;
+            /**@type{!number}*/recordSize = 0,
+            /**@type{!number}*/fn = 0,
+            /**@type{!number}*/params = 0,
+            /**@type{!number}*/i = 0,
+            /**@type{!number}*/count = 0,
+            /**@type{!Array.<!string>}*/points = [],
+            /**@type{!number}*/style = 0,
+            /**@type{!string}*/color = "",
+            /**@type{!number}*/width = 0,
+            /**@type{!number}*/objectIndex = 0,
+            /**@type{?{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}}*/selected = null;
 
+        /**
+         * @param {!{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}} o
+         * @return {undefined}
+         */
         function addObject(o) {
-            var i;
+            var /**@type{!number}*/i;
             for (i = 0; i < objects.length; i += 1) {
                 if (!objects[i]) {
                     objects[i] = o;
@@ -561,11 +566,12 @@
                 addObject({type: "pen", stroke: style === 5 ? "none" : color, width: Math.max(1, width)});
             } else if (fn === META_SELECTOBJECT) {
                 objectIndex = readUInt16LE(data, params);
-                if (objects[objectIndex]) {
-                    if (objects[objectIndex].type === "pen") {
-                        pen = objects[objectIndex];
-                    } else if (objects[objectIndex].type === "brush") {
-                        brush = objects[objectIndex];
+                selected = objects[objectIndex];
+                if (selected) {
+                    if (selected.type === "pen") {
+                        pen = selected;
+                    } else if (selected.type === "brush") {
+                        brush = selected;
                     }
                 }
             } else if (fn === META_DELETEOBJECT) {
@@ -692,13 +698,15 @@
     /**
      * Find a <style:style> of the drawing-page family by name, searching both
      * the document's automatic styles and the common styles.
-     * @param {!Element} rootElement  the ODF root element
+     * @param {!odf.ODFDocumentElement} rootElement  the ODF root element
      * @param {?string} name
      * @return {?Element}
      */
     function findDrawingPageStyle(rootElement, name) {
-        var roots = [rootElement.automaticStyles, rootElement.styles],
+        var /**@type{!Array.<?Element>}*/
+            roots = [rootElement.automaticStyles, rootElement.styles],
             i,
+            /**@type{?Element}*/
             node;
         if (!name) {
             return null;
@@ -718,7 +726,7 @@
     }
     /**
      * Resolve a <draw:fill-image> reference to the href of the image part.
-     * @param {!Element} rootElement  the ODF root element
+     * @param {!odf.ODFDocumentElement} rootElement  the ODF root element
      * @param {?string} name  value of draw:fill-image-name
      * @return {?string}
      */
@@ -738,13 +746,15 @@
     }
     /**
      * Find a graphic-family <style:style> by name (automatic or common styles).
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} name
      * @return {?Element}
      */
     function findGraphicStyle(rootElement, name) {
-        var roots = [rootElement.automaticStyles, rootElement.styles],
+        var /**@type{!Array.<?Element>}*/
+            roots = [rootElement.automaticStyles, rootElement.styles],
             i,
+            /**@type{?Element}*/
             node;
         if (!name) {
             return null;
@@ -764,7 +774,7 @@
     }
 
     /**
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} styleName
      * @param {!string} propertyName
      * @return {?string}
@@ -788,7 +798,7 @@
     }
 
     /**
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {!Element} pageElement
      * @param {!Element} masterPageElement
      * @param {!Element} element
@@ -832,7 +842,7 @@
     }
     /**
      * Resolve one attribute from a graphic style, following parent-style-name.
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} styleName
      * @param {string} ns
      * @param {string} attr
@@ -863,23 +873,29 @@
     }
     /**
      * Find a draw:marker definition by name.
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} name
      * @return {?Element}
      */
     function findDrawMarker(rootElement, name) {
-        var roots = [rootElement.automaticStyles, rootElement.styles],
+        var /**@type{!Array.<?Element>}*/
+            roots = [rootElement.automaticStyles, rootElement.styles],
             i,
+            /**@type{?Element}*/
+            root,
             markers,
+            /**@type{!Element}*/marker,
             j;
         if (!name) {
             return null;
         }
         for (i = 0; i < roots.length; i += 1) {
-            markers = roots[i] ? domUtils.getElementsByTagNameNS(roots[i], drawns, "marker") : [];
+            root = roots[i];
+            markers = root ? domUtils.getElementsByTagNameNS(root, drawns, "marker") : [];
             for (j = 0; j < markers.length; j += 1) {
-                if (markers[j].getAttributeNS(drawns, "name") === name) {
-                    return /**@type{!Element}*/(markers[j]);
+                marker = /**@type{!Element}*/(markers[j]);
+                if (marker.getAttributeNS(drawns, "name") === name) {
+                    return marker;
                 }
             }
         }
@@ -889,7 +905,7 @@
      * Resolve the effective fo:clip of a graphic style (following
      * parent-style-name). fo:clip is otherwise dropped, so cropped images
      * (a common case for "fill frame" pictures) render uncropped.
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} styleName
      * @return {?string}
      */
@@ -927,18 +943,18 @@
      * @return {undefined}
      */
     function applyImageClip(image, id, container, stylesheet) {
-        var frame = image.parentNode,
-            clip,
-            m,
-            parts,
-            top,
-            right,
-            bottom,
-            left,
-            fw,
-            fh,
-            unit,
-            rule;
+        var /**@type{!Element}*/frame = /**@type{!Element}*/(image.parentNode),
+            /**@type{?string}*/clip,
+            /**@type{?Array.<!string>}*/m,
+            /**@type{!Array.<!string>}*/parts,
+            /**@type{!{v: !number, u: !string}}*/top,
+            /**@type{!{v: !number, u: !string}}*/right,
+            /**@type{!{v: !number, u: !string}}*/bottom,
+            /**@type{!{v: !number, u: !string}}*/left,
+            /**@type{!{v: !number, u: !string}}*/fw,
+            /**@type{!{v: !number, u: !string}}*/fh,
+            /**@type{!string}*/unit,
+            /**@type{!string}*/rule;
         if (!frame || frame.localName !== "frame") {
             return;
         }
@@ -985,7 +1001,7 @@
      * over the "background: none" that Style2CSS emits when the page background
      * is visible.
      * @param {!odf.OdfContainer} container
-     * @param {!string} styleName
+     * @param {!string} selector
      * @param {!string} href
      * @param {?string} repeat  value of style:repeat
      * @param {!CSSStyleSheet} stylesheet
@@ -1013,7 +1029,7 @@
         }
         try {
             part = container.getPart(href);
-            part.onchange = function (p) {
+            part.onchange = function (/**@type{!odf.OdfPart}*/p) {
                 callback(p.url);
             };
             part.load();
@@ -1044,7 +1060,7 @@
      * @return {undefined}
      */
     function loadPageBackgrounds(container, odfbody, stylesheet) {
-        var rootElement = /**@type{!Element}*/(container.rootElement),
+        var rootElement = container.rootElement,
             pages = domUtils.getElementsByTagNameNS(odfbody, drawns, "page"),
             seen = {},
             i;
@@ -1093,7 +1109,7 @@
      * @return {undefined}
      */
     function loadMasterPageBackgrounds(container, stylesheet) {
-        var rootElement = /**@type{!Element}*/(container.rootElement),
+        var rootElement = container.rootElement,
             masterStyles = rootElement.masterStyles,
             master = masterStyles && masterStyles.firstElementChild,
             selectorPrefix = '#shadowContent draw|page[draw|master-page-name="';
@@ -1143,7 +1159,7 @@
      * @return {undefined}
      */
     function loadHiddenDrawLayers(container, stylesheet) {
-        var rootElement = /**@type{!Element}*/(container.rootElement),
+        var rootElement = container.rootElement,
             roots = [rootElement.styles, rootElement.automaticStyles, rootElement.masterStyles],
             i,
             layers,
@@ -1172,17 +1188,23 @@
      * (draw:modifiers) of a draw:enhanced-geometry, exposing a resolver for the
      * predefined identifiers, the modifiers ($N) and the named equations (?fN).
      * @param {!Element} geometry  <draw:enhanced-geometry>
-     * @return {!{evaluate:function(!string):!number,viewBox:!Array.<!number>}}
+     * @return {!{evaluate:function((!string|undefined)):!number,viewBox:!Array.<!number>,stretchX:!number,stretchY:!number}}
      */
     function createShapeContext(geometry) {
         var viewBoxAttr = (geometry.getAttributeNS(svgns, "viewBox") || "0 0 21600 21600").trim().split(/\s+/),
+            /**@type{!Array.<!number>}*/
             vb = [parseFloat(viewBoxAttr[0]) || 0, parseFloat(viewBoxAttr[1]) || 0,
                 parseFloat(viewBoxAttr[2]) || 21600, parseFloat(viewBoxAttr[3]) || 21600],
             modifiersAttr = (geometry.getAttributeNS(drawns, "modifiers") || "").trim(),
+            /**@type{!Array.<!number>}*/
             modifiers = modifiersAttr ? modifiersAttr.split(/\s+/).map(parseFloat) : [],
+            /**@type{!Object.<!string,!string>}*/
             equations = {},
+            /**@type{!Object.<!string,!number>}*/
             memo = {},
+            /**@type{!Object.<!string,!boolean>}*/
             inProgress = {},
+            /**@type{!Object.<!string,!number>}*/
             identifiers = {
                 width: vb[2], height: vb[3], left: vb[0], top: vb[1],
                 right: vb[0] + vb[2], bottom: vb[1] + vb[3],
@@ -1190,7 +1212,7 @@
                 xstretch: 0, ystretch: 0, hasstroke: 1, hasfill: 1, pi: Math.PI
             },
             node = geometry.firstElementChild,
-            ctx = {};
+            /**@type{!{evaluate:function((!string|undefined)):!number,viewBox:!Array.<!number>,stretchX:!number,stretchY:!number}}*/ctx;
 
         while (node) {
             if (node.namespaceURI === drawns && node.localName === "equation") {
@@ -1204,13 +1226,23 @@
          * @return {!number}
          */
         function parseExpression(tokens) {
-            var pos = 0;
+            var /**@type{!number}*/pos = 0;
 
+            /**
+             * @return {(!string|undefined)}
+             */
             function peek() { return tokens[pos]; }
+            /**
+             * @return {(!string|undefined)}
+             */
             function next() { pos += 1; return tokens[pos - 1]; }
 
+            /**
+             * @return {!number}
+             */
             function parsePrimary() {
-                var token = next(), value, args, name;
+                var /**@type{(!string|undefined)}*/token = next(),
+                    /**@type{!number}*/value;
                 if (token === "(") {
                     value = parseAddition();
                     next(); // ")"
@@ -1223,33 +1255,52 @@
                     return parsePrimary();
                 }
                 // function call: identifier followed by "("
-                if (/^[a-z]+$/.test(token) && peek() === "(") {
-                    name = token;
+                if (token !== undefined && /^[a-z]+$/.test(token) && peek() === "(") {
                     next(); // "("
-                    args = [parseAddition()];
-                    while (peek() === ",") {
-                        next();
-                        args.push(parseAddition());
-                    }
-                    next(); // ")"
-                    switch (name) {
-                    case "abs": return Math.abs(args[0]);
-                    case "sqrt": return Math.sqrt(args[0]);
-                    case "sin": return Math.sin(args[0]);
-                    case "cos": return Math.cos(args[0]);
-                    case "tan": return Math.tan(args[0]);
-                    case "atan": return Math.atan(args[0]);
-                    case "atan2": return Math.atan2(args[0], args[1]);
-                    case "min": return Math.min(args[0], args[1]);
-                    case "max": return Math.max(args[0], args[1]);
-                    case "mod": return Math.sqrt(args[0] * args[0] + args[1] * args[1] + args[2] * args[2]);
-                    case "if": return args[0] > 0 ? args[1] : args[2];
-                    default: return 0;
-                    }
+                    return callFunction(token, parseArguments());
                 }
                 return resolve(token);
             }
 
+            /**
+             * Read the arguments of a function call, until the parenthesis.
+             * @return {!Array.<!number>}
+             */
+            function parseArguments() {
+                var /**@type{!Array.<!number>}*/args = [parseAddition()];
+                while (peek() === ",") {
+                    next();
+                    args.push(parseAddition());
+                }
+                next(); // ")"
+                return args;
+            }
+
+            /**
+             * @param {!string} name
+             * @param {!Array.<!number>} args
+             * @return {!number}
+             */
+            function callFunction(name, args) {
+                switch (name) {
+                case "abs": return Math.abs(args[0]);
+                case "sqrt": return Math.sqrt(args[0]);
+                case "sin": return Math.sin(args[0]);
+                case "cos": return Math.cos(args[0]);
+                case "tan": return Math.tan(args[0]);
+                case "atan": return Math.atan(args[0]);
+                case "atan2": return Math.atan2(args[0], args[1]);
+                case "min": return Math.min(args[0], args[1]);
+                case "max": return Math.max(args[0], args[1]);
+                case "mod": return Math.sqrt(args[0] * args[0] + args[1] * args[1] + args[2] * args[2]);
+                case "if": return args[0] > 0 ? args[1] : args[2];
+                default: return 0;
+                }
+            }
+
+            /**
+             * @return {!number}
+             */
             function parseMultiplication() {
                 var value = parsePrimary(), op;
                 while (peek() === "*" || peek() === "/") {
@@ -1263,6 +1314,9 @@
                 return value;
             }
 
+            /**
+             * @return {!number}
+             */
             function parseAdditionInner() {
                 var value = parseMultiplication(), op;
                 while (peek() === "+" || peek() === "-") {
@@ -1277,6 +1331,9 @@
             }
 
             // hoisted reference so parsePrimary can recurse into the top rule
+            /**
+             * @return {!number}
+             */
             function parseAddition() { return parseAdditionInner(); }
 
             return parseAddition();
@@ -1284,11 +1341,11 @@
 
         /**
          * Resolve a single value token to a number.
-         * @param {!string} token
+         * @param {(!string|undefined)} token
          * @return {!number}
          */
         function resolve(token) {
-            var value;
+            var /**@type{!number}*/value;
             if (token === undefined) {
                 return 0;
             }
@@ -1335,16 +1392,17 @@
             return result;
         }
 
-        ctx.viewBox = vb;
+        ctx = {
+            evaluate: resolve,
+            viewBox: vb,
+            stretchX: NaN,
+            stretchY: NaN
+        };
         // The stretch point keeps a shape's corners a fixed size while only the
         // straight edges between them grow when the shape's box is not square
         // (e.g. a rounded-rectangle "pill"). NaN when not specified.
         ctx.stretchX = parseFloat(geometry.getAttributeNS(drawns, "path-stretchpoint-x"));
         ctx.stretchY = parseFloat(geometry.getAttributeNS(drawns, "path-stretchpoint-y"));
-        ctx.evaluate = function (token) {
-            // A path value is a single token (number, ?fN, $N or identifier).
-            return resolve(token);
-        };
         return ctx;
     }
     /**
@@ -1364,15 +1422,15 @@
     function stretchedPoints(tokens, ctx, stretchPoint, viewBoxSize, targetSize, horizontal) {
         var commandRe = /^[MLCZNFSTUABWVXYQ]$/,
             allowed = {M: 1, L: 1, X: 1, Y: 1, Z: 1, N: 1, F: 1, S: 1},
-            raw = [],
-            pos = 0,
-            n,
-            i,
-            cur = null,
-            prevOnPoint = false,
-            offset = targetSize - viewBoxSize,
-            cmd,
-            coord;
+            /**@type{!Array.<!{x:!number,y:!number}>}*/raw = [],
+            /**@type{!number}*/pos = 0,
+            /**@type{!number}*/n = 0,
+            /**@type{!number}*/i = 0,
+            /**@type{?string}*/cur = null,
+            /**@type{!boolean}*/prevOnPoint = false,
+            /**@type{!number}*/offset = targetSize - viewBoxSize,
+            /**@type{(!string|undefined)}*/cmd,
+            /**@type{!number}*/coord = 0;
         while (pos < tokens.length) {
             cmd = tokens[pos];
             if (!commandRe.test(cmd)) { pos += 1; continue; }
@@ -1431,11 +1489,9 @@
      * @return {undefined}
      */
     function appendEllipticalArc(d, cx, cy, rx, ry, startAngle, endAngle, connectWithMove) {
-        var TWO_PI = Math.PI * 2,
-            sweep = endAngle - startAngle,
+        var sweep = endAngle - startAngle,
             steps,
             i,
-            a0,
             a1,
             x0 = cx + rx * Math.cos(startAngle),
             y0 = cy + ry * Math.sin(startAngle),
@@ -1447,7 +1503,6 @@
         // Break the arc into pieces no larger than (just under) 180 degrees.
         steps = Math.max(1, Math.ceil(absSweep / (Math.PI - 0.001)));
         for (i = 1; i <= steps; i += 1) {
-            a0 = startAngle + sweep * (i - 1) / steps;
             a1 = startAngle + sweep * i / steps;
             x1 = cx + rx * Math.cos(a1);
             y1 = cy + ry * Math.sin(a1);
@@ -1463,40 +1518,62 @@
      * @param {!{evaluate:function(!string):!number}} ctx
      * @param {?Array.<!{x:!number,y:!number}>=} mappedPts  pre-computed,
      *     stretch-corrected points consumed in order for M/L/X/Y commands
-     * @return {!Array.<!{d:!string,fill:!boolean,stroke:!boolean}>}
+     * @return {!Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}
      */
     function parseEnhancedPath(path, ctx, mappedPts) {
-        var tokens = path.match(/[A-Za-z]|\?[a-zA-Z0-9]+|\$[0-9]+|[a-z]+|-?[0-9]*\.?[0-9]+/g) || [],
+        var /**@type{!Array.<!string>}*/
+            tokens = path.match(/[A-Za-z]|\?[a-zA-Z0-9]+|\$[0-9]+|[a-z]+|-?[0-9]*\.?[0-9]+/g) || [],
             commandRe = /^[MLCZNFSTUABWVXYQ]$/,
+            /**@type{!Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}*/
             subPaths = [],
+            /**@type{!Array.<!string>}*/
             d = [],
+            /**@type{!boolean}*/
             fill = true,
+            /**@type{!boolean}*/
             stroke = true,
+            /**@type{!number}*/
             curX = 0,
+            /**@type{!number}*/
             curY = 0,
+            /**@type{!number}*/
             pos = 0,
+            /**@type{!number}*/
             ptIdx = 0,
+            /**@type{(!string|undefined)}*/
             command,
             count = 0;
 
+        /**
+         * @return {undefined}
+         */
         function flush() {
             if (d.length) {
                 subPaths.push({ d: d.join(" "), fill: fill, stroke: stroke });
             }
             d = [];
         }
+        /**
+         * @return {!number}
+         */
         function val() {
-            var t = tokens[pos];
+            var t = tokens[pos] || "0";
             pos += 1;
             return ctx.evaluate(t);
         }
+        /**
+         * @return {!boolean}
+         */
         function hasValue() {
             return pos < tokens.length && !commandRe.test(tokens[pos]);
         }
         // Read one (x,y) point: from the stretch-corrected list when present,
         // otherwise straight from the token stream.
+        /**
+         * @return {!Array.<!number>}
+         */
         function nextPoint() {
-            var p;
+            var /**@type{!{x:!number,y:!number}}*/p;
             if (mappedPts) {
                 p = mappedPts[ptIdx];
                 ptIdx += 1;
@@ -1508,6 +1585,12 @@
         // Elliptical-quadrant helper (X/Y). Draws a 90-degree arc from the
         // current point to (tx,ty); axis is whichever of the two the tangent
         // starts along.
+        /**
+         * @param {!number} tx
+         * @param {!number} ty
+         * @param {!boolean} startAlongX
+         * @return {undefined}
+         */
         function quadrant(tx, ty, startAlongX) {
             // The radii span the rectangle between the current point and the
             // target; only the centre differs between X (tangent starts
@@ -1528,6 +1611,19 @@
         }
         // Arc-to helper (A/W). Ellipse bounding box (x1,y1)-(x2,y2); the segment
         // runs from the direction of (x3,y3) to that of (x4,y4).
+        /**
+         * @param {!number} x1
+         * @param {!number} y1
+         * @param {!number} x2
+         * @param {!number} y2
+         * @param {!number} x3
+         * @param {!number} y3
+         * @param {!number} x4
+         * @param {!number} y4
+         * @param {!boolean} clockwise
+         * @param {!boolean} connectWithMove
+         * @return {undefined}
+         */
         function arcTo(x1, y1, x2, y2, x3, y3, x4, y4, clockwise, connectWithMove) {
             var cx = (x1 + x2) / 2,
                 cy = (y1 + y2) / 2,
@@ -1709,10 +1805,15 @@
      * faithful preview. Polygons (triangle/diamond/pentagon/...) are intentionally
      * absent: their enhanced-path renders correctly already.
      * @param {?string} type  value of draw:type
-     * @return {?{vb: !Array.<!number>, subPaths: !Array}}
+     * @param {?ClientRect} rect  bounding box of the shape, used for the ratio
+     * @return {?{vb: !Array.<!number>, subPaths: !Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}}
      */
     function buildPresetShape(type, rect) {
-        var sub, aspect, headX, bodyTop, bodyBottom;
+        var /**@type{!Array.<!Object>}*/sub,
+            /**@type{!number}*/aspect,
+            /**@type{!number}*/headX,
+            /**@type{!number}*/bodyTop,
+            /**@type{!number}*/bodyBottom;
         switch (type) {
         case "ooxml-ellipse":
             sub = [{ d: "M 0 50 A 50 50 0 1 1 100 50 A 50 50 0 1 1 0 50 Z",
@@ -1757,34 +1858,47 @@
         }
         return { vb: [0, 0, 100, 100], subPaths: sub };
     }
+    /**
+     * Render a draw:custom-shape as an svg background.
+     *
+     * The shape is built from its enhanced geometry, or from a known preset
+     * when the geometry is not usable.
+     * @param {!Element} shape
+     * @param {!Element} geometry
+     * @param {!string} shapeId
+     * @param {!CSSStyleSheet} stylesheet
+     * @return {undefined}
+     */
     function renderCustomShape(shape, geometry, shapeId, stylesheet) {
         var window = runtime.getWindow(),
             computed = window && window.getComputedStyle(shape, null),
-            rect = shape.getBoundingClientRect && shape.getBoundingClientRect(),
-            preset,
+            /**@type{?ClientRect}*/
+            rect = shape.getBoundingClientRect ? shape.getBoundingClientRect() : null,
+            /**@type{?{vb: !Array.<!number>, subPaths: !Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}}*/preset = null,
             ctx,
-            path,
-            tokens,
-            mappedPts = null,
-            subPaths,
-            fillColor,
-            strokeColor,
-            strokeWidth,
-            paths = "",
-            svg,
-            i,
-            sp,
-            vb,
-            vbW,
-            vbH,
-            realAspect,
-            viewBoxAspect,
-            target,
-            mirrorH,
-            mirrorV,
-            mirrorTransform,
-            fillImage,
-            gradient,
+            /**@type{?string}*/path = null,
+            /**@type{!Array.<!string>}*/tokens = [],
+            /**@type{?Array.<!{x:!number,y:!number}>}*/mappedPts = null,
+            /**@type{!Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}*/subPaths = [],
+            /**@type{!string}*/fillColor = "",
+            /**@type{!string}*/strokeColor = "",
+            /**@type{!number}*/strokeWidth = 1,
+            /**@type{!string}*/paths = "",
+            /**@type{!string}*/svg = "",
+            /**@type{!number}*/i = 0,
+            /**@type{!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}}*/sp,
+            /**@type{!Array.<!number>}*/vb = [0, 0, 100, 100],
+            /**@type{!number}*/vbW = 100,
+            /**@type{!number}*/vbH = 100,
+            /**@type{!number}*/realAspect = 1,
+            /**@type{!number}*/viewBoxAspect = 1,
+            /**@type{!number}*/target = 0,
+            /**@type{!boolean}*/mirrorH = false,
+            /**@type{!boolean}*/mirrorV = false,
+            /**@type{!string}*/mirrorTransform = "",
+            /**@type{?string}*/fillImage = null,
+            /**@type{?Array.<!string>}*/hatchColor = null,
+            /**@type{?{def:!string,ref:!string}}*/gradient = null,
             gradientDefs = "",
             fillRef,
             dropShadow,
@@ -1807,9 +1921,9 @@
             // viewBox-unit conversion under non-uniform stretch and hatch fills
             // are rare, so approximate the custom shape with the hatch line
             // colour. Plain (non-custom) shapes keep the real CSS hatch pattern.
-            gradient = fillImage.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}/);
-            if (gradient) {
-                fillRef = gradient[0];
+            hatchColor = fillImage.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}/);
+            if (hatchColor) {
+                fillRef = hatchColor[0];
             }
         } else if (fillImage && fillImage.indexOf("gradient") !== -1) {
             gradient = cssGradientToSvg(fillImage, shapeId);
@@ -1870,7 +1984,11 @@
             // microscopically. When the path clearly does not span that box,
             // derive the viewBox from the path's own bounds.
             (function () {
-                var j, k, coords, x, y,
+                var /**@type{!number}*/j = 0,
+                    /**@type{!number}*/k = 0,
+                    /**@type{!Array.<!string>}*/coords = [],
+                    /**@type{!number}*/x = 0,
+                    /**@type{!number}*/y = 0,
                     minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                 for (j = 0; j < subPaths.length; j += 1) {
                     coords = subPaths[j].d.match(/-?[0-9]*\.?[0-9]+/g) || [];
@@ -2019,68 +2137,52 @@
     }
 
     /**
-     * Parse a chart sub-document into a simple model.
-     * @param {!Document} doc
-     * @return {?{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,
-     *            series:!Array.<!{label:!string,color:!string,
-     *            values:!Array.<!number>,pointColors:!Array.<!string>}>}}
+     * @param {!Element} rowEl
+     * @return {!Array.<!Element>}
      */
-    function parseChart(doc) {
-        var root = doc && doc.documentElement,
-            chart = root && domUtils.getElementsByTagNameNS(root, chartns, "chart")[0],
-            plotArea,
-            colors,
-            titleEl,
-            cls,
-            table,
-            headerRows,
-            bodyRows,
-            headerCells,
-            categories = [],
-            series = [],
-            seriesEls,
-            i,
-            j,
-            row,
-            cells,
-            sEl,
-            pts,
-            pointColors,
-            styleName;
-        if (!chart) {
-            return null;
-        }
-        colors = collectChartStyleColors(root);
-        plotArea = domUtils.getElementsByTagNameNS(chart, chartns, "plot-area")[0];
-        titleEl = domUtils.getElementsByTagNameNS(chart, chartns, "title")[0];
-        cls = (chart.getAttributeNS(chartns, "class") || "").replace("chart:", "");
-        table = domUtils.getElementsByTagNameNS(chart, tablens, "table")[0];
-        if (!plotArea || !table) {
-            return null;
-        }
-        /**
-         * @param {!Element} rowEl
-         * @return {!Array.<!Element>}
-         */
-        function cellsOf(rowEl) {
-            return domUtils.getElementsByTagNameNS(rowEl, tablens, "table-cell");
-        }
-        headerRows = domUtils.getElementsByTagNameNS(table, tablens, "table-header-rows")[0];
-        headerCells = headerRows
-            ? cellsOf(domUtils.getElementsByTagNameNS(headerRows, tablens, "table-row")[0])
-            : [];
-        bodyRows = domUtils.getElementsByTagNameNS(
-            domUtils.getElementsByTagNameNS(table, tablens, "table-rows")[0] || table,
-            tablens, "table-row");
+    function cellsOfRow(rowEl) {
+        return domUtils.getElementsByTagNameNS(rowEl, tablens, "table-cell");
+    }
+    /**
+     * Extract the categories and the series of a chart from its data table.
+     * @param {!Element} table  <table:table> of the chart
+     * @param {!Element} plotArea  <chart:plot-area> of the chart
+     * @param {!Object.<string,!{fill:?string,stroke:?string}>} colors  colour of each chart style
+     * @return {!{categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}}
+     */
+    function parseChartTable(table, plotArea, colors) {
+        var headerRows = domUtils.getElementsByTagNameNS(table, tablens, "table-header-rows")[0],
+            /**@type{!Array.<!Element>}*/
+            headerCells = headerRows
+                ? cellsOfRow(domUtils.getElementsByTagNameNS(headerRows, tablens, "table-row")[0])
+                : [],
+            /**@type{!Array.<!Element>}*/
+            bodyRows = domUtils.getElementsByTagNameNS(
+                domUtils.getElementsByTagNameNS(table, tablens, "table-rows")[0] || table,
+                tablens, "table-row"),
+            seriesEls = domUtils.getElementsByTagNameNS(plotArea, chartns, "series"),
+            /**@type{!Array.<!string>}*/categories = [],
+            /**@type{!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}*/series = [],
+            /**@type{!number}*/i = 0,
+            /**@type{!number}*/j = 0,
+            /**@type{!number}*/k = 0,
+            /**@type{!Array.<!Element>}*/cells = [],
+            /**@type{!Element}*/sEl,
+            /**@type{!Array.<!Element>}*/pts = [],
+            /**@type{!Array.<!string>}*/pointColors = [],
+            /**@type{!Array.<!number>}*/vals = [],
+            /**@type{(!Element|undefined)}*/cell,
+            /**@type{(!Element|undefined)}*/header,
+            /**@type{?string}*/styleName = null;
         // categories = first column of the body rows
         for (i = 0; i < bodyRows.length; i += 1) {
-            cells = cellsOf(bodyRows[i]);
+            cells = cellsOfRow(bodyRows[i]);
             categories.push(cells[0] ? (cells[0].textContent || "").trim() : "");
         }
-        seriesEls = domUtils.getElementsByTagNameNS(plotArea, chartns, "series");
         for (j = 0; j < seriesEls.length; j += 1) {
             sEl = seriesEls[j];
             styleName = sEl.getAttributeNS(chartns, "style-name");
+            header = headerCells[j + 1];
             // per-point colours (pie/ring give each slice its own style)
             pointColors = [];
             pts = domUtils.getElementsByTagNameNS(sEl, chartns, "data-point");
@@ -2091,35 +2193,61 @@
                         || chartPalette[pointColors.length % chartPalette.length]);
                 }
             }
+            vals = [];
+            for (k = 0; k < bodyRows.length; k += 1) {
+                cell = cellsOfRow(bodyRows[k])[j + 1];
+                vals.push(cell ? parseFloat(cell.getAttributeNS(officens, "value")) || 0 : 0);
+            }
             series.push({
-                label: headerCells[j + 1]
-                    ? (headerCells[j + 1].textContent || "").trim()
+                label: header ? (header.textContent || "").trim()
                     : ("Series " + (j + 1)),
                 color: (colors[styleName] && (colors[styleName].fill || colors[styleName].stroke))
                     || chartPalette[j % chartPalette.length],
-                values: (function () {
-                    var vals = [], k, c;
-                    for (k = 0; k < bodyRows.length; k += 1) {
-                        c = cellsOf(bodyRows[k])[j + 1];
-                        vals.push(c ? parseFloat(c.getAttributeNS(officens, "value")) || 0 : 0);
-                    }
-                    return vals;
-                }()),
+                values: vals,
                 pointColors: pointColors
             });
         }
+        return { categories: categories, series: series };
+    }
+    /**
+     * Parse a chart sub-document into a simple model.
+     * @param {!Document} doc
+     * @return {?{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,
+     *            series:!Array.<!{label:!string,color:!string,
+     *            values:!Array.<!number>,pointColors:!Array.<!string>}>}}
+     */
+    function parseChart(doc) {
+        var root = doc && doc.documentElement,
+            chart = root && domUtils.getElementsByTagNameNS(root, chartns, "chart")[0],
+            plotArea,
+            titleEl,
+            cls,
+            table,
+            data;
+        if (!chart || !root) {
+            return null;
+        }
+        plotArea = domUtils.getElementsByTagNameNS(chart, chartns, "plot-area")[0];
+        titleEl = domUtils.getElementsByTagNameNS(chart, chartns, "title")[0];
+        cls = (chart.getAttributeNS(chartns, "class") || "").replace("chart:", "");
+        table = domUtils.getElementsByTagNameNS(chart, tablens, "table")[0];
+        if (!plotArea || !table) {
+            return null;
+        }
+        data = parseChartTable(table, plotArea, collectChartStyleColors(root));
         return { type: cls, title: titleEl ? (titleEl.textContent || "").trim() : "",
             hasLegend: domUtils.getElementsByTagNameNS(chart, chartns, "legend").length > 0,
-            categories: categories, series: series };
+            categories: data.categories, series: data.series };
     }
 
     /**
      * A "nice" axis maximum and step for a value range 0..maxVal.
      * @param {!number} maxVal
+     * @param {!boolean} preferExactMax
      * @return {!{max:!number,step:!number}}
      */
     function niceAxis(maxVal, preferExactMax) {
-        var exact,
+        var /**@type{?{max:!number,step:!number}}*/exact,
             target = (maxVal <= 0 ? 1 : maxVal) * (preferExactMax ? 1 : 1.05),
             rough = target / 5,
             pow = Math.pow(10, Math.floor(Math.log(rough) / Math.LN10)),
@@ -2164,16 +2292,16 @@
 
     /**
      * Render the parsed chart model to an SVG string at the given cm size.
-     * @param {!Object} c  parsed chart model
+     * @param {!{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}} c  parsed chart model
      * @param {!number} wcm
      * @param {!number} hcm
      * @return {!string}
      */
     function buildChartSvg(c, wcm, hcm) {
-        var W = Math.max(120, Math.round(wcm * 40)),
-            H = Math.max(90, Math.round(hcm * 40)),
-            body = "",
-            legendW = 0;
+        var /**@type{!number}*/W = Math.max(120, Math.round(wcm * 40)),
+            /**@type{!number}*/H = Math.max(90, Math.round(hcm * 40)),
+            /**@type{!string}*/body = "",
+            /**@type{!number}*/legendW = 0;
         /**
          * @param {!number} x @param {!number} y @param {!string} t
          * @param {!string} anchor @param {!number} size @param {string=} weight
@@ -2186,8 +2314,49 @@
                 + ' fill="#404040">' + svgEsc(t) + '</text>';
         }
         /**
+         * Legend items of a pie or ring chart, one per category.
+         * @param {!{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}} c
+         * @param {!Array.<!string>} pcols  colour of each slice, may be sparse
+         * @return {!Array.<!{label:!string,color:!string}>}
+         */
+        function pieLegendItems(c, pcols) {
+            var /**@type{!Array.<!{label:!string,color:!string}>}*/items = [],
+                /**@type{!number}*/m = 0;
+            for (m = 0; m < c.categories.length; m += 1) {
+                items.push({ label: c.categories[m],
+                    color: pcols[m] || chartPalette[m % chartPalette.length] });
+            }
+            return items;
+        }
+        /**
+         * Draw the legend of the series and return the maximum value.
+         *
+         * The legend is drawn only when the chart requires it. The maximum
+         * value of all the series is used to scale the axis.
+         * @param {!{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}} c
+         * @param {!number} top
+         * @return {!number}
+         */
+        function drawSeriesLegend(c, top) {
+            var /**@type{!Array.<!{label:!string,color:!string}>}*/items = [],
+                /**@type{!number}*/maxVal = 0,
+                /**@type{!number}*/s = 0,
+                /**@type{!number}*/k = 0;
+            for (s = 0; s < c.series.length; s += 1) {
+                for (k = 0; k < c.series[s].values.length; k += 1) {
+                    maxVal = Math.max(maxVal, c.series[s].values[k]);
+                }
+                items.push({ label: c.series[s].label, color: c.series[s].color });
+            }
+            if (c.hasLegend) {
+                drawLegend(items, top);
+            }
+            return maxVal;
+        }
+        /**
          * Legend at the right; returns its width and appends to body.
          * @param {!Array.<!{label:!string,color:!string}>} items
+         * @param {!number} top
          * @return {undefined}
          */
         function drawLegend(items, top) {
@@ -2211,20 +2380,15 @@
         if (c.type === "circle" || c.type === "ring") {
             // pie / doughnut: one series, slice per category
             (function () {
-                var vals = c.series[0] ? c.series[0].values : [],
-                    pcols = c.series[0] ? c.series[0].pointColors : [],
-                    total = 0, k, ang0 = -Math.PI / 2, ang1, frac,
-                    cx, cy, r, rIn, mid, lx, ly, x0, y0, x1, y1, large, col;
+                var /**@type{!Array.<!number>}*/vals = c.series[0] ? c.series[0].values : [],
+                    /**@type{!Array.<!string>}*/pcols = c.series[0] ? c.series[0].pointColors : [],
+                    total = 0, k = 0, ang0 = -Math.PI / 2, ang1 = 0, frac = 0,
+                    cx = 0, cy = 0, r = 0, rIn = 0, mid = 0, lx = 0, ly = 0,
+                    x0 = 0, y0 = 0, x1 = 0, y1 = 0, large = 0,
+                    /**@type{!string}*/col = "";
                 for (k = 0; k < vals.length; k += 1) { total += vals[k]; }
                 if (c.hasLegend) {
-                    drawLegend((function () {
-                        var it = [], m;
-                        for (m = 0; m < c.categories.length; m += 1) {
-                            it.push({ label: c.categories[m],
-                                color: pcols[m] || chartPalette[m % chartPalette.length] });
-                        }
-                        return it;
-                    }()), 30);
+                    drawLegend(pieLegendItems(c, pcols), 30);
                 }
                 r = Math.min((W - legendW - 20) / 2, (H - 36) / 2) - 4;
                 cx = (W - legendW) / 2;
@@ -2261,25 +2425,22 @@
         } else {
             // bar / line: shared cartesian axes
             (function () {
-                var ml = 30, mr, mt = c.title ? 26 : 10, mb = 20,
-                    maxVal = 0, k, s, axis, plotW, plotH, x0, y0,
-                    nCat = c.categories.length, gi, catW, t, gx, gy,
-                    nSer = c.series.length, bw, bx, vh, px, py, pts, legendItems = [];
-                for (s = 0; s < c.series.length; s += 1) {
-                    for (k = 0; k < c.series[s].values.length; k += 1) {
-                        maxVal = Math.max(maxVal, c.series[s].values[k]);
-                    }
-                    legendItems.push({ label: c.series[s].label, color: c.series[s].color });
-                }
-                if (c.hasLegend) {
-                    drawLegend(legendItems, mt + 4);
-                }
-                mr = legendW + 6;
-                axis = niceAxis(maxVal, c.type === "line");
-                plotW = W - ml - mr;
-                plotH = H - mt - mb;
-                x0 = ml;
-                y0 = mt + plotH;
+                var mt = c.title ? 26 : 10,
+                    // The legend is drawn first because it sets its own width,
+                    // that the plot area has to leave free on the right.
+                    maxVal = drawSeriesLegend(c, mt + 4),
+                    ml = 30,
+                    mb = 20,
+                    mr = legendW + 6,
+                    axis = niceAxis(maxVal, c.type === "line"),
+                    plotW = W - ml - mr,
+                    plotH = H - mt - mb,
+                    x0 = ml,
+                    y0 = mt + plotH,
+                    k = 0, s = 0,
+                    nCat = c.categories.length, gi = 0, catW = 0, t = 0, gx = 0, gy = 0,
+                    nSer = c.series.length, bw = 0, bx = 0, vh = 0, px = 0, py = 0,
+                    /**@type{!string}*/pts = "";
                 // y gridlines + labels
                 for (t = 0; t <= axis.max + 1e-9; t += axis.step) {
                     gy = y0 - (t / axis.max) * plotH;
@@ -2346,7 +2507,17 @@
         return m ? { v: parseFloat(m[1]), u: m[2] || "" } : { v: 0, u: "" };
     }
     /**
-     * @param {!Element} rootElement
+     * Parse the viewBox of a draw:marker, with the default used by ODF.
+     * @param {!Element} marker
+     * @return {!Array.<!number>}
+     */
+    function parseMarkerViewBox(marker) {
+        var vbAttr = (marker.getAttributeNS(svgns, "viewBox") || "0 0 20 20").trim().split(/\s+/);
+        return [parseFloat(vbAttr[0]) || 0, parseFloat(vbAttr[1]) || 0,
+            parseFloat(vbAttr[2]) || 20, parseFloat(vbAttr[3]) || 20];
+    }
+    /**
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} name
      * @param {!string} id
      * @param {!string} orient
@@ -2357,29 +2528,16 @@
      */
     function buildLineMarker(rootElement, name, id, orient, width, color, centered) {
         var marker = findDrawMarker(rootElement, name),
-            vbAttr,
-            vb,
-            d,
-            vbW,
-            vbH,
-            height,
-            refX,
-            refY;
-        if (!marker || !width) {
+            /**@type{?string}*/d = marker && marker.getAttributeNS(svgns, "d"),
+            /**@type{!Array.<!number>}*/vb = marker ? parseMarkerViewBox(marker) : [],
+            /**@type{!number}*/vbW = vb[2] || 20,
+            /**@type{!number}*/vbH = vb[3] || 20,
+            /**@type{!number}*/height = width * (vbH / vbW),
+            /**@type{!number}*/refX = centered ? vbW / 2 : vbW,
+            /**@type{!number}*/refY = vbH / 2;
+        if (!marker || !width || !d) {
             return "";
         }
-        vbAttr = (marker.getAttributeNS(svgns, "viewBox") || "0 0 20 20").trim().split(/\s+/);
-        vb = [parseFloat(vbAttr[0]) || 0, parseFloat(vbAttr[1]) || 0,
-            parseFloat(vbAttr[2]) || 20, parseFloat(vbAttr[3]) || 20];
-        d = marker.getAttributeNS(svgns, "d");
-        if (!d) {
-            return "";
-        }
-        vbW = vb[2];
-        vbH = vb[3];
-        height = width * (vbH / vbW);
-        refX = centered ? vbW / 2 : vbW;
-        refY = vbH / 2;
         return '<marker id="' + id + '" viewBox="' + vb.join(" ")
             + '" markerUnits="userSpaceOnUse" markerWidth="' + width
             + '" markerHeight="' + height + '" refX="' + refX + '" refY="' + refY
@@ -2395,7 +2553,7 @@
      * uses non-scaling-stroke so it keeps its width under the box stretch.
      * @param {!Element} line
      * @param {!string} lineId
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {!CSSStyleSheet} stylesheet
      * @return {undefined}
      */
@@ -2492,7 +2650,7 @@
     /**
      * Render all draw:line connectors.
      * @param {!Element} odfbody
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {!CSSStyleSheet} stylesheet
      * @return {undefined}
      */
@@ -2562,9 +2720,9 @@
          * @return {undefined}
          */
         function applyDefaultCellStyles(table) {
-            var columnDefaults = [],
-                rowDefault,
-                styleName;
+            var /**@type{!Array.<!string>}*/columnDefaults = [],
+                /**@type{?string}*/rowDefault = null,
+                /**@type{?string}*/styleName = null;
             /**
              * @param {!Element} parent  scans table-column descendants in order
              * @return {undefined}
@@ -2594,10 +2752,10 @@
              * @return {undefined}
              */
             function walkRows(parent) {
-                var r = parent.firstElementChild,
-                    c,
-                    rep,
-                    idx;
+                var /**@type{?Element}*/r = parent.firstElementChild,
+                    /**@type{?Element}*/c,
+                    /**@type{!number}*/rep,
+                    /**@type{!number}*/idx;
                 while (r) {
                     if (r.namespaceURI === tablens && r.localName === "table-row") {
                         rowDefault = r.getAttributeNS(tablens, "default-cell-style-name");
@@ -3189,7 +3347,7 @@
          */
         function loadCharts(container, odffragment, stylesheet) {
             var objects = odffragment.getElementsByTagNameNS(drawns, 'object'),
-                i;
+                /**@type{!number}*/i;
             /**
              * @param {!Element} object
              * @param {!string} chartId
@@ -3197,14 +3355,19 @@
              */
             function loadChart(object, chartId) {
                 var href = object.getAttributeNS(xlinkns, 'href'),
-                    path,
-                    frame = object.parentNode;
+                    /**@type{!string}*/path,
+                    /**@type{!Element}*/frame = /**@type{!Element}*/(object.parentNode);
                 if (!href) {
                     return;
                 }
                 path = href.replace(/^\.?\//, "").replace(/\/$/, "") + "/content.xml";
                 container.getPartData(path, function (err, data) {
-                    var doc, model, svg, w, h, rule;
+                    var /**@type{?Document}*/doc,
+                        model,
+                        /**@type{!string}*/svg,
+                        /**@type{!{v: !number, u: !string}}*/w,
+                        /**@type{!{v: !number, u: !string}}*/h,
+                        /**@type{!string}*/rule;
                     if (err || !data) {
                         return;
                     }
@@ -3370,16 +3533,18 @@
          */
         function collectAutofitStyleNames(container) {
             var rootElement = container.rootElement,
+                /**@type{!Array.<?Element>}*/
                 roots = [rootElement.automaticStyles, rootElement.styles],
-                directly = {},
-                parent = {},
-                names = [],
-                result = null,
-                r,
+                /**@type{!Object.<!string,!boolean>}*/directly = {},
+                /**@type{!Object.<!string,!string>}*/parent = {},
+                /**@type{!Array.<!string>}*/names = [],
+                /**@type{?Object.<!string,!boolean>}*/result = null,
+                /**@type{?Element}*/root,
+                /**@type{!number}*/r,
                 styles,
-                j,
+                /**@type{!number}*/j,
                 s,
-                name,
+                /**@type{?string}*/name,
                 gp;
 
             /**
@@ -3398,10 +3563,11 @@
             }
 
             for (r = 0; r < roots.length; r += 1) {
-                if (!roots[r]) {
+                root = roots[r];
+                if (!root) {
                     continue;
                 }
-                styles = domUtils.getElementsByTagNameNS(roots[r], stylens, 'style');
+                styles = domUtils.getElementsByTagNameNS(root, stylens, 'style');
                 for (j = 0; j < styles.length; j += 1) {
                     s = styles[j];
                     if (s.getAttributeNS(stylens, 'family') !== 'graphic') {
