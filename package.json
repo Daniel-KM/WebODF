@@ -36,5 +36,26 @@
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.10"
+  },
+  "devDependencies": {
+    "jsdoc": "^4.0.5",
+    "terser": "^5.50.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "check": "node scripts/check.js",
+    "test": "node scripts/test.js",
+    "doc": "node scripts/doc.js"
+  },
+  "files": [
+    "dist",
+    "webodf",
+    "scripts",
+    "README.md",
+    "README-Building.md"
+  ],
+  "main": "dist/webodf.js",
+  "engines": {
+    "node": ">=18"
   }
 }

@@ -37,3 +37,13 @@ simple.odt
 simpleFrame.odt
 webodf/tests/*.odt
 webodf/tests/odf/newloadsave.odt
+
+# Build outputs and downloaded tools of the node build.
+dist
+.tools
+
+# Only the runtime dependency is versioned, see README-Building.md. The tools
+# of the build are installed with npm.
+node_modules/*
+!node_modules/.package-lock.json
+!node_modules/@xmldom
