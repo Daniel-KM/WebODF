@@ -266,6 +266,7 @@ odf.Style2CSS = function Style2CSS() {
         fontFaceDeclsMap = {},
         utils = odf.OdfUtils,
         documentType,
+        /**@type{!odf.ODFDocumentElement}*/
         odfRoot,
         defaultFontSize,
         xpath = xmldom.XPath,
@@ -695,7 +696,7 @@ odf.Style2CSS = function Style2CSS() {
     }
 
     /**
-     * @param {string} n
+     * @param {?string} n
      * @return {boolean}
      */
     function isNumber(n) {
@@ -1280,7 +1281,7 @@ odf.Style2CSS = function Style2CSS() {
 
     /**
      * @param {!string} doctype
-     * @param {!Element} rootNode
+     * @param {!odf.ODFDocumentElement} rootNode
      * @param {!CSSStyleSheet} stylesheet
      * @param {!Object.<string,string>} fontFaceMap
      * @param {!Object.<string,!Object.<string,!odf.StyleTreeNode>>} styleTree
