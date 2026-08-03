@@ -1206,7 +1206,13 @@
         function parseExpression(tokens) {
             var pos = 0;
 
+            /**
+             * @return {(!string|undefined)}
+             */
             function peek() { return tokens[pos]; }
+            /**
+             * @return {(!string|undefined)}
+             */
             function next() { pos += 1; return tokens[pos - 1]; }
 
             function parsePrimary() {
@@ -1479,24 +1485,36 @@
             command,
             count = 0;
 
+        /**
+         * @return {undefined}
+         */
         function flush() {
             if (d.length) {
                 subPaths.push({ d: d.join(" "), fill: fill, stroke: stroke });
             }
             d = [];
         }
+        /**
+         * @return {!number}
+         */
         function val() {
-            var t = tokens[pos];
+            var t = tokens[pos] || "0";
             pos += 1;
             return ctx.evaluate(t);
         }
+        /**
+         * @return {!boolean}
+         */
         function hasValue() {
             return pos < tokens.length && !commandRe.test(tokens[pos]);
         }
         // Read one (x,y) point: from the stretch-corrected list when present,
         // otherwise straight from the token stream.
+        /**
+         * @return {!Array.<!number>}
+         */
         function nextPoint() {
-            var p;
+            var /**@type{!{x:!number,y:!number}}*/p;
             if (mappedPts) {
                 p = mappedPts[ptIdx];
                 ptIdx += 1;
@@ -1508,6 +1526,12 @@
         // Elliptical-quadrant helper (X/Y). Draws a 90-degree arc from the
         // current point to (tx,ty); axis is whichever of the two the tangent
         // starts along.
+        /**
+         * @param {!number} tx
+         * @param {!number} ty
+         * @param {!boolean} startAlongX
+         * @return {undefined}
+         */
         function quadrant(tx, ty, startAlongX) {
             // The radii span the rectangle between the current point and the
             // target; only the centre differs between X (tangent starts
@@ -1528,6 +1552,19 @@
         }
         // Arc-to helper (A/W). Ellipse bounding box (x1,y1)-(x2,y2); the segment
         // runs from the direction of (x3,y3) to that of (x4,y4).
+        /**
+         * @param {!number} x1
+         * @param {!number} y1
+         * @param {!number} x2
+         * @param {!number} y2
+         * @param {!number} x3
+         * @param {!number} y3
+         * @param {!number} x4
+         * @param {!number} y4
+         * @param {!boolean} clockwise
+         * @param {!boolean} connectWithMove
+         * @return {undefined}
+         */
         function arcTo(x1, y1, x2, y2, x3, y3, x4, y4, clockwise, connectWithMove) {
             var cx = (x1 + x2) / 2,
                 cy = (y1 + y2) / 2,
