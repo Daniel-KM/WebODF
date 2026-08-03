@@ -1290,7 +1290,7 @@
 
         /**
          * Resolve a single value token to a number.
-         * @param {!string} token
+         * @param {(!string|undefined)} token
          * @return {!number}
          */
         function resolve(token) {
