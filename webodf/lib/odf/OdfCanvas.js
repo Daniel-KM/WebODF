@@ -1390,15 +1390,15 @@
     function stretchedPoints(tokens, ctx, stretchPoint, viewBoxSize, targetSize, horizontal) {
         var commandRe = /^[MLCZNFSTUABWVXYQ]$/,
             allowed = {M: 1, L: 1, X: 1, Y: 1, Z: 1, N: 1, F: 1, S: 1},
-            raw = [],
-            pos = 0,
-            n,
-            i,
-            cur = null,
-            prevOnPoint = false,
-            offset = targetSize - viewBoxSize,
-            cmd,
-            coord;
+            /**@type{!Array.<!{x:!number,y:!number}>}*/raw = [],
+            /**@type{!number}*/pos = 0,
+            /**@type{!number}*/n = 0,
+            /**@type{!number}*/i = 0,
+            /**@type{?string}*/cur = null,
+            /**@type{!boolean}*/prevOnPoint = false,
+            /**@type{!number}*/offset = targetSize - viewBoxSize,
+            /**@type{(!string|undefined)}*/cmd,
+            /**@type{!number}*/coord = 0;
         while (pos < tokens.length) {
             cmd = tokens[pos];
             if (!commandRe.test(cmd)) { pos += 1; continue; }
