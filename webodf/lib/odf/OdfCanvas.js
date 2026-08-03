@@ -1184,13 +1184,19 @@
      */
     function createShapeContext(geometry) {
         var viewBoxAttr = (geometry.getAttributeNS(svgns, "viewBox") || "0 0 21600 21600").trim().split(/\s+/),
+            /**@type{!Array.<!number>}*/
             vb = [parseFloat(viewBoxAttr[0]) || 0, parseFloat(viewBoxAttr[1]) || 0,
                 parseFloat(viewBoxAttr[2]) || 21600, parseFloat(viewBoxAttr[3]) || 21600],
             modifiersAttr = (geometry.getAttributeNS(drawns, "modifiers") || "").trim(),
+            /**@type{!Array.<!number>}*/
             modifiers = modifiersAttr ? modifiersAttr.split(/\s+/).map(parseFloat) : [],
+            /**@type{!Object.<!string,!string>}*/
             equations = {},
+            /**@type{!Object.<!string,!number>}*/
             memo = {},
+            /**@type{!Object.<!string,!boolean>}*/
             inProgress = {},
+            /**@type{!Object.<!string,!number>}*/
             identifiers = {
                 width: vb[2], height: vb[3], left: vb[0], top: vb[1],
                 right: vb[0] + vb[2], bottom: vb[1] + vb[3],
@@ -1314,7 +1320,7 @@
          * @return {!number}
          */
         function resolve(token) {
-            var value;
+            var /**@type{!number}*/value;
             if (token === undefined) {
                 return 0;
             }
