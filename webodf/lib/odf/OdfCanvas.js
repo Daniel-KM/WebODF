@@ -2137,6 +2137,79 @@
     }
 
     /**
+     * @param {!Element} rowEl
+     * @return {!Array.<!Element>}
+     */
+    function cellsOfRow(rowEl) {
+        return domUtils.getElementsByTagNameNS(rowEl, tablens, "table-cell");
+    }
+    /**
+     * Extract the categories and the series of a chart from its data table.
+     * @param {!Element} table  <table:table> of the chart
+     * @param {!Element} plotArea  <chart:plot-area> of the chart
+     * @param {!Object.<string,!{fill:?string,stroke:?string}>} colors  colour of each chart style
+     * @return {!{categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}}
+     */
+    function parseChartTable(table, plotArea, colors) {
+        var headerRows = domUtils.getElementsByTagNameNS(table, tablens, "table-header-rows")[0],
+            /**@type{!Array.<!Element>}*/
+            headerCells = headerRows
+                ? cellsOfRow(domUtils.getElementsByTagNameNS(headerRows, tablens, "table-row")[0])
+                : [],
+            /**@type{!Array.<!Element>}*/
+            bodyRows = domUtils.getElementsByTagNameNS(
+                domUtils.getElementsByTagNameNS(table, tablens, "table-rows")[0] || table,
+                tablens, "table-row"),
+            seriesEls = domUtils.getElementsByTagNameNS(plotArea, chartns, "series"),
+            /**@type{!Array.<!string>}*/categories = [],
+            /**@type{!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}*/series = [],
+            /**@type{!number}*/i = 0,
+            /**@type{!number}*/j = 0,
+            /**@type{!number}*/k = 0,
+            /**@type{!Array.<!Element>}*/cells = [],
+            /**@type{!Element}*/sEl,
+            /**@type{!Array.<!Element>}*/pts = [],
+            /**@type{!Array.<!string>}*/pointColors = [],
+            /**@type{!Array.<!number>}*/vals = [],
+            /**@type{(!Element|undefined)}*/cell,
+            /**@type{(!Element|undefined)}*/header,
+            /**@type{?string}*/styleName = null;
+        // categories = first column of the body rows
+        for (i = 0; i < bodyRows.length; i += 1) {
+            cells = cellsOfRow(bodyRows[i]);
+            categories.push(cells[0] ? (cells[0].textContent || "").trim() : "");
+        }
+        for (j = 0; j < seriesEls.length; j += 1) {
+            sEl = seriesEls[j];
+            styleName = sEl.getAttributeNS(chartns, "style-name");
+            header = headerCells[j + 1];
+            // per-point colours (pie/ring give each slice its own style)
+            pointColors = [];
+            pts = domUtils.getElementsByTagNameNS(sEl, chartns, "data-point");
+            for (i = 0; i < pts.length; i += 1) {
+                if (pts[i].getAttributeNS(chartns, "style-name")
+                        && colors[pts[i].getAttributeNS(chartns, "style-name")]) {
+                    pointColors.push(colors[pts[i].getAttributeNS(chartns, "style-name")].fill
+                        || chartPalette[pointColors.length % chartPalette.length]);
+                }
+            }
+            vals = [];
+            for (k = 0; k < bodyRows.length; k += 1) {
+                cell = cellsOfRow(bodyRows[k])[j + 1];
+                vals.push(cell ? parseFloat(cell.getAttributeNS(officens, "value")) || 0 : 0);
+            }
+            series.push({
+                label: header ? (header.textContent || "").trim()
+                    : ("Series " + (j + 1)),
+                color: (colors[styleName] && (colors[styleName].fill || colors[styleName].stroke))
+                    || chartPalette[j % chartPalette.length],
+                values: vals,
+                pointColors: pointColors
+            });
+        }
+        return { categories: categories, series: series };
+    }
+    /**
      * Parse a chart sub-document into a simple model.
      * @param {!Document} doc
      * @return {?{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,
@@ -2147,29 +2220,13 @@
         var root = doc && doc.documentElement,
             chart = root && domUtils.getElementsByTagNameNS(root, chartns, "chart")[0],
             plotArea,
-            colors,
             titleEl,
             cls,
             table,
-            /**@type{(!Element|undefined)}*/headerRows,
-            /**@type{!Array.<!Element>}*/bodyRows = [],
-            /**@type{!Array.<!Element>}*/headerCells = [],
-            /**@type{!Array.<!string>}*/categories = [],
-            /**@type{!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}*/
-            series = [],
-            seriesEls,
-            /**@type{!number}*/i = 0,
-            /**@type{!number}*/j = 0,
-            /**@type{!Array.<!Element>}*/cells = [],
-            /**@type{!Element}*/sEl,
-            /**@type{!Array.<!Element>}*/pts = [],
-            /**@type{!Array.<!string>}*/pointColors = [],
-            /**@type{?string}*/styleName = null,
-            /**@type{(!Element|undefined)}*/header;
-        if (!chart) {
+            data;
+        if (!chart || !root) {
             return null;
         }
-        colors = collectChartStyleColors(root);
         plotArea = domUtils.getElementsByTagNameNS(chart, chartns, "plot-area")[0];
         titleEl = domUtils.getElementsByTagNameNS(chart, chartns, "title")[0];
         cls = (chart.getAttributeNS(chartns, "class") || "").replace("chart:", "");
@@ -2177,61 +2234,10 @@
         if (!plotArea || !table) {
             return null;
         }
-        /**
-         * @param {!Element} rowEl
-         * @return {!Array.<!Element>}
-         */
-        function cellsOf(rowEl) {
-            return domUtils.getElementsByTagNameNS(rowEl, tablens, "table-cell");
-        }
-        headerRows = domUtils.getElementsByTagNameNS(table, tablens, "table-header-rows")[0];
-        headerCells = headerRows
-            ? cellsOf(domUtils.getElementsByTagNameNS(headerRows, tablens, "table-row")[0])
-            : [];
-        bodyRows = domUtils.getElementsByTagNameNS(
-            domUtils.getElementsByTagNameNS(table, tablens, "table-rows")[0] || table,
-            tablens, "table-row");
-        // categories = first column of the body rows
-        for (i = 0; i < bodyRows.length; i += 1) {
-            cells = cellsOf(bodyRows[i]);
-            categories.push(cells[0] ? (cells[0].textContent || "").trim() : "");
-        }
-        seriesEls = domUtils.getElementsByTagNameNS(plotArea, chartns, "series");
-        for (j = 0; j < seriesEls.length; j += 1) {
-            sEl = seriesEls[j];
-            styleName = sEl.getAttributeNS(chartns, "style-name");
-            // per-point colours (pie/ring give each slice its own style)
-            pointColors = [];
-            header = headerCells[j + 1];
-            pts = domUtils.getElementsByTagNameNS(sEl, chartns, "data-point");
-            for (i = 0; i < pts.length; i += 1) {
-                if (pts[i].getAttributeNS(chartns, "style-name")
-                        && colors[pts[i].getAttributeNS(chartns, "style-name")]) {
-                    pointColors.push(colors[pts[i].getAttributeNS(chartns, "style-name")].fill
-                        || chartPalette[pointColors.length % chartPalette.length]);
-                }
-            }
-            series.push({
-                label: header ? (header.textContent || "").trim()
-                    : ("Series " + (j + 1)),
-                color: (colors[styleName] && (colors[styleName].fill || colors[styleName].stroke))
-                    || chartPalette[j % chartPalette.length],
-                values: (function () {
-                    var /**@type{!Array.<!number>}*/vals = [],
-                        /**@type{!number}*/k = 0,
-                        /**@type{(!Element|undefined)}*/c;
-                    for (k = 0; k < bodyRows.length; k += 1) {
-                        c = cellsOf(bodyRows[k])[j + 1];
-                        vals.push(c ? parseFloat(c.getAttributeNS(officens, "value")) || 0 : 0);
-                    }
-                    return vals;
-                }()),
-                pointColors: pointColors
-            });
-        }
+        data = parseChartTable(table, plotArea, collectChartStyleColors(root));
         return { type: cls, title: titleEl ? (titleEl.textContent || "").trim() : "",
             hasLegend: domUtils.getElementsByTagNameNS(chart, chartns, "legend").length > 0,
-            categories: categories, series: series };
+            categories: data.categories, series: data.series };
     }
 
     /**
@@ -2308,8 +2314,25 @@
                 + ' fill="#404040">' + svgEsc(t) + '</text>';
         }
         /**
-         * Draw the legend of the series, when needed, and return the maximum
-         * value of all the series, used to scale the axis.
+         * Legend items of a pie or ring chart, one per category.
+         * @param {!{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}} c
+         * @param {!Array.<!string>} pcols  colour of each slice, may be sparse
+         * @return {!Array.<!{label:!string,color:!string}>}
+         */
+        function pieLegendItems(c, pcols) {
+            var /**@type{!Array.<!{label:!string,color:!string}>}*/items = [],
+                /**@type{!number}*/m = 0;
+            for (m = 0; m < c.categories.length; m += 1) {
+                items.push({ label: c.categories[m],
+                    color: pcols[m] || chartPalette[m % chartPalette.length] });
+            }
+            return items;
+        }
+        /**
+         * Draw the legend of the series and return the maximum value.
+         *
+         * The legend is drawn only when the chart requires it. The maximum
+         * value of all the series is used to scale the axis.
          * @param {!{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}} c
          * @param {!number} top
          * @return {!number}
@@ -2365,15 +2388,7 @@
                     /**@type{!string}*/col = "";
                 for (k = 0; k < vals.length; k += 1) { total += vals[k]; }
                 if (c.hasLegend) {
-                    drawLegend((function () {
-                        var /**@type{!Array.<!{label:!string,color:!string}>}*/it = [],
-                            /**@type{!number}*/m = 0;
-                        for (m = 0; m < c.categories.length; m += 1) {
-                            it.push({ label: c.categories[m],
-                                color: pcols[m] || chartPalette[m % chartPalette.length] });
-                        }
-                        return it;
-                    }()), 30);
+                    drawLegend(pieLegendItems(c, pcols), 30);
                 }
                 r = Math.min((W - legendW - 20) / 2, (H - 36) / 2) - 4;
                 cx = (W - legendW) / 2;
