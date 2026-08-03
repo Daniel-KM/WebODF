@@ -999,7 +999,7 @@
      * over the "background: none" that Style2CSS emits when the page background
      * is visible.
      * @param {!odf.OdfContainer} container
-     * @param {!string} styleName
+     * @param {!string} selector
      * @param {!string} href
      * @param {?string} repeat  value of style:repeat
      * @param {!CSSStyleSheet} stylesheet
@@ -1469,11 +1469,9 @@
      * @return {undefined}
      */
     function appendEllipticalArc(d, cx, cy, rx, ry, startAngle, endAngle, connectWithMove) {
-        var TWO_PI = Math.PI * 2,
-            sweep = endAngle - startAngle,
+        var sweep = endAngle - startAngle,
             steps,
             i,
-            a0,
             a1,
             x0 = cx + rx * Math.cos(startAngle),
             y0 = cy + ry * Math.sin(startAngle),
@@ -1485,7 +1483,6 @@
         // Break the arc into pieces no larger than (just under) 180 degrees.
         steps = Math.max(1, Math.ceil(absSweep / (Math.PI - 0.001)));
         for (i = 1; i <= steps; i += 1) {
-            a0 = startAngle + sweep * (i - 1) / steps;
             a1 = startAngle + sweep * i / steps;
             x1 = cx + rx * Math.cos(a1);
             y1 = cy + ry * Math.sin(a1);
@@ -2136,18 +2133,18 @@
             table,
             headerRows,
             bodyRows,
-            headerCells,
-            categories = [],
+            /**@type{!Array.<!Element>}*/headerCells = [],
+            /**@type{!Array.<!string>}*/categories = [],
+            /**@type{!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}*/
             series = [],
             seriesEls,
-            i,
-            j,
-            row,
-            cells,
-            sEl,
-            pts,
-            pointColors,
-            styleName;
+            /**@type{!number}*/i = 0,
+            /**@type{!number}*/j = 0,
+            /**@type{!Array.<!Element>}*/cells = [],
+            /**@type{!Element}*/sEl,
+            /**@type{!Array.<!Element>}*/pts = [],
+            /**@type{!Array.<!string>}*/pointColors = [],
+            /**@type{?string}*/styleName = null;
         if (!chart) {
             return null;
         }
@@ -2199,7 +2196,9 @@
                 color: (colors[styleName] && (colors[styleName].fill || colors[styleName].stroke))
                     || chartPalette[j % chartPalette.length],
                 values: (function () {
-                    var vals = [], k, c;
+                    var /**@type{!Array.<!number>}*/vals = [],
+                        /**@type{!number}*/k = 0,
+                        /**@type{(!Element|undefined)}*/c;
                     for (k = 0; k < bodyRows.length; k += 1) {
                         c = cellsOf(bodyRows[k])[j + 1];
                         vals.push(c ? parseFloat(c.getAttributeNS(officens, "value")) || 0 : 0);
@@ -2668,9 +2667,9 @@
          * @return {undefined}
          */
         function applyDefaultCellStyles(table) {
-            var columnDefaults = [],
-                rowDefault,
-                styleName;
+            var /**@type{!Array.<!string>}*/columnDefaults = [],
+                /**@type{?string}*/rowDefault = null,
+                /**@type{?string}*/styleName = null;
             /**
              * @param {!Element} parent  scans table-column descendants in order
              * @return {undefined}
@@ -2700,10 +2699,10 @@
              * @return {undefined}
              */
             function walkRows(parent) {
-                var r = parent.firstElementChild,
-                    c,
-                    rep,
-                    idx;
+                var /**@type{?Element}*/r = parent.firstElementChild,
+                    /**@type{?Element}*/c,
+                    /**@type{!number}*/rep,
+                    /**@type{!number}*/idx;
                 while (r) {
                     if (r.namespaceURI === tablens && r.localName === "table-row") {
                         rowDefault = r.getAttributeNS(tablens, "default-cell-style-name");
