@@ -1845,30 +1845,31 @@
             computed = window && window.getComputedStyle(shape, null),
             /**@type{?ClientRect}*/
             rect = shape.getBoundingClientRect ? shape.getBoundingClientRect() : null,
-            preset,
+            /**@type{?{vb: !Array.<!number>, subPaths: !Array}}*/preset = null,
             ctx,
-            path,
-            tokens,
-            mappedPts = null,
-            subPaths,
-            fillColor,
-            strokeColor,
-            strokeWidth,
-            paths = "",
-            svg,
-            i,
-            sp,
-            vb,
-            vbW,
-            vbH,
-            realAspect,
-            viewBoxAspect,
+            /**@type{?string}*/path = null,
+            /**@type{!Array.<!string>}*/tokens = [],
+            /**@type{?Array.<!{x:!number,y:!number}>}*/mappedPts = null,
+            /**@type{!Array}*/subPaths = [],
+            /**@type{!string}*/fillColor = "",
+            /**@type{!string}*/strokeColor = "",
+            /**@type{!number}*/strokeWidth = 1,
+            /**@type{!string}*/paths = "",
+            /**@type{!string}*/svg = "",
+            /**@type{!number}*/i = 0,
+            /**@type{!{d:!string,fill:!boolean,stroke:!boolean}}*/sp,
+            /**@type{!Array.<!number>}*/vb = [0, 0, 100, 100],
+            /**@type{!number}*/vbW = 100,
+            /**@type{!number}*/vbH = 100,
+            /**@type{!number}*/realAspect = 1,
+            /**@type{!number}*/viewBoxAspect = 1,
             target,
-            mirrorH,
-            mirrorV,
-            mirrorTransform,
-            fillImage,
-            gradient,
+            /**@type{!boolean}*/mirrorH = false,
+            /**@type{!boolean}*/mirrorV = false,
+            /**@type{!string}*/mirrorTransform = "",
+            /**@type{?string}*/fillImage = null,
+            /**@type{?Array.<!string>}*/hatchColor = null,
+            /**@type{?{def:!string,ref:!string}}*/gradient = null,
             gradientDefs = "",
             fillRef,
             dropShadow,
@@ -1891,9 +1892,9 @@
             // viewBox-unit conversion under non-uniform stretch and hatch fills
             // are rare, so approximate the custom shape with the hatch line
             // colour. Plain (non-custom) shapes keep the real CSS hatch pattern.
-            gradient = fillImage.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}/);
-            if (gradient) {
-                fillRef = gradient[0];
+            hatchColor = fillImage.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}/);
+            if (hatchColor) {
+                fillRef = hatchColor[0];
             }
         } else if (fillImage && fillImage.indexOf("gradient") !== -1) {
             gradient = cssGradientToSvg(fillImage, shapeId);
