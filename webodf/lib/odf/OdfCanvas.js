@@ -473,24 +473,29 @@
             windowExtY,
             svgWidth,
             svgHeight,
-            objects = [],
-            pen = {stroke: "none", width: 0},
-            brush = {fill: "none"},
+            /**@type{!Array.<?{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}>}*/objects = [],
+            /**@type{!{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}}*/pen = {type: "pen", stroke: "none", width: 0, fill: undefined},
+            /**@type{!{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}}*/brush = {type: "brush", fill: "none", stroke: undefined, width: undefined},
             fillRule = "evenodd",
             body = "",
-            recordSize,
-            fn,
-            params,
-            i,
-            count,
-            points,
-            style,
-            color,
-            width,
-            objectIndex;
+            /**@type{!number}*/recordSize = 0,
+            /**@type{!number}*/fn = 0,
+            /**@type{!number}*/params = 0,
+            /**@type{!number}*/i = 0,
+            /**@type{!number}*/count = 0,
+            /**@type{!Array.<!string>}*/points = [],
+            /**@type{!number}*/style = 0,
+            /**@type{!string}*/color = "",
+            /**@type{!number}*/width = 0,
+            /**@type{!number}*/objectIndex = 0,
+            /**@type{?{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}}*/selected = null;
 
+        /**
+         * @param {!{type:!string,stroke:(!string|undefined),width:(!number|undefined),fill:(!string|undefined)}} o
+         * @return {undefined}
+         */
         function addObject(o) {
-            var i;
+            var /**@type{!number}*/i;
             for (i = 0; i < objects.length; i += 1) {
                 if (!objects[i]) {
                     objects[i] = o;
@@ -561,11 +566,12 @@
                 addObject({type: "pen", stroke: style === 5 ? "none" : color, width: Math.max(1, width)});
             } else if (fn === META_SELECTOBJECT) {
                 objectIndex = readUInt16LE(data, params);
-                if (objects[objectIndex]) {
-                    if (objects[objectIndex].type === "pen") {
-                        pen = objects[objectIndex];
-                    } else if (objects[objectIndex].type === "brush") {
-                        brush = objects[objectIndex];
+                selected = objects[objectIndex];
+                if (selected) {
+                    if (selected.type === "pen") {
+                        pen = selected;
+                    } else if (selected.type === "brush") {
+                        brush = selected;
                     }
                 }
             } else if (fn === META_DELETEOBJECT) {
