@@ -1489,13 +1489,13 @@
      * @param {!{evaluate:function(!string):!number}} ctx
      * @param {?Array.<!{x:!number,y:!number}>=} mappedPts  pre-computed,
      *     stretch-corrected points consumed in order for M/L/X/Y commands
-     * @return {!Array.<!{d:!string,fill:!boolean,stroke:!boolean}>}
+     * @return {!Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}
      */
     function parseEnhancedPath(path, ctx, mappedPts) {
         var /**@type{!Array.<!string>}*/
             tokens = path.match(/[A-Za-z]|\?[a-zA-Z0-9]+|\$[0-9]+|[a-z]+|-?[0-9]*\.?[0-9]+/g) || [],
             commandRe = /^[MLCZNFSTUABWVXYQ]$/,
-            /**@type{!Array.<!{d:!string,fill:!boolean,stroke:!boolean}>}*/
+            /**@type{!Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}*/
             subPaths = [],
             /**@type{!Array.<!string>}*/
             d = [],
@@ -1777,7 +1777,7 @@
      * absent: their enhanced-path renders correctly already.
      * @param {?string} type  value of draw:type
      * @param {?ClientRect} rect  bounding box of the shape, used for the ratio
-     * @return {?{vb: !Array.<!number>, subPaths: !Array}}
+     * @return {?{vb: !Array.<!number>, subPaths: !Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}}
      */
     function buildPresetShape(type, rect) {
         var /**@type{!Array.<!Object>}*/sub,
@@ -1845,25 +1845,25 @@
             computed = window && window.getComputedStyle(shape, null),
             /**@type{?ClientRect}*/
             rect = shape.getBoundingClientRect ? shape.getBoundingClientRect() : null,
-            /**@type{?{vb: !Array.<!number>, subPaths: !Array}}*/preset = null,
+            /**@type{?{vb: !Array.<!number>, subPaths: !Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}}*/preset = null,
             ctx,
             /**@type{?string}*/path = null,
             /**@type{!Array.<!string>}*/tokens = [],
             /**@type{?Array.<!{x:!number,y:!number}>}*/mappedPts = null,
-            /**@type{!Array}*/subPaths = [],
+            /**@type{!Array.<!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}>}*/subPaths = [],
             /**@type{!string}*/fillColor = "",
             /**@type{!string}*/strokeColor = "",
             /**@type{!number}*/strokeWidth = 1,
             /**@type{!string}*/paths = "",
             /**@type{!string}*/svg = "",
             /**@type{!number}*/i = 0,
-            /**@type{!{d:!string,fill:!boolean,stroke:!boolean}}*/sp,
+            /**@type{!{d:!string,fill:!boolean,stroke:!boolean,fillRule:(!string|undefined)}}*/sp,
             /**@type{!Array.<!number>}*/vb = [0, 0, 100, 100],
             /**@type{!number}*/vbW = 100,
             /**@type{!number}*/vbH = 100,
             /**@type{!number}*/realAspect = 1,
             /**@type{!number}*/viewBoxAspect = 1,
-            target,
+            /**@type{!number}*/target = 0,
             /**@type{!boolean}*/mirrorH = false,
             /**@type{!boolean}*/mirrorV = false,
             /**@type{!string}*/mirrorTransform = "",
@@ -1955,7 +1955,11 @@
             // microscopically. When the path clearly does not span that box,
             // derive the viewBox from the path's own bounds.
             (function () {
-                var j, k, coords, x, y,
+                var /**@type{!number}*/j = 0,
+                    /**@type{!number}*/k = 0,
+                    /**@type{!Array.<!string>}*/coords = [],
+                    /**@type{!number}*/x = 0,
+                    /**@type{!number}*/y = 0,
                     minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                 for (j = 0; j < subPaths.length; j += 1) {
                     coords = subPaths[j].d.match(/-?[0-9]*\.?[0-9]+/g) || [];
