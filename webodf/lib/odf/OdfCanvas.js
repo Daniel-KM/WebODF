@@ -692,7 +692,7 @@
     /**
      * Find a <style:style> of the drawing-page family by name, searching both
      * the document's automatic styles and the common styles.
-     * @param {!Element} rootElement  the ODF root element
+     * @param {!odf.ODFDocumentElement} rootElement  the ODF root element
      * @param {?string} name
      * @return {?Element}
      */
@@ -718,7 +718,7 @@
     }
     /**
      * Resolve a <draw:fill-image> reference to the href of the image part.
-     * @param {!Element} rootElement  the ODF root element
+     * @param {!odf.ODFDocumentElement} rootElement  the ODF root element
      * @param {?string} name  value of draw:fill-image-name
      * @return {?string}
      */
@@ -738,7 +738,7 @@
     }
     /**
      * Find a graphic-family <style:style> by name (automatic or common styles).
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} name
      * @return {?Element}
      */
@@ -764,7 +764,7 @@
     }
 
     /**
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} styleName
      * @param {!string} propertyName
      * @return {?string}
@@ -788,7 +788,7 @@
     }
 
     /**
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {!Element} pageElement
      * @param {!Element} masterPageElement
      * @param {!Element} element
@@ -832,7 +832,7 @@
     }
     /**
      * Resolve one attribute from a graphic style, following parent-style-name.
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} styleName
      * @param {string} ns
      * @param {string} attr
@@ -863,7 +863,7 @@
     }
     /**
      * Find a draw:marker definition by name.
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} name
      * @return {?Element}
      */
@@ -889,7 +889,7 @@
      * Resolve the effective fo:clip of a graphic style (following
      * parent-style-name). fo:clip is otherwise dropped, so cropped images
      * (a common case for "fill frame" pictures) render uncropped.
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} styleName
      * @return {?string}
      */
@@ -1044,7 +1044,7 @@
      * @return {undefined}
      */
     function loadPageBackgrounds(container, odfbody, stylesheet) {
-        var rootElement = /**@type{!Element}*/(container.rootElement),
+        var rootElement = container.rootElement,
             pages = domUtils.getElementsByTagNameNS(odfbody, drawns, "page"),
             seen = {},
             i;
@@ -1093,7 +1093,7 @@
      * @return {undefined}
      */
     function loadMasterPageBackgrounds(container, stylesheet) {
-        var rootElement = /**@type{!Element}*/(container.rootElement),
+        var rootElement = container.rootElement,
             masterStyles = rootElement.masterStyles,
             master = masterStyles && masterStyles.firstElementChild,
             selectorPrefix = '#shadowContent draw|page[draw|master-page-name="';
@@ -1143,7 +1143,7 @@
      * @return {undefined}
      */
     function loadHiddenDrawLayers(container, stylesheet) {
-        var rootElement = /**@type{!Element}*/(container.rootElement),
+        var rootElement = container.rootElement,
             roots = [rootElement.styles, rootElement.automaticStyles, rootElement.masterStyles],
             i,
             layers,
@@ -2383,7 +2383,7 @@
         return m ? { v: parseFloat(m[1]), u: m[2] || "" } : { v: 0, u: "" };
     }
     /**
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {?string} name
      * @param {!string} id
      * @param {!string} orient
@@ -2432,7 +2432,7 @@
      * uses non-scaling-stroke so it keeps its width under the box stretch.
      * @param {!Element} line
      * @param {!string} lineId
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {!CSSStyleSheet} stylesheet
      * @return {undefined}
      */
@@ -2529,7 +2529,7 @@
     /**
      * Render all draw:line connectors.
      * @param {!Element} odfbody
-     * @param {!Element} rootElement
+     * @param {!odf.ODFDocumentElement} rootElement
      * @param {!CSSStyleSheet} stylesheet
      * @return {undefined}
      */
