@@ -2424,14 +2424,14 @@
      */
     function buildLineMarker(rootElement, name, id, orient, width, color, centered) {
         var marker = findDrawMarker(rootElement, name),
-            vbAttr,
-            vb,
-            d,
-            vbW,
-            vbH,
-            height,
-            refX,
-            refY;
+            /**@type{!Array.<!string>}*/vbAttr,
+            /**@type{!Array.<!number>}*/vb,
+            /**@type{?string}*/d,
+            /**@type{!number}*/vbW,
+            /**@type{!number}*/vbH,
+            /**@type{!number}*/height,
+            /**@type{!number}*/refX,
+            /**@type{!number}*/refY;
         if (!marker || !width) {
             return "";
         }
