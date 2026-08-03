@@ -1242,9 +1242,7 @@
              */
             function parsePrimary() {
                 var /**@type{(!string|undefined)}*/token = next(),
-                    /**@type{!number}*/value,
-                    /**@type{!Array.<!number>}*/args,
-                    /**@type{!string}*/name;
+                    /**@type{!number}*/value;
                 if (token === "(") {
                     value = parseAddition();
                     next(); // ")"
@@ -1258,30 +1256,46 @@
                 }
                 // function call: identifier followed by "("
                 if (token !== undefined && /^[a-z]+$/.test(token) && peek() === "(") {
-                    name = token;
                     next(); // "("
-                    args = [parseAddition()];
-                    while (peek() === ",") {
-                        next();
-                        args.push(parseAddition());
-                    }
-                    next(); // ")"
-                    switch (name) {
-                    case "abs": return Math.abs(args[0]);
-                    case "sqrt": return Math.sqrt(args[0]);
-                    case "sin": return Math.sin(args[0]);
-                    case "cos": return Math.cos(args[0]);
-                    case "tan": return Math.tan(args[0]);
-                    case "atan": return Math.atan(args[0]);
-                    case "atan2": return Math.atan2(args[0], args[1]);
-                    case "min": return Math.min(args[0], args[1]);
-                    case "max": return Math.max(args[0], args[1]);
-                    case "mod": return Math.sqrt(args[0] * args[0] + args[1] * args[1] + args[2] * args[2]);
-                    case "if": return args[0] > 0 ? args[1] : args[2];
-                    default: return 0;
-                    }
+                    return callFunction(token, parseArguments());
                 }
                 return resolve(token);
+            }
+
+            /**
+             * Read the arguments of a function call, until the parenthesis.
+             * @return {!Array.<!number>}
+             */
+            function parseArguments() {
+                var /**@type{!Array.<!number>}*/args = [parseAddition()];
+                while (peek() === ",") {
+                    next();
+                    args.push(parseAddition());
+                }
+                next(); // ")"
+                return args;
+            }
+
+            /**
+             * @param {!string} name
+             * @param {!Array.<!number>} args
+             * @return {!number}
+             */
+            function callFunction(name, args) {
+                switch (name) {
+                case "abs": return Math.abs(args[0]);
+                case "sqrt": return Math.sqrt(args[0]);
+                case "sin": return Math.sin(args[0]);
+                case "cos": return Math.cos(args[0]);
+                case "tan": return Math.tan(args[0]);
+                case "atan": return Math.atan(args[0]);
+                case "atan2": return Math.atan2(args[0], args[1]);
+                case "min": return Math.min(args[0], args[1]);
+                case "max": return Math.max(args[0], args[1]);
+                case "mod": return Math.sqrt(args[0] * args[0] + args[1] * args[1] + args[2] * args[2]);
+                case "if": return args[0] > 0 ? args[1] : args[2];
+                default: return 0;
+                }
             }
 
             /**
