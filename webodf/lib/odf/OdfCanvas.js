@@ -941,18 +941,18 @@
      * @return {undefined}
      */
     function applyImageClip(image, id, container, stylesheet) {
-        var frame = image.parentNode,
-            clip,
-            m,
-            parts,
-            top,
-            right,
-            bottom,
-            left,
-            fw,
-            fh,
-            unit,
-            rule;
+        var /**@type{!Element}*/frame = /**@type{!Element}*/(image.parentNode),
+            /**@type{?string}*/clip,
+            /**@type{?Array.<!string>}*/m,
+            /**@type{!Array.<!string>}*/parts,
+            /**@type{!{v: !number, u: !string}}*/top,
+            /**@type{!{v: !number, u: !string}}*/right,
+            /**@type{!{v: !number, u: !string}}*/bottom,
+            /**@type{!{v: !number, u: !string}}*/left,
+            /**@type{!{v: !number, u: !string}}*/fw,
+            /**@type{!{v: !number, u: !string}}*/fh,
+            /**@type{!string}*/unit,
+            /**@type{!string}*/rule;
         if (!frame || frame.localName !== "frame") {
             return;
         }
