@@ -53,7 +53,27 @@
         documentStylesScope = "document-styles",
         /**@const
            @type{!string}*/
-        documentContentScope = "document-content";
+        documentContentScope = "document-content",
+        /**@type{?Document}*/
+        elementOwnerDocument = null;
+
+    /**
+     * Document used to create the elements of an odf container.
+     *
+     * A browser uses the document of the page, but node has no global document,
+     * so an empty one is created once from dom implementation of the runtime.
+     * @return {!Document}
+     */
+    function ownerDocument() {
+        if (String(typeof document) !== "undefined") {
+            return document;
+        }
+        if (!elementOwnerDocument) {
+            elementOwnerDocument = runtime.getDOMImplementation()
+                .createDocument(officens, "office:document", null);
+        }
+        return /**@type{!Document}*/(elementOwnerDocument);
+    }
 
     /**
      * Return the position the node should get according to the ODF flat format.
@@ -430,7 +450,7 @@
                 meta = root.meta;
 
             if (!meta) {
-                root.meta = meta = document.createElementNS(officens, "meta");
+                root.meta = meta = ownerDocument().createElementNS(officens, "meta");
                 setChild(root, meta);
             }
 
@@ -964,7 +984,7 @@
          * @return {!Node}
          */
         function createManifestEntry(fullPath, mediaType) {
-            var element = document.createElementNS(manifestns, 'manifest:file-entry');
+            var element = ownerDocument().createElementNS(manifestns, 'manifest:file-entry');
             element.setAttributeNS(manifestns, 'manifest:full-path', fullPath);
             element.setAttributeNS(manifestns, 'manifest:media-type', mediaType);
             return element;
@@ -1063,7 +1083,7 @@
          * @return {!Element}
          */
         function createElement(type) {
-            var original = document.createElementNS(
+            var original = ownerDocument().createElementNS(
                     type.namespaceURI,
                     type.localName
                 ),
@@ -1254,7 +1274,7 @@
                     "utf8"
                 ),
                 root = self.rootElement,
-                content = document.createElementNS(officens, type);
+                content = ownerDocument().createElementNS(officens, type);
             emptyzip.save("mimetype", data, false, new Date());
             /**
              * @param {!string} memberName  variant of the real local name which allows dot notation
@@ -1266,7 +1286,7 @@
                 if (!realLocalName) {
                     realLocalName = memberName;
                 }
-                element = document.createElementNS(officens, realLocalName);
+                element = ownerDocument().createElementNS(officens, realLocalName);
                 root[memberName] = element;
                 root.appendChild(element);
             }
