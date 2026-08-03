@@ -3138,6 +3138,15 @@
             canvasViewport = viewport || new gui.SingleScrollViewport(/**@type{!HTMLElement}*/(element.parentNode));
 
         /**
+         * Return a unique id used to bind an autofit css rule to a shape.
+         * @return {!string}
+         */
+        function nextAutofitId() {
+            autofitCounter += 1;
+            return "autofit" + autofitCounter;
+        }
+
+        /**
          * Load all the images that are inside an odf element.
          * @param {!odf.OdfContainer} container
          * @param {!Element} odffragment
@@ -3470,7 +3479,7 @@
                 if (frameHeight > 0 && textHeight > frameHeight + 1) {
                     // zoom < 1 shrinks the text; clamp so it never disappears.
                     scale = Math.max(0.3, (frameHeight / textHeight) * 0.97);
-                    id = "autofit" + (autofitCounter += 1);
+                    id = nextAutofitId();
                     textbox.setAttributeNS(webodfhelperns, 'autofitid', id);
                     css.insertRule('draw|text-box[webodfhelper|autofitid="' + id
                         + '"] { zoom: ' + scale + '; }', css.cssRules.length);
@@ -3500,7 +3509,7 @@
                 textHeight = maxBottom > minTop ? maxBottom - minTop : 0;
                 if (frameHeight > 0 && textHeight > frameHeight + 1) {
                     scale = Math.max(0.3, (frameHeight / textHeight) * 0.97);
-                    id = "autofit" + (autofitCounter += 1);
+                    id = nextAutofitId();
                     shape.setAttributeNS(webodfhelperns, 'autofitid', id);
                     css.insertRule('draw|custom-shape[webodfhelper|autofitid="' + id
                         + '"] > text|p { zoom: ' + scale + '; }', css.cssRules.length);
