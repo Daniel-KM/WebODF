@@ -1226,7 +1226,7 @@
          * @return {!number}
          */
         function parseExpression(tokens) {
-            var pos = 0;
+            var /**@type{!number}*/pos = 0;
 
             /**
              * @return {(!string|undefined)}
@@ -1241,7 +1241,10 @@
              * @return {!number}
              */
             function parsePrimary() {
-                var token = next(), value, args, name;
+                var /**@type{(!string|undefined)}*/token = next(),
+                    /**@type{!number}*/value,
+                    /**@type{!Array.<!number>}*/args,
+                    /**@type{!string}*/name;
                 if (token === "(") {
                     value = parseAddition();
                     next(); // ")"
@@ -1254,7 +1257,7 @@
                     return parsePrimary();
                 }
                 // function call: identifier followed by "("
-                if (/^[a-z]+$/.test(token) && peek() === "(") {
+                if (token !== undefined && /^[a-z]+$/.test(token) && peek() === "(") {
                     name = token;
                     next(); // "("
                     args = [parseAddition()];
