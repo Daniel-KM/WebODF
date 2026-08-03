@@ -373,6 +373,25 @@
 
         // private functions
         /**
+         * Next element of a tree, in document order, or null at the end.
+         *
+         * The dom of a browser has createNodeIterator for this, but the package
+         * xmldom, used outside of a browser, does not provide it.
+         * @param {!Element} element
+         * @param {!Element} rootElement
+         * @return {?Element}
+         */
+        function nextElementInTree(element, rootElement) {
+            var node = element;
+            if (node.firstElementChild) {
+                return node.firstElementChild;
+            }
+            while (node !== rootElement && !node.nextElementSibling) {
+                node = /**@type{!Element}*/(node.parentNode);
+            }
+            return node === rootElement ? null : node.nextElementSibling;
+        }
+        /**
          * Iterates through the subtree of rootElement and adds annotation-end
          * elements as direct properties of the corresponding annotation elements.
          * Expects properly used annotation elements, does not try
@@ -381,14 +400,14 @@
          * @return {undefined}
          */
         function linkAnnotationStartAndEndElements(rootElement) {
-            var document = rootElement.ownerDocument,
-                /** @type {!Object.<!string,!Element>} */
+            var /** @type {!Object.<!string,!Element>} */
                 annotationStarts = {},
-                n, name, annotationStart,
-                // TODO: optimize by using a filter rejecting subtrees without annotations possible
-                nodeIterator = document.createNodeIterator(rootElement, NodeFilter.SHOW_ELEMENT, null, false);
+                /**@type{?Element}*/
+                n = rootElement,
+                name,
+                annotationStart;
 
-            n = /**@type{?Element}*/(nodeIterator.nextNode());
+            // TODO: optimize by using a filter rejecting subtrees without annotations possible
             while (n) {
                 if (n.namespaceURI === officens) {
                     if (n.localName === "annotation") {
@@ -419,7 +438,7 @@
                         }
                     }
                 }
-                n = /**@type{?Element}*/(nodeIterator.nextNode());
+                n = nextElementInTree(n, rootElement);
             }
         }
 
