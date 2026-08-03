@@ -3201,6 +3201,9 @@
                     }
                     try {
                         doc = runtime.parseXML(runtime.byteArrayToString(data, "utf8"));
+                        if (!doc) {
+                            return;
+                        }
                         model = parseChart(doc);
                         if (!model || !model.series.length) {
                             return;
