@@ -2275,10 +2275,10 @@
      * @return {!string}
      */
     function buildChartSvg(c, wcm, hcm) {
-        var W = Math.max(120, Math.round(wcm * 40)),
-            H = Math.max(90, Math.round(hcm * 40)),
-            body = "",
-            legendW = 0;
+        var /**@type{!number}*/W = Math.max(120, Math.round(wcm * 40)),
+            /**@type{!number}*/H = Math.max(90, Math.round(hcm * 40)),
+            /**@type{!string}*/body = "",
+            /**@type{!number}*/legendW = 0;
         /**
          * @param {!number} x @param {!number} y @param {!string} t
          * @param {!string} anchor @param {!number} size @param {string=} weight
@@ -2289,6 +2289,29 @@
                 + '" font-family="Arial,sans-serif" font-size="' + size + '"'
                 + (weight ? ' font-weight="' + weight + '"' : '')
                 + ' fill="#404040">' + svgEsc(t) + '</text>';
+        }
+        /**
+         * Draw the legend of the series, when needed, and return the maximum
+         * value of all the series, used to scale the axis.
+         * @param {!{type:!string,title:!string,hasLegend:!boolean,categories:!Array.<!string>,series:!Array.<!{label:!string,color:!string,values:!Array.<!number>,pointColors:!Array.<!string>}>}} c
+         * @param {!number} top
+         * @return {!number}
+         */
+        function drawSeriesLegend(c, top) {
+            var /**@type{!Array.<!{label:!string,color:!string}>}*/items = [],
+                /**@type{!number}*/maxVal = 0,
+                /**@type{!number}*/s = 0,
+                /**@type{!number}*/k = 0;
+            for (s = 0; s < c.series.length; s += 1) {
+                for (k = 0; k < c.series[s].values.length; k += 1) {
+                    maxVal = Math.max(maxVal, c.series[s].values[k]);
+                }
+                items.push({ label: c.series[s].label, color: c.series[s].color });
+            }
+            if (c.hasLegend) {
+                drawLegend(items, top);
+            }
+            return maxVal;
         }
         /**
          * Legend at the right; returns its width and appends to body.
@@ -2370,29 +2393,22 @@
         } else {
             // bar / line: shared cartesian axes
             (function () {
-                var ml = 30, mr = 0, mt = c.title ? 26 : 10, mb = 20,
-                    maxVal = 0, k = 0, s = 0,
-                    /**@type{!{max:!number,step:!number}}*/axis,
-                    plotW = 0, plotH = 0, x0 = 0, y0 = 0,
+                var mt = c.title ? 26 : 10,
+                    // The legend is drawn first because it sets its own width,
+                    // that the plot area has to leave free on the right.
+                    maxVal = drawSeriesLegend(c, mt + 4),
+                    ml = 30,
+                    mb = 20,
+                    mr = legendW + 6,
+                    axis = niceAxis(maxVal, c.type === "line"),
+                    plotW = W - ml - mr,
+                    plotH = H - mt - mb,
+                    x0 = ml,
+                    y0 = mt + plotH,
+                    k = 0, s = 0,
                     nCat = c.categories.length, gi = 0, catW = 0, t = 0, gx = 0, gy = 0,
                     nSer = c.series.length, bw = 0, bx = 0, vh = 0, px = 0, py = 0,
-                    /**@type{!string}*/pts = "",
-                    /**@type{!Array.<!{label:!string,color:!string}>}*/legendItems = [];
-                for (s = 0; s < c.series.length; s += 1) {
-                    for (k = 0; k < c.series[s].values.length; k += 1) {
-                        maxVal = Math.max(maxVal, c.series[s].values[k]);
-                    }
-                    legendItems.push({ label: c.series[s].label, color: c.series[s].color });
-                }
-                if (c.hasLegend) {
-                    drawLegend(legendItems, mt + 4);
-                }
-                mr = legendW + 6;
-                axis = niceAxis(maxVal, c.type === "line");
-                plotW = W - ml - mr;
-                plotH = H - mt - mb;
-                x0 = ml;
-                y0 = mt + plotH;
+                    /**@type{!string}*/pts = "";
                 // y gridlines + labels
                 for (t = 0; t <= axis.max + 1e-9; t += axis.step) {
                     gy = y0 - (t / axis.max) * plotH;
