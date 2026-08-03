@@ -1776,10 +1776,15 @@
      * faithful preview. Polygons (triangle/diamond/pentagon/...) are intentionally
      * absent: their enhanced-path renders correctly already.
      * @param {?string} type  value of draw:type
+     * @param {?ClientRect} rect  bounding box of the shape, used for the ratio
      * @return {?{vb: !Array.<!number>, subPaths: !Array}}
      */
     function buildPresetShape(type, rect) {
-        var sub, aspect, headX, bodyTop, bodyBottom;
+        var /**@type{!Array.<!Object>}*/sub,
+            /**@type{!number}*/aspect,
+            /**@type{!number}*/headX,
+            /**@type{!number}*/bodyTop,
+            /**@type{!number}*/bodyBottom;
         switch (type) {
         case "ooxml-ellipse":
             sub = [{ d: "M 0 50 A 50 50 0 1 1 100 50 A 50 50 0 1 1 0 50 Z",
@@ -1824,10 +1829,22 @@
         }
         return { vb: [0, 0, 100, 100], subPaths: sub };
     }
+    /**
+     * Render a draw:custom-shape as an svg background.
+     *
+     * The shape is built from its enhanced geometry, or from a known preset
+     * when the geometry is not usable.
+     * @param {!Element} shape
+     * @param {!Element} geometry
+     * @param {!string} shapeId
+     * @param {!CSSStyleSheet} stylesheet
+     * @return {undefined}
+     */
     function renderCustomShape(shape, geometry, shapeId, stylesheet) {
         var window = runtime.getWindow(),
             computed = window && window.getComputedStyle(shape, null),
-            rect = shape.getBoundingClientRect && shape.getBoundingClientRect(),
+            /**@type{?ClientRect}*/
+            rect = shape.getBoundingClientRect ? shape.getBoundingClientRect() : null,
             preset,
             ctx,
             path,
