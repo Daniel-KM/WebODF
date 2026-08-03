@@ -3294,7 +3294,7 @@
          */
         function loadCharts(container, odffragment, stylesheet) {
             var objects = odffragment.getElementsByTagNameNS(drawns, 'object'),
-                i;
+                /**@type{!number}*/i;
             /**
              * @param {!Element} object
              * @param {!string} chartId
@@ -3302,14 +3302,19 @@
              */
             function loadChart(object, chartId) {
                 var href = object.getAttributeNS(xlinkns, 'href'),
-                    path,
-                    frame = object.parentNode;
+                    /**@type{!string}*/path,
+                    /**@type{!Element}*/frame = /**@type{!Element}*/(object.parentNode);
                 if (!href) {
                     return;
                 }
                 path = href.replace(/^\.?\//, "").replace(/\/$/, "") + "/content.xml";
                 container.getPartData(path, function (err, data) {
-                    var doc, model, svg, w, h, rule;
+                    var /**@type{?Document}*/doc,
+                        model,
+                        /**@type{!string}*/svg,
+                        /**@type{!{v: !number, u: !string}}*/w,
+                        /**@type{!{v: !number, u: !string}}*/h,
+                        /**@type{!string}*/rule;
                     if (err || !data) {
                         return;
                     }
