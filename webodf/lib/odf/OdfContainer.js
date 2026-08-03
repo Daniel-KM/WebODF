@@ -53,7 +53,27 @@
         documentStylesScope = "document-styles",
         /**@const
            @type{!string}*/
-        documentContentScope = "document-content";
+        documentContentScope = "document-content",
+        /**@type{?Document}*/
+        elementOwnerDocument = null;
+
+    /**
+     * Document used to create the elements of an odf container.
+     *
+     * A browser uses the document of the page, but node has no global document,
+     * so an empty one is created once from dom implementation of the runtime.
+     * @return {!Document}
+     */
+    function ownerDocument() {
+        if (String(typeof document) !== "undefined") {
+            return document;
+        }
+        if (!elementOwnerDocument) {
+            elementOwnerDocument = runtime.getDOMImplementation()
+                .createDocument(officens, "office:document", null);
+        }
+        return /**@type{!Document}*/(elementOwnerDocument);
+    }
 
     /**
      * Return the position the node should get according to the ODF flat format.
@@ -353,6 +373,25 @@
 
         // private functions
         /**
+         * Next element of a tree, in document order, or null at the end.
+         *
+         * The dom of a browser has createNodeIterator for this, but the package
+         * xmldom, used outside of a browser, does not provide it.
+         * @param {!Element} element
+         * @param {!Element} rootElement
+         * @return {?Element}
+         */
+        function nextElementInTree(element, rootElement) {
+            var node = element;
+            if (node.firstElementChild) {
+                return node.firstElementChild;
+            }
+            while (node !== rootElement && !node.nextElementSibling) {
+                node = /**@type{!Element}*/(node.parentNode);
+            }
+            return node === rootElement ? null : node.nextElementSibling;
+        }
+        /**
          * Iterates through the subtree of rootElement and adds annotation-end
          * elements as direct properties of the corresponding annotation elements.
          * Expects properly used annotation elements, does not try
@@ -361,14 +400,14 @@
          * @return {undefined}
          */
         function linkAnnotationStartAndEndElements(rootElement) {
-            var document = rootElement.ownerDocument,
-                /** @type {!Object.<!string,!Element>} */
+            var /** @type {!Object.<!string,!Element>} */
                 annotationStarts = {},
-                n, name, annotationStart,
-                // TODO: optimize by using a filter rejecting subtrees without annotations possible
-                nodeIterator = document.createNodeIterator(rootElement, NodeFilter.SHOW_ELEMENT, null, false);
+                /**@type{?Element}*/
+                n = rootElement,
+                name,
+                annotationStart;
 
-            n = /**@type{?Element}*/(nodeIterator.nextNode());
+            // TODO: optimize by using a filter rejecting subtrees without annotations possible
             while (n) {
                 if (n.namespaceURI === officens) {
                     if (n.localName === "annotation") {
@@ -399,7 +438,7 @@
                         }
                     }
                 }
-                n = /**@type{?Element}*/(nodeIterator.nextNode());
+                n = nextElementInTree(n, rootElement);
             }
         }
 
@@ -430,7 +469,7 @@
                 meta = root.meta;
 
             if (!meta) {
-                root.meta = meta = document.createElementNS(officens, "meta");
+                root.meta = meta = ownerDocument().createElementNS(officens, "meta");
                 setChild(root, meta);
             }
 
@@ -964,7 +1003,7 @@
          * @return {!Node}
          */
         function createManifestEntry(fullPath, mediaType) {
-            var element = document.createElementNS(manifestns, 'manifest:file-entry');
+            var element = ownerDocument().createElementNS(manifestns, 'manifest:file-entry');
             element.setAttributeNS(manifestns, 'manifest:full-path', fullPath);
             element.setAttributeNS(manifestns, 'manifest:media-type', mediaType);
             return element;
@@ -1063,7 +1102,7 @@
          * @return {!Element}
          */
         function createElement(type) {
-            var original = document.createElementNS(
+            var original = ownerDocument().createElementNS(
                     type.namespaceURI,
                     type.localName
                 ),
@@ -1254,7 +1293,7 @@
                     "utf8"
                 ),
                 root = self.rootElement,
-                content = document.createElementNS(officens, type);
+                content = ownerDocument().createElementNS(officens, type);
             emptyzip.save("mimetype", data, false, new Date());
             /**
              * @param {!string} memberName  variant of the real local name which allows dot notation
@@ -1266,7 +1305,7 @@
                 if (!realLocalName) {
                     realLocalName = memberName;
                 }
-                element = document.createElementNS(officens, realLocalName);
+                element = ownerDocument().createElementNS(officens, realLocalName);
                 root[memberName] = element;
                 root.appendChild(element);
             }
