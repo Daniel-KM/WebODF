@@ -35,6 +35,6 @@
     "url": "git://github.com/webodf/WebODF.git"
   },
   "dependencies": {
-    "@xmldom/xmldom": "^0.8"
+    "@xmldom/xmldom": "^0.9.10"
   }
 }
