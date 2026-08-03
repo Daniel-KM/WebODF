@@ -2301,14 +2301,17 @@
         if (c.type === "circle" || c.type === "ring") {
             // pie / doughnut: one series, slice per category
             (function () {
-                var vals = c.series[0] ? c.series[0].values : [],
-                    pcols = c.series[0] ? c.series[0].pointColors : [],
-                    total = 0, k, ang0 = -Math.PI / 2, ang1, frac,
-                    cx, cy, r, rIn, mid, lx, ly, x0, y0, x1, y1, large, col;
+                var /**@type{!Array.<!number>}*/vals = c.series[0] ? c.series[0].values : [],
+                    /**@type{!Array.<!string>}*/pcols = c.series[0] ? c.series[0].pointColors : [],
+                    total = 0, k = 0, ang0 = -Math.PI / 2, ang1 = 0, frac = 0,
+                    cx = 0, cy = 0, r = 0, rIn = 0, mid = 0, lx = 0, ly = 0,
+                    x0 = 0, y0 = 0, x1 = 0, y1 = 0, large = 0,
+                    /**@type{!string}*/col = "";
                 for (k = 0; k < vals.length; k += 1) { total += vals[k]; }
                 if (c.hasLegend) {
                     drawLegend((function () {
-                        var it = [], m;
+                        var /**@type{!Array.<!{label:!string,color:!string}>}*/it = [],
+                            /**@type{!number}*/m = 0;
                         for (m = 0; m < c.categories.length; m += 1) {
                             it.push({ label: c.categories[m],
                                 color: pcols[m] || chartPalette[m % chartPalette.length] });
@@ -2351,10 +2354,14 @@
         } else {
             // bar / line: shared cartesian axes
             (function () {
-                var ml = 30, mr, mt = c.title ? 26 : 10, mb = 20,
-                    maxVal = 0, k, s, axis, plotW, plotH, x0, y0,
-                    nCat = c.categories.length, gi, catW, t, gx, gy,
-                    nSer = c.series.length, bw, bx, vh, px, py, pts, legendItems = [];
+                var ml = 30, mr = 0, mt = c.title ? 26 : 10, mb = 20,
+                    maxVal = 0, k = 0, s = 0,
+                    /**@type{!{max:!number,step:!number}}*/axis,
+                    plotW = 0, plotH = 0, x0 = 0, y0 = 0,
+                    nCat = c.categories.length, gi = 0, catW = 0, t = 0, gx = 0, gy = 0,
+                    nSer = c.series.length, bw = 0, bx = 0, vh = 0, px = 0, py = 0,
+                    /**@type{!string}*/pts = "",
+                    /**@type{!Array.<!{label:!string,color:!string}>}*/legendItems = [];
                 for (s = 0; s < c.series.length; s += 1) {
                     for (k = 0; k < c.series[s].values.length; k += 1) {
                         maxVal = Math.max(maxVal, c.series[s].values[k]);
