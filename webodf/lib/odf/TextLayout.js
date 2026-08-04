@@ -69,10 +69,10 @@ odf.TextLayout = function TextLayout() {
             pageSeparation: pageSeparation,
             header: {height: 0, gap: 0},
             footer: {height: 0, gap: 0},
-            headerNode: null,
-            footerNode: null,
-            headerLeftNode: null,
-            footerLeftNode: null
+            firstPage: {header: null, footer: null, headerLeft: null,
+                footerLeft: null, headerFirst: null, footerFirst: null},
+            otherPages: {header: null, footer: null, headerLeft: null,
+                footerLeft: null, headerFirst: null, footerFirst: null}
         };
     /**
      * Read a length of the page layout, in pixels, and fall back on the given
@@ -122,6 +122,66 @@ odf.TextLayout = function TextLayout() {
             area.gap = lengthInPx(box, gap, 0);
         }
         return area;
+    }
+    /**
+     * What a master page writes at the top and at the bottom of a page.
+     * @param {?Element} masterPage
+     * @return {!odf.TextLayout.PageFurniture}
+     */
+    function readFurniture(masterPage) {
+        /**
+         * @param {!string} name
+         * @return {?Element}
+         */
+        function child(name) {
+            return masterPage
+                ? domUtils.getDirectChild(masterPage, stylens, name)
+                : null;
+        }
+        return {
+            header: child("header"),
+            footer: child("footer"),
+            headerLeft: child("header-left"),
+            footerLeft: child("footer-left"),
+            headerFirst: child("header-first"),
+            footerFirst: child("footer-first")
+        };
+    }
+    /**
+     * @param {!odf.TextLayout.PageFurniture} furniture
+     * @return {!boolean}
+     */
+    function hasFurniture(furniture) {
+        return Boolean(furniture.header || furniture.footer
+            || furniture.headerLeft || furniture.footerLeft
+            || furniture.headerFirst || furniture.footerFirst);
+    }
+    /**
+     * The master page a document names after the first one: a title page is
+     * written with a master page of its own, that hands the pages that follow
+     * to another one by "style:next-style-name".
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {?Element} masterPage
+     * @return {?Element}
+     */
+    function nextMasterPage(odfroot, masterPage) {
+        var name = masterPage
+                && masterPage.getAttributeNS(stylens, "next-style-name"),
+            masterPages = odfroot.masterStyles.getElementsByTagNameNS(stylens,
+                "master-page"),
+            /**@type{!Element}*/
+            page,
+            i;
+        if (!name || name === masterPage.getAttributeNS(stylens, "name")) {
+            return null;
+        }
+        for (i = 0; i < masterPages.length; i += 1) {
+            page = /**@type{!Element}*/(masterPages[i]);
+            if (page.getAttributeNS(stylens, "name") === name) {
+                return page;
+            }
+        }
+        return null;
     }
     /**
      * The size of a page, read from the page layout the first master page
@@ -180,18 +240,9 @@ odf.TextLayout = function TextLayout() {
             pageSeparation: pageSeparation,
             header: readPageArea(pageLayout, "header-style", "margin-bottom"),
             footer: readPageArea(pageLayout, "footer-style", "margin-top"),
-            headerNode: masterPage
-                ? domUtils.getDirectChild(masterPage, stylens, "header")
-                : null,
-            footerNode: masterPage
-                ? domUtils.getDirectChild(masterPage, stylens, "footer")
-                : null,
-            headerLeftNode: masterPage
-                ? domUtils.getDirectChild(masterPage, stylens, "header-left")
-                : null,
-            footerLeftNode: masterPage
-                ? domUtils.getDirectChild(masterPage, stylens, "footer-left")
-                : null
+            firstPage: readFurniture(masterPage),
+            otherPages: readFurniture(nextMasterPage(odfroot, masterPage)
+                || masterPage)
         };
         // One margin for the four sides, or one by side.
         if (properties.getAttributeNS(fons, "margin")) {
@@ -213,10 +264,17 @@ odf.TextLayout = function TextLayout() {
         // The header and the footer are written inside the margins of the
         // page, between its edge and the text: the text has that much less
         // room, and the margins of the layout hold it away from them.
-        if (dims.headerNode || dims.headerLeftNode) {
+        // The room a header takes is the room it takes on every page: the
+        // pages of a document are of one height, and a title page that carries
+        // no header is drawn with the same text area as the others.
+        if (dims.otherPages.header || dims.otherPages.headerLeft
+                || dims.otherPages.headerFirst || dims.firstPage.header
+                || dims.firstPage.headerLeft || dims.firstPage.headerFirst) {
             dims.marginTop += dims.header.height + dims.header.gap;
         }
-        if (dims.footerNode || dims.footerLeftNode) {
+        if (dims.otherPages.footer || dims.otherPages.footerLeft
+                || dims.otherPages.footerFirst || dims.firstPage.footer
+                || dims.firstPage.footerLeft || dims.firstPage.footerFirst) {
             dims.marginBottom += dims.footer.height + dims.footer.gap;
         }
         return dims;
@@ -397,14 +455,23 @@ odf.TextLayout = function TextLayout() {
      * is a right one, so the pages of an even number are the left ones. Where
      * "style:header-left" is not written, the header of the master page is the
      * one of every page, see the part 1 of the standard, "style:header-left".
+     *
+     * A first page may carry a header of its own, "style:header-first", which
+     * the standard added in 1.3 and which the office suites of today write
+     * where a title page was written with a master page of its own before.
      * @param {!odf.TextLayout.PageDimensions} dims
      * @param {!string} which "header" or "footer"
      * @param {!number} page the number of the page, from one
      * @return {?Element}
      */
     function pageArea(dims, which, page) {
-        var left = which === "header" ? dims.headerLeftNode : dims.footerLeftNode,
-            right = which === "header" ? dims.headerNode : dims.footerNode;
+        var furniture = page === 1 ? dims.firstPage : dims.otherPages,
+            first = which === "header" ? furniture.headerFirst : furniture.footerFirst,
+            left = which === "header" ? furniture.headerLeft : furniture.footerLeft,
+            right = which === "header" ? furniture.header : furniture.footer;
+        if (page === 1 && first) {
+            return first;
+        }
         if (page % 2 === 0 && left) {
             return left;
         }
@@ -437,8 +504,7 @@ odf.TextLayout = function TextLayout() {
                     === "webodf-pageFurniture") {
             pagesDiv.removeChild(pagesDiv.lastChild);
         }
-        if (!dims.headerNode && !dims.footerNode
-                && !dims.headerLeftNode && !dims.footerLeftNode) {
+        if (!hasFurniture(dims.firstPage) && !hasFurniture(dims.otherPages)) {
             return;
         }
         for (n = 0; n < pages; n += 1) {
@@ -498,6 +564,16 @@ odf.TextLayout = function TextLayout() {
     this.layout = layout;
 };
 /**@typedef{{
+    header:?Element,
+    footer:?Element,
+    headerLeft:?Element,
+    footerLeft:?Element,
+    headerFirst:?Element,
+    footerFirst:?Element
+}}*/
+odf.TextLayout.PageFurniture;
+
+/**@typedef{{
     height:!number,
     gap:!number
 }}*/
@@ -512,9 +588,8 @@ odf.TextLayout.PageArea;
     pageSeparation:!number,
     header:!odf.TextLayout.PageArea,
     footer:!odf.TextLayout.PageArea,
-    headerNode:?Element,
-    footerNode:?Element,
-    headerLeftNode:?Element,
-    footerLeftNode:?Element
+    firstPage:!odf.TextLayout.PageFurniture,
+    otherPages:!odf.TextLayout.PageFurniture
 }}*/
 odf.TextLayout.PageDimensions;
+
