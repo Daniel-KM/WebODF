@@ -2093,6 +2093,21 @@ odf.TextLayout = function TextLayout() {
             && tail >= askedNumber(style.getPropertyValue("widows"), 2);
     }
     /**
+     * Whether a paragraph is written on the page of the one that follows it.
+     *
+     * "fo:keep-with-next" says it of a heading, that an office never leaves
+     * alone at the foot of a page. It is read from the style the browser
+     * worked out, under the name css gives it.
+     * @param {!Element} element
+     * @return {!boolean}
+     */
+    function keepsWithWhatFollows(element) {
+        var style = runtime.getWindow().getComputedStyle(element);
+        return style
+            ? style.getPropertyValue("break-after") === "avoid"
+            : false;
+    }
+    /**
      * Whether a node was marked as beginning a page of its own.
      * @param {!Node} node
      * @return {!boolean}
@@ -2568,6 +2583,8 @@ odf.TextLayout = function TextLayout() {
             held,
             /**@type{!number}*/
             lines,
+            /**@type{?Element}*/
+            keeper,
             /**@type{!number}*/
             guard,
             /**@type{!{left:!number,top:!number}}*/
@@ -2708,6 +2725,17 @@ odf.TextLayout = function TextLayout() {
                 guard -= 1;
                 over = firstOverflowing(box);
             }
+        }
+        // A heading is not left alone at the foot of a page: what asks to
+        // be kept with what follows it is written on the page that follows,
+        // with the run of paragraphs that ask the same before it, unless
+        // nothing would be left on the page.
+        keeper = box.lastElementChild;
+        while (keeper && keeper !== box.firstElementChild
+                && state.waiting.length > 0 && keepsWithWhatFollows(keeper)) {
+            state.waiting.unshift(keeper);
+            box.removeChild(keeper);
+            keeper = box.lastElementChild;
         }
         // The pages that follow are filled by as many at a time as the page
         // that was just filled took: a page of a hundred short paragraphs is
