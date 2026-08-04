@@ -2998,6 +2998,7 @@ odf.TextLayout = function TextLayout() {
             plan: plan,
             waiting: waiting,
             chunk: 8,
+            slice: 0,
             page: 0,
             top: 0,
             sheet: sheet,
@@ -3243,7 +3244,7 @@ odf.TextLayout = function TextLayout() {
      * @return {undefined}
      */
     function fillSlice(round) {
-        var end = new Date().getTime() + 150,
+        var end,
             /**@type{!PagePlan}*/
             plan,
             /**@type{!number}*/
@@ -3252,11 +3253,20 @@ odf.TextLayout = function TextLayout() {
                 || !fillingDiv) {
             return;
         }
+        // The first pages are drawn as soon as they are broken, one and then
+        // two, and the slices grow from there: a reader is given the head of
+        // a document to read while the rest of it is broken, rather than
+        // waiting on a slice of a document of eight hundred pages. The
+        // slices are of a time and not of a count, so that a page that is
+        // slow to break does not hold the browser.
+        end = new Date().getTime() + filling.slice;
         from = filling.page;
         while (filling.waiting.length > 0 && filling.page < maxPages
-                && new Date().getTime() < end) {
+                && (filling.page === from
+                        || new Date().getTime() < end)) {
             fillOnePage(filling);
         }
+        filling.slice = Math.min(150, filling.slice * 2 + 10);
         columnPages = Math.max(1, filling.page);
         // The text is as tall as the pages it was broken into, so that what
         // is drawn after it stands under them.
@@ -3482,6 +3492,7 @@ odf.TextLayout.TabStop;
     plan:!Object,
     waiting:!Array.<!Node>,
     chunk:!number,
+    slice:!number,
     page:!number,
     top:!number,
     sheet:!CSSStyleSheet,
