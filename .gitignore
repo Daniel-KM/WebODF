@@ -1,7 +1,6 @@
 /webodf/tests/simple_slide.odp
 #android/bin
 #android/gen
-nativeQtClient/nativeQtClient.pro.user
 programs/ios/WebODF.xcodeproj/project.xcworkspace
 programs/ios/WebODF.xcodeproj/xcuserdata
 programs/ios/www/ZoomIn.png
