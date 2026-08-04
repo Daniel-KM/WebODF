@@ -36,6 +36,12 @@ odf.TextLayout = function TextLayout() {
         /**@type{!Object.<!string,!boolean>}*/
         breakCache = {},
         /**
+         * The heads and the feet that were drawn, to be copied from page to
+         * page: dropped whenever a text is laid out anew.
+         * @type{!Array.<!odf.TextLayout.Furniture>}
+         */
+        furnitureDrawn = [],
+        /**
          * The master page a style of a paragraph begins, by the name of the
          * style: read once, and dropped with the styles themselves.
          * @type{!Object.<string,?Element>}
@@ -1075,6 +1081,75 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
+     * Whether a line holds a field, that is written anew on every page.
+     * @param {!Element} paragraph
+     * @param {!Object.<string,string>} meta
+     * @return {!boolean}
+     */
+    function holdsAField(paragraph, meta) {
+        var names = ["page-number", "page-count"].concat(Object.keys(meta)),
+            /**@type{!number}*/
+            i;
+        for (i = 0; i < names.length; i += 1) {
+            if (paragraph.getElementsByTagNameNS(textns, names[i]).length > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * The head or the foot of a page as it is drawn, ready to be copied.
+     *
+     * It is drawn once for a source and a width — the tabs of every line
+     * taken to their stops, the runs of spaces written out — and kept: the
+     * pages of a master page are all written the same but for their fields,
+     * see "fillPageArea". The lines that hold a field are named with it, as
+     * those are measured again once the field is written.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} source
+     * @param {!Element} box
+     * @param {!Object.<string,string>} meta
+     * @return {!odf.TextLayout.Furniture}
+     */
+    function furnitureOf(odfroot, source, box, meta) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            width = box.getBoundingClientRect().width,
+            /**@type{!number}*/
+            i,
+            /**@type{!DocumentFragment}*/
+            drawn,
+            /**@type{!Array.<!number>}*/
+            fields = [];
+        for (i = 0; i < furnitureDrawn.length; i += 1) {
+            if (furnitureDrawn[i].source === source
+                    && Math.abs(furnitureDrawn[i].width - width) < 1) {
+                return furnitureDrawn[i];
+            }
+        }
+        box.appendChild(doc.importNode(source, true));
+        unstampStyleNames(odfroot, box);
+        expandSpaces(box);
+        paragraphsOf(box).forEach(function (paragraph, index) {
+            layOutTabStops(odfroot, paragraph);
+            if (holdsAField(paragraph, meta)) {
+                fields.push(index);
+            }
+        });
+        // What was drawn is taken out of the box and kept whole: the box is
+        // filled from a copy of it, here as on every page that follows.
+        drawn = doc.createDocumentFragment();
+        while (box.firstChild) {
+            drawn.appendChild(box.firstChild);
+        }
+        furnitureDrawn.push({
+            source: source,
+            width: width,
+            drawn: drawn,
+            fields: fields
+        });
+        return furnitureDrawn[furnitureDrawn.length - 1];
+    }
+    /**
      * Copy what a master page writes in a header or in a footer, and put the
      * number of the page where the document asks for it. The nodes are of the
      * document, so the styles of the document draw them as they draw the text.
@@ -1087,7 +1162,10 @@ odf.TextLayout = function TextLayout() {
      * @return {undefined}
      */
     function fillPageArea(odfroot, source, box, page, pages, meta) {
-        var doc = box.ownerDocument;
+        var /**@type{!odf.TextLayout.Furniture}*/
+            ready = furnitureOf(odfroot, source, box, meta),
+            /**@type{!Array.<!Element>}*/
+            lines;
         /**
          * @param {!string} name
          * @param {!string} value
@@ -1100,20 +1178,23 @@ odf.TextLayout = function TextLayout() {
                 fields[i].textContent = value;
             }
         }
-        box.appendChild(doc.importNode(source, true));
-        unstampStyleNames(odfroot, box);
-        expandSpaces(box);
+        // The head and the foot of a page are written the same on every
+        // page of a master page, but for the fields they hold: what was
+        // drawn once is copied, and the lines that hold a field alone are
+        // measured again for their tab stops. A foot of three lines where
+        // one gives the number of the page is measured once on each page and
+        // not three times.
+        box.appendChild(ready.drawn.cloneNode(true));
         fill("page-number", String(page));
         fill("page-count", String(pages));
         Object.keys(meta).forEach(function (name) {
             fill(name, meta[name]);
         });
-        // A line of a header is written as a line of the document is, so what
-        // the canvas does to a line of the document is done here as well: a
-        // break is a break, a run of spaces is a run of spaces, and a tab
-        // takes the part that follows it to its stop.
-        paragraphsOf(box).forEach(function (paragraph) {
-            layOutTabStops(odfroot, paragraph);
+        lines = paragraphsOf(box);
+        ready.fields.forEach(function (index) {
+            if (lines[index]) {
+                layOutTabStops(odfroot, lines[index]);
+            }
         });
     }
     /**
@@ -3531,4 +3612,8 @@ odf.TextLayout.PageArea;
     otherPages:!odf.TextLayout.PageFurniture
 }}*/
 odf.TextLayout.PageDimensions;
-
+/**
+ * A head or a foot of a page as it was drawn, to be copied from page to page.
+ * @typedef {!{source:!Element,width:!number,drawn:!DocumentFragment,fields:!Array.<!number>}}
+ */
+odf.TextLayout.Furniture;
