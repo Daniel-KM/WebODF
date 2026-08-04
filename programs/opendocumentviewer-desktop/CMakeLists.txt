@@ -176,12 +176,22 @@ endif ()
 
 # The libraries of qt are gathered beside the program by the tool of the
 # platform, "windeployqt" on windows and "macdeployqt" on macos, so that
-# "cmake --install" writes a directory that runs on a machine without qt. On
-# linux the program is installed among the files of the system, that carry
-# them, and the tool does not exist: the script is then empty.
-qt_generate_deploy_app_script(
-    TARGET opendocumentviewer-desktop
-    OUTPUT_SCRIPT OPENDOCUMENTVIEWER_DEPLOY
-    NO_UNSUPPORTED_PLATFORM_ERROR
-)
-install(SCRIPT ${OPENDOCUMENTVIEWER_DEPLOY})
+# "cmake --install" writes a directory that runs on a machine without qt.
+#
+# On linux the program is installed among the files of the system, that carry
+# qt already, and a package of the system names them, see "packaging.cmake":
+# the tool would only write a "qt.conf" that points the program at a prefix of
+# its own, which is wrong once the program is installed in "/usr". What runs
+# without the qt of the system is a universal package, that carries it.
+if (WIN32 OR APPLE)
+    qt_generate_deploy_app_script(
+        TARGET opendocumentviewer-desktop
+        OUTPUT_SCRIPT OPENDOCUMENTVIEWER_DEPLOY
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    install(SCRIPT ${OPENDOCUMENTVIEWER_DEPLOY})
+endif ()
+
+# The archives, the packages and the universal packages of the viewer.
+include(${CMAKE_CURRENT_SOURCE_DIR}/packaging.cmake)
+

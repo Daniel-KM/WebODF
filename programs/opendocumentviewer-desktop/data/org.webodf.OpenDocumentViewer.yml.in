@@ -1,0 +1,28 @@
+# The manifest of the flatpak of the viewer of OpenDocument. The runtime of
+# KDE carries qt and its webengine, so nothing of qt is built here: the viewer
+# alone is, from the sources of this tree.
+#
+# The sandbox is given what a reader of documents needs and no more: a window,
+# and the files the reader opens by the portal of the desktop. It reaches no
+# network, as a document is drawn on the machine and nothing of it is sent.
+app-id: org.webodf.OpenDocumentViewer
+runtime: org.kde.Platform
+runtime-version: '6.8'
+sdk: org.kde.Sdk
+command: opendocumentviewer-desktop
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --filesystem=xdg-documents
+  - --filesystem=xdg-download
+modules:
+  - name: opendocumentviewer
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DWEBODF_DESKTOP=ON
+    sources:
+      - type: dir
+        path: '@CMAKE_SOURCE_DIR@'
