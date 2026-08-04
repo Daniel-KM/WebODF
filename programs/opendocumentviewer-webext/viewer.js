@@ -49,6 +49,10 @@
         // English one every other language falls on.
         LANGUAGES = ["en", "fr"];
 
+    // A text is drawn over pages, as it is printed, which the library
+    // does not do on its own.
+    canvas.setPaginated(true);
+
     /**
      * @param {!boolean} open
      * @return {undefined}

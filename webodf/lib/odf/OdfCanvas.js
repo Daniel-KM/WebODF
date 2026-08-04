@@ -3413,8 +3413,10 @@
             shadowContent,
             /**@type{!number}*/
             autofitCounter = 0,
-            /**@type{!HTMLDivElement}*/
-            pagesDiv,
+            /**@type{?HTMLDivElement}*/
+            pagesDiv = null,
+            /**@type{!boolean}*/
+            paginated = false,
             /**@type{!Object.<string,!Array.<!Function>>}*/
             eventHandlers = {},
             waitingForDoneTimeoutId,
@@ -3816,6 +3818,58 @@
         }
 
         /**
+         * Break a text over pages, when the reader asked for it.
+         *
+         * The pages are boxes that float to the right of the text, of the
+         * height a page has in the document: the text flows around them, so it
+         * breaks where a page ends, and the gap between two pages is a box of
+         * its own. Nothing of the text is moved, which is what lets a selection
+         * and a search cross a page.
+         *
+         * Only a text is broken over pages: a presentation is drawn as the
+         * slides it is made of, and a spreadsheet as its tables.
+         * @param {!odf.OdfContainer} container
+         * @param {!odf.ODFDocumentElement} odfnode
+         * @return {undefined}
+         */
+        function drawPages(container, odfnode) {
+            if (pagesDiv && pagesDiv.parentNode) {
+                pagesDiv.parentNode.removeChild(pagesDiv);
+            }
+            pagesDiv = null;
+            if (!paginated
+                    || !domUtils.getDirectChild(odfnode.body, officens, 'text')) {
+                return;
+            }
+            pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
+            pagesDiv.className = 'webodf-pages';
+            container.getContentElement().parentNode.insertBefore(pagesDiv,
+                container.getContentElement());
+            textLayout.layout(odfnode, pagesDiv, 100);
+        }
+        /**
+         * Draw a text over pages, or as one run of text, which is how it is
+         * drawn until a reader asks otherwise. A reader that asks for it once a
+         * document is drawn has it drawn again.
+         * @param {!boolean} enable
+         * @return {undefined}
+         */
+        this.setPaginated = function (enable) {
+            if (paginated === enable) {
+                return;
+            }
+            paginated = enable;
+            if (odfcontainer && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * @return {!boolean}
+         */
+        this.isPaginated = function () {
+            return paginated;
+        };
+        /**
          * A new content.xml has been loaded. Update the live document with it.
          * @param {!odf.OdfContainer} container
          * @param {!odf.ODFDocumentElement} odfnode
@@ -3871,19 +3925,7 @@
             container.getContentElement().appendChild(shadowContent);
 
             modifyDrawElements(odfnode, css);
-            // The pages are boxes that float to the right of the text, of the
-            // height a page has in the document: the text flows around them, so
-            // it breaks where a page ends, and the gap between two pages is a
-            // box of its own. Nothing of the text is moved, which is what lets
-            // a selection and a search cross a page.
-            // Only a text is broken over pages: a presentation is drawn as
-            // the slides it is made of, and a spreadsheet as its tables.
-            if (domUtils.getDirectChild(odfnode.body, officens, 'text')) {
-                pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
-                pagesDiv.className = 'webodf-pages';
-                container.getContentElement().parentNode.insertBefore(pagesDiv, container.getContentElement());
-                textLayout.layout(odfnode, pagesDiv, 100);
-            }
+            drawPages(container, odfnode);
             cloneMasterPages(formatting, container, shadowContent, odfnode, css);
             modifyTables(odfnode.body, element.namespaceURI);
             modifyLineBreakElements(odfnode.body);

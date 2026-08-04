@@ -81,6 +81,9 @@
             failure.hidden = true;
             ways.hidden = true;
             canvas = new odf.OdfCanvas(container);
+            // A text is drawn over pages, as it is printed, which the
+            // library does not do on its own.
+            canvas.setPaginated(true);
             canvas.addListener("statereadychange", function (odfcontainer) {
                 if (odfcontainer.state === odf.OdfContainer.INVALID) {
                     failure.hidden = false;
