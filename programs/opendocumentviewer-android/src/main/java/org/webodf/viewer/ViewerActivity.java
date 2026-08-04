@@ -28,6 +28,7 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -35,6 +36,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import android.window.OnBackInvokedDispatcher;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -178,13 +180,31 @@ public class ViewerActivity extends Activity {
     }
 
     /**
+     * Whether the back of the system was answered here.
+     *
      * The page of the details is left by the back of the system, that goes
-     * back to the document, or out of the viewer when there is nowhere to go.
+     * back to the document; where there is nowhere to go back to, the system
+     * is left to do what it does, which is to leave the viewer.
      */
-    @Override
-    public void onBackPressed() {
+    private boolean wentBack() {
         if (view != null && view.canGoBack()) {
             view.goBack();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * The back of the system, on android 12 and older.
+     *
+     * Android 13 asks for a callback registered on the dispatcher, which is
+     * what "onCreate" does where the system has one: this is answered by the
+     * systems that have none, and by them alone.
+     */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        if (wentBack()) {
             return;
         }
         super.onBackPressed();
@@ -249,6 +269,21 @@ public class ViewerActivity extends Activity {
             }
         });
         setContentView(view);
+
+        // Android 13 does the back of the system by a callback registered on
+        // a dispatcher, and calls "onBackPressed" no more: the callback is
+        // registered where the system has one, and the older systems are
+        // answered by "onBackPressed", which they still call. The viewer runs
+        // on android 5 and newer, so both are needed.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                () -> {
+                    if (!wentBack()) {
+                        finish();
+                    }
+                });
+        }
 
         Intent intent = getIntent();
         Uri uri = (intent == null)
