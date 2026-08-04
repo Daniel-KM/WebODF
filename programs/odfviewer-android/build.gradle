@@ -32,4 +32,10 @@ android {
     }
 }
 
+// javac only says that a deprecated api is used, never which one, unless it
+// is asked to.
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-Xlint:deprecation'
+}
+
 // No dependency at all: the viewer serves its own files, see ViewerActivity.

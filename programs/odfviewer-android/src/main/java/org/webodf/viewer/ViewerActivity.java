@@ -153,15 +153,15 @@ public class ViewerActivity extends Activity {
         WebView view = new WebView(this);
         WebSettings settings = view.getSettings();
         // The library runs in the page, so scripts are needed. Everything
-        // else a web view may reach is closed: the page reads no file, no
-        // content provider and no database of its own, and it is never
-        // allowed to read the network, see answer() above.
+        // else a web view may reach is closed: the page reads no file and no
+        // content provider, and it is never allowed to read the network, see
+        // answer() above. The databases of a page are not closed, as the api
+        // that did it is deprecated: the web view dropped WebSQL itself.
         settings.setJavaScriptEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setGeolocationEnabled(false);
         settings.setDomStorageEnabled(false);
-        settings.setDatabaseEnabled(false);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         view.setWebViewClient(new WebViewClient() {
             @Override
