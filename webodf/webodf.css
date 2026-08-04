@@ -44,6 +44,13 @@ office|body, office|document {
   display: inline-block;
   position: relative;
 }
+office|document {
+  /* The document is drawn over the pane of the annotations, which stands
+     after it and would otherwise cover it: a note is drawn in the text,
+     which is a stacking context of its own, so a note cannot rise above
+     what follows the document on its own. */
+  z-index: 1;
+}
 office|body {
   /* The page, margins included, is white if document doesn't set background. */
   background: white;

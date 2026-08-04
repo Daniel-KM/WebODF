@@ -53,11 +53,19 @@ SET(SPLIT_SCREEN_EDITOR_ONLY_FILES
     vcs-locally-modified.png
 )
 
-# creates a copy of the compiled webodf.js in the editor build dir
-add_custom_target(editor-webodf.js-target
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/webodf/webodf.js .
+# creates a copy of the compiled webodf.js in the editor build dir. The copy
+# is a file of the build and not only a target, so that a build made after the
+# library was compiled again carries the library that was compiled and not the
+# one of the build before it.
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/webodf/webodf.js
+        ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
+    DEPENDS ${CMAKE_BINARY_DIR}/webodf/webodf.js webodf.js-target
 )
-add_dependencies(editor-webodf.js-target webodf.js-target)
+add_custom_target(editor-webodf.js-target
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
+)
 
 
 ####################
@@ -177,7 +185,8 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/HOWTO-wodotexteditor.md  ${OPENDOCUMENTTEXTEDITORBUILDDIR}/HOWTO.md
 
-    DEPENDS dojo-amalgamation.js editor-webodf.js-target more-common-editorfiles-target
+    DEPENDS dojo-amalgamation.js ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
+        editor-webodf.js-target more-common-editorfiles-target
 )
 
 foreach(AE_FILE ${ALONE_EDITOR_FILES})
@@ -281,7 +290,8 @@ add_custom_command(
 
     COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
 
-    DEPENDS dojo-amalgamation.js editor-webodf.js-target more-common-editorfiles-target
+    DEPENDS dojo-amalgamation.js ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
+        editor-webodf.js-target more-common-editorfiles-target
 )
 
 foreach(CE_FILE ${COMMON_COLLAB_FILES} ${COMMON_EDITOR_FILES})
