@@ -41,12 +41,6 @@
 function Runtime() {"use strict"; }
 
 /**
- * @param {!string} name
- * @return {*}
- */
-Runtime.prototype.getVariable = function (name) { "use strict"; };
-
-/**
  * @param {*} anything
  * @return {!string}
  */
@@ -276,21 +270,6 @@ Runtime.byteArrayToString = function (bytearray, encoding) {
 };
 
 /**
- * @param {!string} name
- * @return {*}
- */
-Runtime.getVariable = function (name) {
-    "use strict";
-    /*jslint evil: true*/
-    try {
-        return eval(name);
-    } catch (e) {
-        return undefined;
-    }
-    /*jslint evil: false*/
-};
-
-/**
  * @param {*} anything
  * @return {!string}
  */
@@ -465,12 +444,6 @@ function BrowserRuntime() {
         return result;
     };
     this.byteArrayToString = Runtime.byteArrayToString;
-
-    /**
-    * @param {!string} name
-    * @return {*}
-    */
-    this.getVariable = Runtime.getVariable;
 
 
     /**
@@ -957,12 +930,6 @@ function NodeJSRuntime() {
     this.byteArrayToString = Runtime.byteArrayToString;
 
     /**
-    * @param {!string} name
-    * @return {*}
-    */
-    this.getVariable = Runtime.getVariable;
-
-    /**
     * @param {!string} jsonstr
     * @return {*}
     */
@@ -1370,12 +1337,6 @@ function RhinoRuntime() {
     };
     /*jslint unparam: false*/
     this.byteArrayToString = Runtime.byteArrayToString;
-
-    /**
-    * @param {!string} name
-    * @return {*}
-    */
-    this.getVariable = Runtime.getVariable;
 
     /**
     * @param {!string} jsonstr
