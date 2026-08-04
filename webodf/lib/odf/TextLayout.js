@@ -35,6 +35,7 @@ odf.TextLayout = function TextLayout() {
         stylens = "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
         textns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
         drawns = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0",
+        officens = "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
         webodfhelperns = "urn:webodf:names:helper",
         svgns = "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
         dcns = "http://purl.org/dc/elements/1.1/",
@@ -83,6 +84,7 @@ odf.TextLayout = function TextLayout() {
          * @type{!odf.TextLayout.PageDimensions}
          */
         defaultDimensions = {
+            pageWidth: 794,
             pageHeight: 1123,
             marginTop: 76,
             marginBottom: 76,
@@ -351,16 +353,11 @@ odf.TextLayout = function TextLayout() {
      * and the pages are all of that size until the layout follows the master
      * page of each paragraph, which it does not do yet.
      * @param {!odf.ODFDocumentElement} odfroot
+     * @param {?Element} masterPage
      * @return {!odf.TextLayout.PageDimensions}
      */
-    function readPageDimensions(odfroot) {
-        var /**@type{!NodeList}*/
-            masterPages = odfroot.masterStyles.getElementsByTagNameNS(stylens,
-                "master-page"),
-            /**@type{?Element}*/
-            masterPage = masterPages.length > 0
-                ? /**@type{!Element}*/(masterPages[0])
-                : null,
+    function readPageDimensions(odfroot, masterPage) {
+        var
             /**@type{!string}*/
             layoutName = "",
             /**@type{!NodeList}*/
@@ -381,7 +378,7 @@ odf.TextLayout = function TextLayout() {
                 || "";
         }
         for (i = 0; i < layouts.length && properties === null; i += 1) {
-            layout = /**@type{!Element}*/(layouts[i]);
+            layout = /**@type{!Element}*/(layouts.item(i));
             if (layoutName === ""
                     || layout.getAttributeNS(stylens, "name") === layoutName) {
                 properties = domUtils.getDirectChild(layout, stylens,
@@ -395,6 +392,8 @@ odf.TextLayout = function TextLayout() {
         dims = {
             pageHeight: lengthInPx(properties, "page-height",
                 defaultDimensions.pageHeight),
+            pageWidth: lengthInPx(properties, "page-width",
+                defaultDimensions.pageWidth),
             marginTop: defaultDimensions.marginTop,
             marginBottom: defaultDimensions.marginBottom,
             marginLeft: defaultDimensions.marginLeft,
@@ -450,15 +449,15 @@ odf.TextLayout = function TextLayout() {
         return Math.ceil((pagesDiv.childElementCount - 1) / 2);
     }
     /**
-     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!PagePlan} plan
      * @param {!HTMLDivElement} pagesDiv
      * @return {!number}
      */
-    function getPagesHeight(dims, pagesDiv) {
-        var npages = countPages(pagesDiv),
-            height;
-        height = npages * dims.pageHeight + (npages - 1) * dims.pageSeparation;
-        return height;
+    function getPagesHeight(plan, pagesDiv) {
+        var npages = countPages(pagesDiv);
+        return npages === 0
+            ? 0
+            : plan.top(npages) - plan.at(npages - 1).pageSeparation;
     }
     /**
      * @param {!HTMLDivElement} pagesDiv
@@ -480,21 +479,27 @@ odf.TextLayout = function TextLayout() {
         last.style.height = 0;
     }
     /**
-     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!PagePlan} plan
      * @param {!HTMLDivElement} pagesDiv
      * @param {!number} count
      * @return {undefined}
      */
-    function addPages(dims, pagesDiv, count) {
+    function addPages(plan, pagesDiv, count) {
         var doc = pagesDiv.ownerDocument,
             frag = doc.createDocumentFragment(),
             htmlns = doc.documentElement.namespaceURI,
             n = countPages(pagesDiv),
             lastSeparator = pagesDiv.lastElementChild,
-            contentHeight = dims.pageHeight - dims.marginTop - dims.marginBottom,
+            /**@type{!odf.TextLayout.PageDimensions}*/
+            dims,
+            /**@type{!number}*/
+            contentHeight,
             div;
         count += n;
         while (n < count) {
+            dims = plan.at(n);
+            contentHeight = dims.pageHeight - dims.marginTop
+                - dims.marginBottom;
             // make separator
             div = doc.createElementNS(htmlns, "div");
             div.style.width = "100%";
@@ -520,7 +525,8 @@ odf.TextLayout = function TextLayout() {
         div.style.cssFloat = "right";
         div.style.position = "relative";
         div.style.zIndex = 10;
-        div.style.marginTop = dims.marginBottom + "px";
+        div.style.marginTop = plan.at(Math.max(0, count - 1)).marginBottom
+            + "px";
         frag.appendChild(div);
         if (lastSeparator) {
             pagesDiv.replaceChild(frag, lastSeparator);
@@ -529,13 +535,15 @@ odf.TextLayout = function TextLayout() {
         }
     }
     /**
-     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!PagePlan} plan
      * @param {!HTMLDivElement} pagesDiv
      * @param {!number} bodyHeight
      * @return {!boolean}
      */
-    function adjustPages(dims, pagesDiv, bodyHeight) {
-        var missingHeight = bodyHeight - getPagesHeight(dims, pagesDiv),
+    function adjustPages(plan, pagesDiv, bodyHeight) {
+        var pages = countPages(pagesDiv),
+            dims = plan.at(Math.max(0, pages - 1)),
+            missingHeight = bodyHeight - getPagesHeight(plan, pagesDiv),
             missingPages = Math.ceil(missingHeight / dims.pageHeight),
             pageCountChanged = false;
         if (!isFinite(missingPages)) {
@@ -546,7 +554,7 @@ odf.TextLayout = function TextLayout() {
         if (missingPages > 0) {
             // too few pages
             pageCountChanged = true;
-            addPages(dims, pagesDiv, missingPages);
+            addPages(plan, pagesDiv, missingPages);
         } else if (missingPages < 0) {
             // too many pages
             pageCountChanged = true;
@@ -571,17 +579,17 @@ odf.TextLayout = function TextLayout() {
     }
     /**
      * @param {!odf.ODFDocumentElement} odfroot
-     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!PagePlan} plan
      * @param {!HTMLDivElement} pagesDiv
      * @param {!number} maxTime (milliseconds)
      * @return {!boolean}
      */
-    function updateNumberOfPages(odfroot, dims, pagesDiv, maxTime) {
+    function updateNumberOfPages(odfroot, plan, pagesDiv, maxTime) {
         var text = odfroot.body.lastElementChild,
             end = endTime(maxTime),
             textHeight = text.clientHeight,
             timeLeft = true;
-        while (timeLeft && adjustPages(dims, pagesDiv, textHeight)) {
+        while (timeLeft && adjustPages(plan, pagesDiv, textHeight)) {
             timeLeft = checkTime(end);
         }
         return timeLeft;
@@ -649,13 +657,13 @@ odf.TextLayout = function TextLayout() {
      * A first page may carry a header of its own, "style:header-first", which
      * the standard added in 1.3 and which the office suites of today write
      * where a title page was written with a master page of its own before.
-     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!PagePlan} plan
      * @param {!string} which "header" or "footer"
      * @param {!number} page the number of the page, from one
      * @return {?Element}
      */
-    function pageArea(dims, which, page) {
-        var furniture = page === 1 ? dims.firstPage : dims.otherPages,
+    function pageArea(plan, which, page) {
+        var furniture = plan.furnitureAt(page - 1),
             first = which === "header" ? furniture.headerFirst : furniture.footerFirst,
             left = which === "header" ? furniture.headerLeft : furniture.footerLeft,
             right = which === "header" ? furniture.header : furniture.footer;
@@ -666,6 +674,222 @@ odf.TextLayout = function TextLayout() {
             return left;
         }
         return right;
+    }
+    /**
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!string} name
+     * @return {?Element}
+     */
+    function masterPageNamed(odfroot, name) {
+        var pages = odfroot.masterStyles.getElementsByTagNameNS(stylens,
+                "master-page"),
+            /**@type{!Element}*/
+            page,
+            /**@type{!number}*/
+            i;
+        for (i = 0; i < pages.length; i += 1) {
+            page = /**@type{!Element}*/(pages.item(i));
+            if (page.getAttributeNS(stylens, "name") === name) {
+                return page;
+            }
+        }
+        return null;
+    }
+    /**
+     * The text of a document, that a page breaks it over.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {?Element}
+     */
+    function getOfficeText(odfroot) {
+        return domUtils.getDirectChild(odfroot.body, officens, "text");
+    }
+    /**
+     * How far an element is from the top of the page it is drawn in.
+     * @param {!Element} element
+     * @return {!number}
+     */
+    function getTop(element) {
+        var he = /**@type{!HTMLElement}*/(element),
+            top = he.offsetTop || 0;
+        if (he.offsetParent) {
+            top += getTop(/**@type{!Element}*/(he.offsetParent));
+        }
+        return top;
+    }
+    /**
+     * The master page a paragraph asks for, where it asks for one: a style of
+     * the family "paragraph" that names "style:master-page-name" begins a page
+     * with that master page, which is how a document lays a landscape page in
+     * the middle of a text.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} paragraph
+     * @return {?Element}
+     */
+    function masterPageOfParagraph(odfroot, paragraph) {
+        var /**@type{!string}*/
+            name = paragraph.getAttributeNS(textns, "style-name") || "",
+            /**@type{!Array.<!Element>}*/
+            roots = [odfroot.automaticStyles, odfroot.styles],
+            /**@type{!NodeList}*/
+            styles,
+            /**@type{!Element}*/
+            candidate,
+            /**@type{?Element}*/
+            style = null,
+            /**@type{!string}*/
+            master = "",
+            /**@type{!number}*/
+            i,
+            /**@type{!number}*/
+            r;
+        if (name === "") {
+            return null;
+        }
+        for (r = 0; r < roots.length && style === null; r += 1) {
+            styles = roots[r].getElementsByTagNameNS(stylens, "style");
+            for (i = 0; i < styles.length && style === null; i += 1) {
+                candidate = /**@type{!Element}*/(styles.item(i));
+                if (candidate.getAttributeNS(stylens, "name") === name
+                        && candidate.getAttributeNS(stylens, "family")
+                            === "paragraph") {
+                    style = candidate;
+                }
+            }
+        }
+        if (style === null) {
+            return null;
+        }
+        master = style.getAttributeNS(stylens, "master-page-name") || "";
+        return master === "" ? null : masterPageNamed(odfroot, master);
+    }
+    /**
+     * The master pages a text goes through, in the order it goes through them,
+     * and the paragraph each change begins at. The first one is the master
+     * page of the document, that "style:next-style-name" hands over after the
+     * first page, and every one after it is asked for by a paragraph.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {!Array.<!{master:?Element, paragraph:?Element}>}
+     */
+    function masterPageSequence(odfroot) {
+        var pages = odfroot.masterStyles.getElementsByTagNameNS(stylens,
+                "master-page"),
+            first = pages.length > 0
+                ? /**@type{!Element}*/(pages.item(0))
+                : null,
+            sequence = [{master: first, paragraph: null}],
+            officeText = getOfficeText(odfroot),
+            /**@type{?Element}*/
+            master,
+            /**@type{?Element}*/
+            node = officeText && officeText.firstElementChild;
+        // The pages that follow the first one, where the document says so.
+        if (first && nextMasterPage(odfroot, first)) {
+            sequence.push({
+                master: nextMasterPage(odfroot, first),
+                paragraph: null
+            });
+        }
+        while (node) {
+            if (node.namespaceURI === textns
+                    && (node.localName === "p" || node.localName === "h")) {
+                master = masterPageOfParagraph(odfroot, node);
+                if (master) {
+                    sequence.push({master: master, paragraph: node});
+                }
+            }
+            node = node.nextElementSibling;
+        }
+        return sequence;
+    }
+    /**
+     * The plan of the pages: the geometry of each master page a text goes
+     * through, and the page each one begins at. A page takes the geometry of
+     * the master page in force at it, so a landscape page in the middle of a
+     * text is drawn landscape.
+     * @constructor
+     * @param {!odf.ODFDocumentElement} odfroot
+     */
+    function PagePlan(odfroot) {
+        var self = this,
+            sequence = masterPageSequence(odfroot),
+            /**@type{!Array.<!odf.TextLayout.PageDimensions>}*/
+            geometry = sequence.map(function (entry) {
+                return readPageDimensions(odfroot, entry.master);
+            }),
+            /**@type{!Array.<!number>}*/
+            // Until the pages are drawn, each change is taken to be one page
+            // after the one before it: where a change falls is read from the
+            // pages once they are drawn, see "follow".
+            starts = [];
+        while (starts.length < sequence.length) {
+            starts.push(starts.length);
+        }
+        /**
+         * The geometry of a page, from zero.
+         * @param {!number} page
+         * @return {!odf.TextLayout.PageDimensions}
+         */
+        this.at = function (page) {
+            var i = starts.length - 1;
+            while (i > 0 && starts[i] > page) {
+                i -= 1;
+            }
+            return geometry[i];
+        };
+        /**
+         * Where a page begins, in pixels from the first one.
+         * @param {!number} page
+         * @return {!number}
+         */
+        this.top = function (page) {
+            var top = 0,
+                n;
+            for (n = 0; n < page; n += 1) {
+                top += self.at(n).pageHeight + self.at(n).pageSeparation;
+            }
+            return top;
+        };
+        /**
+         * The furniture of a page, the master page in force at it.
+         * @param {!number} page
+         * @return {!odf.TextLayout.PageFurniture}
+         */
+        this.furnitureAt = function (page) {
+            var dims = self.at(page);
+            return page === 0 ? dims.firstPage : dims.otherPages;
+        };
+        /**
+         * Read from the pages that are drawn which page each change of master
+         * page falls on, and answer whether that moved anything.
+         * @param {!number} pages how many pages are drawn
+         * @return {!boolean}
+         */
+        this.follow = function (pages) {
+            var moved = false,
+                /**@type{!number}*/
+                page,
+                /**@type{!number}*/
+                top,
+                i;
+            for (i = 1; i < sequence.length; i += 1) {
+                if (!sequence[i].paragraph) {
+                    page = Math.min(1, pages - 1);
+                } else {
+                    top = getTop(/**@type{!Element}*/(sequence[i].paragraph))
+                        - getTop(/**@type{!Element}*/(getOfficeText(odfroot)));
+                    page = 0;
+                    while (page + 1 < pages && self.top(page + 1) <= top) {
+                        page += 1;
+                    }
+                }
+                page = Math.max(page, starts[i - 1] + (i > 1 ? 1 : 0));
+                if (starts[i] !== page) {
+                    starts[i] = page;
+                    moved = true;
+                }
+            }
+            return moved;
+        };
     }
     /**
      * A box that holds the shapes of one page, of the size of the sheet.
@@ -681,8 +905,8 @@ odf.TextLayout = function TextLayout() {
         box.className = "webodf-pageShapes";
         box.style.position = "absolute";
         box.style.left = 0;
-        box.style.right = 0;
         box.style.top = top + "px";
+        box.style.width = dims.pageWidth + "px";
         box.style.height = dims.pageHeight + "px";
         return box;
     }
@@ -727,12 +951,12 @@ odf.TextLayout = function TextLayout() {
      * hold the text away from the margins, and these are laid over the room
      * that was left, one for each page. Nothing of the text is touched.
      * @param {!odf.ODFDocumentElement} odfroot
-     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!PagePlan} plan
      * @param {!HTMLDivElement} pagesDiv
      * @param {!Object.<!string,!string>} meta what the document says of itself
      * @return {undefined}
      */
-    function drawPageFurniture(odfroot, dims, pagesDiv, meta) {
+    function drawPageFurniture(odfroot, plan, pagesDiv, meta) {
         var /**@type{!Document}*/
             doc = /**@type{!Document}*/(pagesDiv.ownerDocument),
             /**@type{?string}*/
@@ -748,6 +972,8 @@ odf.TextLayout = function TextLayout() {
             footer,
             /**@type{!Array.<!odf.TextLayout.PageShape>}*/
             shapes,
+            /**@type{!odf.TextLayout.PageDimensions}*/
+            dims,
             top,
             n;
         removeBoxes(pagesDiv);
@@ -758,15 +984,16 @@ odf.TextLayout = function TextLayout() {
         // reads none on an element of another namespace.
         behind.setAttributeNS(webodfhelperns, "paginated", "true");
         for (n = 0; n < pages; n += 1) {
-            top = n * (dims.pageHeight + dims.pageSeparation);
-            header = pageArea(dims, "header", n + 1);
-            footer = pageArea(dims, "footer", n + 1);
+            dims = plan.at(n);
+            top = plan.top(n);
+            header = pageArea(plan, "header", n + 1);
+            footer = pageArea(plan, "footer", n + 1);
             // The sheet of the page, that carries its fill: it is drawn
             // first, and everything of the page is drawn over it.
             box = pageShapesBox(doc, htmlns, dims, top);
             box.className = "webodf-pageSheet";
             behind.insertBefore(box, behind.firstChild);
-            shapes = (n === 0 ? dims.firstPage : dims.otherPages).shapes;
+            shapes = plan.furnitureAt(n).shapes;
             if (shapes.length > 0) {
                 // What is drawn over the text hangs beside it, as the header
                 // and the footer do. What is drawn behind it is put in the
@@ -817,16 +1044,21 @@ odf.TextLayout = function TextLayout() {
      * @param {!odf.ODFDocumentElement} odfroot
      * @param {!HTMLDivElement} pagesDiv
      * @param {!number} maxTime (milliseconds)
-     * @param {!odf.TextLayout.PageDimensions=} dims
      * @return {!boolean}
      */
-    function layout(odfroot, pagesDiv, maxTime, dims) {
-        if (!dims) {
-            dims = readPageDimensions(odfroot);
-        }
-        updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
-        updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
-        drawPageFurniture(odfroot, dims, pagesDiv, readMeta(odfroot));
+    function layout(odfroot, pagesDiv, maxTime) {
+        var plan = new PagePlan(odfroot),
+            round = 0;
+        // The pages are drawn, then it is read from them which page each
+        // change of master page falls on, and they are drawn again: a page of
+        // another size moves the ones that follow it. Two rounds answer for
+        // a text of one master page, and the third is there for the rest.
+        do {
+            updateNumberOfPages(odfroot, plan, pagesDiv, maxTime);
+            updateNumberOfPages(odfroot, plan, pagesDiv, maxTime);
+            round += 1;
+        } while (plan.follow(countPages(pagesDiv)) && round < 3);
+        drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
         return maxTime > 0;
     }
     this.layout = layout;
@@ -856,6 +1088,7 @@ odf.TextLayout.PageFurniture;
 odf.TextLayout.PageArea;
 
 /**@typedef{{
+    pageWidth:!number,
     pageHeight:!number,
     marginTop:!number,
     marginBottom:!number,
