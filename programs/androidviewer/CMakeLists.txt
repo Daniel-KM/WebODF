@@ -8,20 +8,22 @@
 option(WEBODF_ANDROID "Build the viewer of android, that needs its sdk" OFF)
 
 if (WEBODF_ANDROID)
-    # Gradle is downloaded, as the closure compiler and Rhino are: the plugin
-    # of android needs 8.9 or later, where Debian 13 packages the 4.4.1 of
-    # 2017, so the one of the distribution is never the right one.
-    set(GRADLE_VERSION 8.14.3)
+    # Gradle is downloaded, as the closure compiler and Rhino are: Debian 13
+    # packages the 4.4.1 of 2017, where the plugin of android asks for a 9,
+    # so the one of the distribution is never the right one. The version is
+    # the oldest line the plugin accepts, 9.5, rather than the newest: the plugin
+    # says which one it needs when it is applied, and refuses to run below it.
+    set(GRADLE_VERSION 9.5.1)
     ExternalProject_Add(
         Gradle
         DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
         URL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-        URL_HASH SHA256=bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
+        URL_HASH SHA256=bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         INSTALL_COMMAND ""
     )
-    set(GRADLE ${CMAKE_BINARY_DIR}/Gradle-prefix/src/Gradle/bin/gradle)
+    set(GRADLE ${CMAKE_CURRENT_BINARY_DIR}/Gradle-prefix/src/Gradle/bin/gradle)
 
     set(ANDROIDVIEWER_APK
         ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/release/androidviewer-release-unsigned.apk)

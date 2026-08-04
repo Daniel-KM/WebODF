@@ -2,37 +2,38 @@
 // no plugin, only the library and a page, both read from the assets. The
 // library is copied there by cmake, see CMakeLists.txt.
 plugins {
-    id 'com.android.application' version '8.7.3'
+    id 'com.android.application' version '9.3.1'
 }
 
 android {
-    namespace 'org.webodf.viewer'
-    compileSdk 35
+    namespace = 'org.webodf.viewer'
+    compileSdk = 36
 
     defaultConfig {
-        applicationId 'org.webodf.viewer'
-        // 21 is the oldest release the build tools still support, and the
-        // web view of every release since then reads what the library needs.
-        minSdk 21
-        targetSdk 35
-        versionCode 1
-        versionName project.findProperty('webodfVersion') ?: '0.0.0'
+        applicationId = 'org.webodf.viewer'
+        // 21 is the release the web view began to be updated apart from the
+        // system in, so it holds a recent engine from there on, and the one
+        // call the viewer intercepts its requests with was added there too.
+        minSdk = 21
+        targetSdk = 36
+        versionCode = 1
+        versionName = project.findProperty('webodfVersion') ?: '0.0.0'
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled = false
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
 dependencies {
     // Serves the assets and the cache over https, so that the page may read
     // the document with XMLHttpRequest.
-    implementation 'androidx.webkit:webkit:1.12.1'
+    implementation = 'androidx.webkit:webkit:1.17.0'
 }
