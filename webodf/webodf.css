@@ -96,6 +96,9 @@ office|text {
      body text but still in front of the page's own background, instead of
      dropping behind the whole page and vanishing. */
   isolation: isolate;
+  /* A frame whose position is given relative to the page is placed against
+     this one, see "TextLayout.js". */
+  position: relative;
 }
 
 office|text::selection {

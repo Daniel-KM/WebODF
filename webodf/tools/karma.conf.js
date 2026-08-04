@@ -51,6 +51,7 @@ module.exports = function (config) {
             'lib/odf/ListStylesToCss.js',
             'lib/odf/StyleParseUtils.js',
             'lib/odf/Style2CSS.js',
+            'lib/odf/TextLayout.js',
             'lib/webodfcore/Destroyable.js',
             'lib/gui/ZoomHelper.js',
             'lib/ops/Canvas.js',

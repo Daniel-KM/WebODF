@@ -177,6 +177,9 @@
         /**@const@type {!string}*/webodfhelperns = "urn:webodf:names:helper",
         xpath = xmldom.XPath,
         domUtils = webodfcore.DomUtils,
+        odfUtils = odf.OdfUtils,
+        styleInfo = new odf.StyleInfo(),
+        textLayout = new odf.TextLayout(),
         /**@const@type{!Array.<!string>}*/
         chartPalette = ["#4f81bd", "#c0504d", "#9bbb59", "#8064a2", "#4bacc6",
             "#f79646", "#5da5da", "#faa43a", "#60bd68", "#f17cb0"];
@@ -300,17 +303,74 @@
             }
         }
     }
+    /**
+     * Calculate the horizontal position on a page at which a frame should
+     * be positioned.
+     * @param {!string} x svg:x
+     * @param {?string} horizontalPos style:horizontal-pos
+     * @param {?string} horizontalRel style:horizontal-rel
+     * @param {!Element} frame
+     * @return {!number}
+     */
+    function getHorizontalOffset(x, horizontalPos, horizontalRel, frame) {
+        var parentRect = frame.parentElement.getBoundingClientRect(),
+            pageRect,
+            nx = 0;
+        if (horizontalPos === null || horizontalPos === "from-left"
+                || horizontalPos === "from-inside") {
+            nx = odfUtils.convertToPx(x || 0);
+        }
+        if (horizontalRel === "page") {
+            pageRect = odfUtils.getPageRect(frame);
+            if (parentRect) {
+                nx -= parentRect.left;
+            }
+            if (pageRect) {
+                nx += pageRect.left;
+            }
+        }
+        return nx;
+    }
+    /**
+     * Calculate the vertical position on a page at which a frame should
+     * be positioned.
+     * @param {!string} y svg:y
+     * @param {?string} verticalPos style:vertical-pos
+     * @param {?string} verticalRel style:vertical-rel
+     * @param {!Element} frame
+     * @return {!number}
+     */
+    function getVerticalOffset(y, verticalPos, verticalRel, frame) {
+        var parentRect = frame.parentElement.getBoundingClientRect(),
+            pageRect,
+            ny = 0;
+        if (verticalPos === null || verticalPos === "from-top") {
+            ny = odfUtils.convertToPx(y || 0);
+        }
+        if (verticalRel === "page") {
+            pageRect = odfUtils.getPageRect(frame);
+            if (parentRect) {
+                ny -= parentRect.top;
+            }
+            if (pageRect) {
+                ny += pageRect.top;
+            }
+        }
+        return ny;
+    }
 
     /**
+     * @param {!odf.ODFDocumentElement} odfnode
      * @param {string} styleid
      * @param {!Element} frame
      * @param {!CSSStyleSheet} stylesheet
      * @return {undefined}
      **/
-    function setDrawElementPosition(styleid, frame, stylesheet) {
+    function setDrawElementPosition(odfnode, styleid, frame, stylesheet) {
         frame.setAttributeNS(webodfhelperns, 'styleid', styleid);
         var rule,
-            anchor = frame.getAttributeNS(textns, 'anchor-type'),
+            anchor = frame.getAttributeNS(textns, 'anchor-type') || "paragraph",
+            styleName = frame.getAttributeNS(drawns, "style-name"),
             x = frame.getAttributeNS(svgns, 'x'),
             y = frame.getAttributeNS(svgns, 'y'),
             width = frame.getAttributeNS(svgns, 'width'),
@@ -321,7 +381,8 @@
             tm,
             angle,
             tx,
-            ty;
+            ty,
+            properties;
 
         // A shape positioned with draw:transform carries no svg:x/y, so it would
         // otherwise get display:block and stack in the document flow at the left.
@@ -353,16 +414,29 @@
 
         if (anchor === "as-char") {
             rule = 'display: inline-block;';
-        } else if (anchor || x || y) {
+        } else if (x || y || frame.hasAttributeNS(textns, 'anchor-type')) {
+            // Where the frame says where it goes, it goes there: the offset is
+            // read from the style, that tells what the position is relative to,
+            // the page or the paragraph, see "getHorizontalOffset".
+            properties = styleInfo.getStyleProperties(odfnode.styles,
+                    odfnode.automaticStyles, styleName, "graphic",
+                    {
+                style: {
+                    "vertical-pos": null,
+                    "vertical-rel": null,
+                    "horizontal-pos": null,
+                    "horizontal-rel": null
+                }
+            })["style"];
+            x = getHorizontalOffset(x, properties["horizontal-pos"],
+                     properties["horizontal-rel"], frame);
+            y = getVerticalOffset(y, properties["vertical-pos"],
+                     properties["vertical-rel"], frame);
             rule = 'position: absolute;';
+            rule += 'left: ' + x + 'px;';
+            rule += 'top: ' + y + 'px;';
         } else if (width || height || minheight || minwidth) {
             rule = 'display: block;';
-        }
-        if (x) {
-            rule += 'left: ' + x + ';';
-        }
-        if (y) {
-            rule += 'top: ' + y + ';';
         }
         if (width) {
             rule += 'width: ' + width + ';';
@@ -3024,12 +3098,13 @@
         });
     }
     /**
-     * @param {!Element} odfbody
+     * @param {!odf.ODFDocumentElement} odfnode
      * @param {!CSSStyleSheet} stylesheet
      * @return {undefined}
      **/
-    function modifyDrawElements(odfbody, stylesheet) {
+    function modifyDrawElements(odfnode, stylesheet) {
         var node,
+            odfbody = odfnode.body,
             /**@type{!Array.<!Element>}*/
             drawElements = [],
             i;
@@ -3053,7 +3128,7 @@
         // adjust all the frame positions
         for (i = 0; i < drawElements.length; i += 1) {
             node = drawElements[i];
-            setDrawElementPosition('frame' + String(i), node, stylesheet);
+            setDrawElementPosition(odfnode, 'frame' + String(i), node, stylesheet);
         }
         formatParagraphAnchors(odfbody);
     }
@@ -3062,11 +3137,11 @@
      * @param {!odf.Formatting} formatting
      * @param {!odf.OdfContainer} odfContainer
      * @param {!Element} shadowContent
-     * @param {!Element} odfbody
+     * @param {!odf.ODFDocumentElement} odfnode
      * @param {!CSSStyleSheet} stylesheet
      * @return {undefined}
      **/
-    function cloneMasterPages(formatting, odfContainer, shadowContent, odfbody, stylesheet) {
+    function cloneMasterPages(formatting, odfContainer, shadowContent, odfnode, stylesheet) {
         var masterPageName,
             masterPageElement,
             styleId,
@@ -3079,7 +3154,7 @@
             elementToClone,
             document = odfContainer.rootElement.ownerDocument;
 
-        element = odfbody.firstElementChild;
+        element = odfnode.body.firstElementChild;
         // no master pages to expect?
         if (!(element && element.namespaceURI === officens &&
               (element.localName === "presentation" || element.localName === "drawing"))) {
@@ -3106,6 +3181,7 @@
                             /**@type{!Element}*/(elementToClone))) {
                         clonedElement = /**@type{!Element}*/(elementToClone.cloneNode(true));
                         clonedPageElement.appendChild(clonedElement);
+                        setDrawElementPosition(odfnode, styleId + '_' + i, clonedElement, stylesheet);
                     }
                     elementToClone = elementToClone.nextElementSibling;
                     i += 1;
@@ -3116,7 +3192,7 @@
                 // Position all elements
                 clonedDrawElements = domUtils.getElementsByTagNameNS(clonedPageElement, drawns, '*');
                 for (i = 0; i < clonedDrawElements.length; i += 1) {
-                    setDrawElementPosition(styleId + '_' + i, clonedDrawElements[i], stylesheet);
+                    setDrawElementPosition(odfnode, styleId + '_' + i, clonedDrawElements[i], stylesheet);
                 }
 
                 // Append the cloned master page to the "Shadow Content" element outside the main ODF dom
@@ -3133,7 +3209,7 @@
                 setContainerValue(clonedPageElement, presentationns, 'footer', getHeaderFooter(odfContainer, /**@type{!Element}*/(element), 'footer'));
 
                 // Now call setDrawElementPosition on this new page to set the proper dimensions
-                setDrawElementPosition(styleId, clonedPageElement, stylesheet);
+                setDrawElementPosition(odfnode, styleId, clonedPageElement, stylesheet);
                 // Add a custom attribute with the style name of the normal page, so the CSS rules created for the styles of the normal page
                 // to display/hide frames of certain classes from the master page can address the cloned master page belonging to that normal page
                 // Cmp. addDrawPageFrameDisplayRules in Style2CSS
@@ -3333,9 +3409,12 @@
             stylesxmlcss,
             /**@type{!HTMLStyleElement}*/
             positioncss,
+            /**@type{!HTMLDivElement}*/
             shadowContent,
             /**@type{!number}*/
             autofitCounter = 0,
+            /**@type{!HTMLDivElement}*/
+            pagesDiv,
             /**@type{!Object.<string,!Array.<!Function>>}*/
             eventHandlers = {},
             waitingForDoneTimeoutId,
@@ -3784,15 +3863,19 @@
             // styled, so we will populate this in the ODF body first. Once the
             // styling is handled, it can then be lifted out of the
             // ODF body and placed beside it, to not pollute the ODF dom.
-            shadowContent = doc.createElementNS(element.namespaceURI, 'div');
+            shadowContent = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
             shadowContent.id = "shadowContent";
             shadowContent.style.position = 'absolute';
             shadowContent.style.top = 0;
             shadowContent.style.left = 0;
             container.getContentElement().appendChild(shadowContent);
 
-            modifyDrawElements(odfnode.body, css);
-            cloneMasterPages(formatting, container, shadowContent, odfnode.body, css);
+            modifyDrawElements(odfnode, css);
+            pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
+            container.getContentElement().parentNode.insertBefore(pagesDiv, container.getContentElement());
+            //textLayout.layout(odfnode, pagesDiv, 100);
+            textLayout.updateCompleteLayout(odfnode, pagesDiv);
+            cloneMasterPages(formatting, container, shadowContent, odfnode, css);
             modifyTables(odfnode.body, element.namespaceURI);
             modifyLineBreakElements(odfnode.body);
             hideEmptyListItems(odfnode.body, css);
@@ -4197,7 +4280,7 @@
             // TODO: frameid and imageid generation here is better brought in sync with that for the images on loading of a odf file.
             var frameName = frame.getAttributeNS(drawns, 'name'),
                 fc = frame.firstElementChild;
-            setDrawElementPosition(frameName, frame,
+            setDrawElementPosition(odfcontainer.rootElement, frameName, frame,
                     /**@type{!CSSStyleSheet}*/(positioncss.sheet));
             if (fc) {
                 setImage(frameName + 'img', odfcontainer, fc,

@@ -53,7 +53,7 @@ odf.LayoutTests = function LayoutTests(runner) {
     /**
      * @param {!string} name
      * @param {!Element} node
-     * @return {!{isFailing:!boolean,input:!Element,name:!string,layoutChecks:!Array}}
+     * @return {!{isFailing:!boolean,input:!Element,name:!string,layoutChecks:!Array,commonInput:?Element}}
      */
     function parseTest(name, node) {
         var isFailing = node.getAttribute("isFailing") === "true",
@@ -72,12 +72,13 @@ odf.LayoutTests = function LayoutTests(runner) {
             isFailing: isFailing,
             input: input,
             name: name,
-            layoutChecks: layoutChecks
+            layoutChecks: layoutChecks,
+            commonInput: null
         };
     }
     /**
      * @param {!string} url
-     * @param {!Object.<!string,{isFailing:!boolean,input:!Element,name:!string}>} tests
+     * @param {!Object.<!string,{isFailing:!boolean,input:!Element,name:!string,commonInput:?Element}>} tests
      * @return {undefined}
      */
     function loadTests(url, tests) {
@@ -85,24 +86,32 @@ odf.LayoutTests = function LayoutTests(runner) {
             xml = runtime.parseXML(s),
             n,
             test,
+            commonInput = null,
             testName;
         runtime.assert(s.length > 0, "XML file is empty.");
         runtime.assert(xml.documentElement.localName === "layouttests", "Element is not <layouttests/>.");
         n = xml.documentElement.firstElementChild;
         while (n) {
-            testName = n.getAttribute("name");
-            runtime.assert(n.localName === "test", "Element is not <test/>.");
-            runtime.assert(!tests.hasOwnProperty(testName), "Test name " + testName + " is not unique.");
-            test = parseTest(testName, n);
-            if (!test.isFailing) {
-                tests[testName] = test;
+            // The styles of a <commonInput/> are shared by the tests that
+            // follow it, until another one replaces them.
+            if (n.localName === "commonInput") {
+                commonInput = n;
+            } else {
+                testName = n.getAttribute("name");
+                runtime.assert(n.localName === "test", "Element is not <test/> but " + n.localName);
+                runtime.assert(!tests.hasOwnProperty(testName), "Test name " + testName + " is not unique.");
+                test = parseTest(testName, n);
+                if (!test.isFailing) {
+                    test.commonInput = commonInput;
+                    tests[testName] = test;
+                }
             }
             n = n.nextElementSibling;
         }
     }
     /**
      * @param {!Array.<!string>} urls
-     * @return {!Object.<!string,{isFailing:!boolean,input:!Element,name:!string}>}
+     * @return {!Object.<!string,{isFailing:!boolean,input:!Element,name:!string,commonInput:?Element}>}
      */
     function loadTestFiles(urls) {
         var optests = {}, i;
@@ -112,6 +121,8 @@ odf.LayoutTests = function LayoutTests(runner) {
         return optests;
     }
     /**
+     * Replace the children of an element by the ones of the elements of the
+     * list, which is what a test does with the styles and the body it names.
      * @param {!Element} odfNode
      * @param {!NodeList} childList
      * @return {undefined}
@@ -129,7 +140,37 @@ odf.LayoutTests = function LayoutTests(runner) {
         }
     }
     /**
-     * @param {!Object.<!string,{isFailing:!boolean,input:!Element,name:!string}>} test
+     * @param {!Element} odfNode
+     * @param {!NodeList} childList
+     * @return {undefined}
+     */
+    function addChildren(odfNode, childList) {
+        var doc = odfNode.ownerDocument, i, c;
+        for (i = 0; i < childList.length; i += 1) {
+            c = doc.importNode(childList.item(i), true);
+            while (c.firstChild !== null) {
+                odfNode.appendChild(c.firstChild);
+            }
+        }
+    }
+    /**
+     * @param {!odf.ODFDocumentElement} root
+     * @param {!Element} input
+     * @return {undefined}
+     */
+    function fill(root, input) {
+        var officens = odf.Namespaces.officens;
+        addChildren(root.styles,
+            input.getElementsByTagNameNS(officens, "styles"));
+        addChildren(root.automaticStyles,
+            input.getElementsByTagNameNS(officens, "automatic-styles"));
+        addChildren(root.masterStyles,
+            input.getElementsByTagNameNS(officens, "master-styles"));
+        addChildren(root.body.getElementsByTagNameNS(officens, "text")[0],
+            input.getElementsByTagNameNS(officens, "text"));
+    }
+    /**
+     * @param {!Object.<!string,{isFailing:!boolean,input:!Element,name:!string,commonInput:?Element}>} test
      * @param {!function():undefined} callback
      * @return {undefined}
      */
@@ -158,6 +199,11 @@ odf.LayoutTests = function LayoutTests(runner) {
         } else {
             replaceChildren(oldContent, presentation);
         }
+        // The styles a group of tests has in common are written once, in
+        // "commonInput", and they are added to the ones of the test itself.
+        if (test.commonInput) {
+            fill(root, test.commonInput);
+        }
         function handler() {
             t.odfContainer = t.odfCanvas.odfContainer();
             callback();
@@ -168,37 +214,24 @@ odf.LayoutTests = function LayoutTests(runner) {
         });
     }
     /**
-     * @param {!string|!number} val
-     * @return {!number}
-     */
-    function convertToPx(val) {
-        var n = -1, length;
-        if (typeof val === "number") {
-            n = val;
-        } else {
-            length = odfUtils.parseLength(val);
-            if (length && length.unit === "px") {
-                n = length.value;
-            } else if (length && length.unit === "cm") {
-                n = length.value / 2.54 * 96;
-            } else {
-                throw "Could not convert '" + val + "'. Unit " + length.unit + " not supported.";
-            }
-        }
-        return n;
-    }
-    /**
      * @param {!string|!number} a
      * @param {!string} b
      * @return {!boolean}
      */
     function compareLengths(a, b) {
-        var na, nb;
-        na = convertToPx(a);
-        nb = convertToPx(b);
-        // check that the difference is less than one percent.
+        var na, nb, epsilon = 0.01; // allow one % error
+        na = odfUtils.convertToPx(a);
+        nb = odfUtils.convertToPx(b);
+        // if na is rounded, increase epsilon accordingly
+        if (Math.round(na) === na) {
+            epsilon = Math.max(epsilon, 1 / na);
+        }
+        // check that the difference is less than epsilon
         // the % of allowed error may become configurable in the future.
-        return Math.abs((na - nb) / nb) < 0.01;
+        if (nb === 0) {
+            return a === 0;
+        }
+        return Math.abs((na - nb) / nb) < epsilon;
     }
     /**
      * @param {!string|!number} a
@@ -227,6 +260,22 @@ odf.LayoutTests = function LayoutTests(runner) {
         r.shouldBe(t, "t.a", "t.b");
     }
     /**
+     * @param {!Element} node
+     * @return {!ClientRect}
+     */
+    function getRectOnPage(node) {
+        var pr = odfUtils.getPageRect(node),
+            rect = node.getBoundingClientRect();
+        return /**@type{!ClientRect}*/({
+            top: rect.top - pr.top,
+            left: rect.left - pr.left,
+            width: rect.width,
+            height: rect.height,
+            bottom: rect.bottom - pr.top,
+            right: rect.right - pr.left
+        });
+    }
+    /**
      * @param {!{count:!number,values:!Object.<!string,!string>,xpath:!string}} check
      * @param {!Element} node
      * @return {undefined}
@@ -236,9 +285,15 @@ odf.LayoutTests = function LayoutTests(runner) {
             style = window.getComputedStyle(node),
             value;
         Object.keys(check.values).forEach(function(i) {
-            // get value from computed style (e.g. margin-left) or from
-            // node properties (e.g. clientWidth).
-            value = style[i] || node[i];
+            if (i === "pageX") {
+                value = getRectOnPage(node).left;
+            } else if (i === "pageY") {
+                value = getRectOnPage(node).top;
+            } else {
+                // get value from computed style (e.g. margin-left) or from
+                // node properties (e.g. clientWidth).
+                value = style[i] || node[i];
+            }
             compareValues(value, check.values[i]);
         });
     }
