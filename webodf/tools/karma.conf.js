@@ -52,6 +52,7 @@ module.exports = function (config) {
             'lib/odf/PageMeasure.js',
             'lib/odf/StyleParseUtils.js',
             'lib/odf/Style2CSS.js',
+            'lib/odf/PageFurniture.js',
             'lib/odf/TextLayout.js',
             'lib/webodfcore/Destroyable.js',
             'lib/gui/ZoomHelper.js',

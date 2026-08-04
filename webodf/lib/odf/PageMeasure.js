@@ -182,8 +182,7 @@ odf.PageMeasureImpl = function PageMeasureImpl() {
     /**
      * Write a page in the columns its layout asks for.
      * @param {!Element} box the page
-     * @param {!{columnCount:!number,columnGap:!number}} dims what the layout
-     *                  of the page says of its columns
+     * @param {!odf.PageMeasure.PageDimensions} dims
      * @return {undefined}
      */
     function setColumns(box, dims) {
@@ -600,3 +599,62 @@ odf.PageMeasureImpl = function PageMeasureImpl() {
  * @type {!odf.PageMeasureImpl}
  */
 odf.PageMeasure = new odf.PageMeasureImpl();
+
+/**@typedef{{
+    node:!Element,
+    background:!boolean,
+    order:!number
+}}*/
+odf.PageMeasure.PageShape;
+/**@typedef{{
+    at:!number,
+    type:!string
+}}*/
+odf.PageMeasure.TabStop;
+/**@typedef{{
+    text:!Element,
+    root:!odf.ODFDocumentElement,
+    doc:!Document,
+    htmlns:?string,
+    plan:!Object,
+    waiting:!Array.<!Node>,
+    chunk:!number,
+    slice:!number,
+    page:!number,
+    top:!number,
+    sheet:!CSSStyleSheet,
+    heightRule:!number
+}}*/
+odf.PageMeasure.Filling;
+
+/**@typedef{{
+    shapes:!Array.<!odf.PageMeasure.PageShape>,
+    header:?Element,
+    footer:?Element,
+    headerLeft:?Element,
+    footerLeft:?Element,
+    headerFirst:?Element,
+    footerFirst:?Element
+}}*/
+odf.PageMeasure.PageFurniture;
+/**@typedef{{
+    height:!number,
+    gap:!number
+}}*/
+odf.PageMeasure.PageArea;
+/**@typedef{{
+    pageWidth:!number,
+    pageHeight:!number,
+    marginTop:!number,
+    marginBottom:!number,
+    marginLeft:!number,
+    marginRight:!number,
+    pageSeparation:!number,
+    columnCount:!number,
+    columnGap:!number,
+    header:!odf.PageMeasure.PageArea,
+    footer:!odf.PageMeasure.PageArea,
+    firstPage:!odf.PageMeasure.PageFurniture,
+    otherPages:!odf.PageMeasure.PageFurniture
+}}*/
+odf.PageMeasure.PageDimensions;

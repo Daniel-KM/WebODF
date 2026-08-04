@@ -251,11 +251,15 @@
         "odf.OdfSchema",
         "webodfcore.DomUtils"
     ],
+    "odf.PageFurniture": [
+        "odf.PageMeasure",
+        "odf.Style2CSS"
+    ],
     "odf.PageLayoutProperties": [
         "odf.StyleParseUtils"
     ],
     "odf.PageMeasure": [
-        "odf.Namespaces"
+        "odf.OdfContainer"
     ],
     "odf.ParagraphProperties": [
         "odf.StyleParseUtils"
@@ -288,8 +292,7 @@
         "odf.Namespaces"
     ],
     "odf.TextLayout": [
-        "odf.PageMeasure",
-        "odf.Style2CSS"
+        "odf.PageFurniture"
     ],
     "odf.TextProperties": [
         "odf.StyleParseUtils"
