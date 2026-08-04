@@ -1,0 +1,41 @@
+// The viewer is a web view that shows a document with WebODF: no framework,
+// no plugin, only the library and a page, both read from the assets. The
+// library is copied there by cmake, see CMakeLists.txt.
+plugins {
+    id 'com.android.application' version '9.3.1'
+}
+
+android {
+    namespace = 'org.webodf.viewer'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = 'org.webodf.viewer'
+        // 21 is the release the web view began to be updated apart from the
+        // system in, so it holds a recent engine from there on, and the one
+        // call the viewer intercepts its requests with was added there too.
+        minSdk = 21
+        targetSdk = 36
+        versionCode = 1
+        versionName = project.findProperty('webodfVersion') ?: '0.0.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+// javac only says that a deprecated api is used, never which one, unless it
+// is asked to.
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-Xlint:deprecation'
+}
+
+// No dependency at all: the viewer serves its own files, see ViewerActivity.

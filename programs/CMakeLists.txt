@@ -11,3 +11,5 @@ add_subdirectory(odfviewer-webext)
 add_subdirectory(benchmark)
 add_subdirectory(editor)
 add_subdirectory(cordova)
+
+add_subdirectory(odfviewer-android)

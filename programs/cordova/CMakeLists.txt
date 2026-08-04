@@ -4,10 +4,14 @@
 # or dropped: cordova only wraps "webodf.js" in a web view, so what has to be
 # written again is the packaging, not anything of WebODF.
 #
-# - product-androidviewer drives cordova 3.5, of 2014, that builds android
-#   with ant, dropped by google in 2015 for gradle.
-# - product-firefoxosviewer packs it for Firefox OS, that Mozilla abandoned in
-#   2016, but that lives on through its forks, B2G OS, KaiOS and Capyloon.
+# product-firefoxosviewer packs the viewer for Firefox OS, that Mozilla
+# abandoned in 2016, but that lives on through its forks, B2G OS, KaiOS and
+# Capyloon. It does not build any more: cordova 3.5, of 2014, is asked for
+# below.
+#
+# The apk of android was packed here as well. It is built by
+# programs/odfviewer-android now, without cordova, so the platform of android
+# is not added here any more and the files it needed are gone.
 
 configure_file(config.xml.in config.xml)
 configure_file(manifest.webapp.in manifest.webapp)
@@ -38,13 +42,6 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/WebODF/hooks/README.md
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/WebODF
 )
-# add the android platforms to the WebODF cordova folder
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/WebODF/plugins/android.json
-    COMMAND ${CORDOVA} platform add android
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/WebODF/plugins/org.apache.cordova.file/plugin.xml
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/WebODF
-)
 # add the firefoxos platforms to the WebODF cordova folder
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/WebODF/plugins/firefoxos.json
@@ -67,24 +64,6 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/WebODF
 )
 
-if(BUILD_APK)
-    # build the android apk
-    add_custom_command(
-        OUTPUT WebODF/platforms/android/ant-build/WebODF-debug.apk
-        COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different
-            ${CMAKE_CURRENT_SOURCE_DIR}/platforms/android/AndroidManifest.xml
-            ${CMAKE_CURRENT_BINARY_DIR}/WebODF/platforms/android/AndroidManifest.xml
-        COMMAND ${CMAKE_COMMAND} ARGS -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/WebODF/platforms/android/res/
-        COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/platforms/android/res/ ${CMAKE_CURRENT_BINARY_DIR}/WebODF/platforms/android/res/
-        COMMAND ${CMAKE_COMMAND} ARGS -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/WebODF/platforms/android/src/org/webodf/
-        COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/platforms/android/src/org/webodf/ ${CMAKE_CURRENT_BINARY_DIR}/WebODF/platforms/android/src/org/webodf/
-        COMMAND ${CORDOVA} build android
-        DEPENDS WebODF/merges/config.xml
-                ${CMAKE_CURRENT_BINARY_DIR}/WebODF/plugins/android.json
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/WebODF
-    )
-    add_custom_target(product-androidviewer DEPENDS WebODF/platforms/android/ant-build/WebODF-debug.apk)
-endif()
 
 # build the firefoxos package
 add_custom_command(
