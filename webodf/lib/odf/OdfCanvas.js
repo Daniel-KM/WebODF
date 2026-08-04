@@ -3448,6 +3448,13 @@
             shouldRefreshCss = false,
             shouldRerenderAnnotations = false,
             loadingQueue = new LoadingQueue(),
+            /**
+             * How wide a note of an annotation is drawn, four centimetres,
+             * where the pane cannot be read for it: see "webodf.css".
+             * @const
+             * @type{!number}
+             */
+            noteLaneWidth = 151,
             /**@type{!gui.ZoomHelper}*/
             zoomHelper = new gui.ZoomHelper(),
             /**@type{!gui.Viewport}*/
@@ -3887,6 +3894,12 @@
             pagesDiv.style.position = 'relative';
             container.getContentElement().parentNode.insertBefore(pagesDiv,
                 container.getContentElement());
+            // A lane is left beside each page for the notes of the
+            // annotations when the pages stand beside one another, as the
+            // pane beside the whole text has nowhere to stand there.
+            textLayout.setNoteLane(allowAnnotations
+                ? noteLaneWidth
+                : 0);
             textLayout.layout(odfnode, pagesDiv, 100);
             // A font of the document may still be on its way: the width of
             // every line changes when it lands, and the pages are laid out
@@ -4267,6 +4280,13 @@
                 allowAnnotations = allow;
                 showAnnotationRemoveButton = showRemoveButton;
                 if (odfcontainer) {
+                    // The pages are drawn again: a lane is left beside each
+                    // of them for the notes when the pages stand beside one
+                    // another, and it is not left when there are none.
+                    if (paginated
+                            && odfcontainer.state === odf.OdfContainer.DONE) {
+                        drawPages(odfcontainer, odfcontainer.rootElement);
+                    }
                     handleAnnotations(odfcontainer.rootElement);
                 }
             }
@@ -4318,14 +4338,49 @@
             return zoomHelper.getZoomLevel();
         };
         /**
+         * Where the page that holds a place of the drawn document begins and
+         * ends across, in the pixels the document is written in, or nothing
+         * when it is drawn as one run of text: a note of an annotation is
+         * drawn in the lane beside the page it belongs to.
+         * @param {!number} x from the left edge of the window
+         * @return {?{left:!number,right:!number}}
+         */
+        this.pageBoxAt = function (x) {
+            var ground = odfcontainer && odfcontainer.rootElement.body
+                    ? odfcontainer.rootElement.body.getBoundingClientRect()
+                    : null,
+                zoomLevel = zoomHelper.getZoomLevel();
+            if (!ground || !paginated) {
+                return null;
+            }
+            return textLayout.pageAt((x - ground.left) / zoomLevel);
+        };
+        /**
+         * How wide and how tall what a reader is shown at once is, at the
+         * size the document was written at: the whole of the document when
+         * it is drawn as one run of text, and one page when the pages stand
+         * beside one another.
+         * @return {!{width:!number,height:!number}}
+         */
+        function fittingSize() {
+            var zoomLevel = zoomHelper.getZoomLevel(),
+                page = paginated
+                    ? textLayout.pageSize()
+                    : null;
+            return page || {
+                width: element.offsetWidth / zoomLevel,
+                height: element.offsetHeight / zoomLevel
+            };
+        }
+        /**
          * @param {!number} width
          * @param {!number} height
          * @return {undefined}
          */
         this.fitToContainingElement = function (width, height) {
-            var zoomLevel = zoomHelper.getZoomLevel(),
-                realWidth = element.offsetWidth / zoomLevel,
-                realHeight = element.offsetHeight / zoomLevel,
+            var size = fittingSize(),
+                realWidth = size.width,
+                realHeight = size.height,
                 zoom;
 
             zoom = width / realWidth;
@@ -4339,8 +4394,7 @@
          * @return {undefined}
          */
         this.fitToWidth = function (width) {
-            var realWidth = element.offsetWidth / zoomHelper.getZoomLevel();
-            zoomHelper.setZoomLevel(width / realWidth);
+            zoomHelper.setZoomLevel(width / fittingSize().width);
         };
         /**
          * @param {!number} width
@@ -4348,11 +4402,10 @@
          * @return {undefined}
          */
         this.fitSmart = function (width, height) {
-            var realWidth, realHeight, newScale,
-                zoomLevel = zoomHelper.getZoomLevel();
-
-            realWidth = element.offsetWidth / zoomLevel;
-            realHeight = element.offsetHeight / zoomLevel;
+            var size = fittingSize(),
+                realWidth = size.width,
+                realHeight = size.height,
+                newScale;
 
             newScale = width / realWidth;
             if (height !== undefined) {
@@ -4368,8 +4421,7 @@
          * @return {undefined}
          */
         this.fitToHeight = function (height) {
-            var realHeight = element.offsetHeight / zoomHelper.getZoomLevel();
-            zoomHelper.setZoomLevel(height / realHeight);
+            zoomHelper.setZoomLevel(height / fittingSize().height);
         };
         /**
          * @return {undefined}

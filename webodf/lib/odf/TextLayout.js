@@ -108,6 +108,20 @@ odf.TextLayout = function TextLayout() {
          */
         columnPageOrigins = [],
         /**
+         * How wide and how tall a page of the document is, of the first
+         * master page it is written on: what a reader is shown at once when
+         * the pages stand beside one another.
+         * @type{!{width:!number,height:!number}}
+         */
+        columnPageSize = {width: 0, height: 0},
+        /**
+         * How wide a lane is left beside each page for the notes of the
+         * annotations, when the pages stand beside one another: a note is
+         * drawn in it, beside the line it belongs to.
+         * @type{!number}
+         */
+        noteLane = 0,
+        /**
          * How many pages are drawn at the most. A document of a thousand pages
          * is already far more than a reader shows at once, and the bound is
          * what keeps a page height read as something absurd, or a text that
@@ -1924,6 +1938,32 @@ odf.TextLayout = function TextLayout() {
         );
     }
     /**
+     * How many columns a box of columns holds.
+     *
+     * The width of the box says nothing: a box laid out as wide as it likes
+     * is as wide as one column, and the columns that follow hang out of it,
+     * each as long as what is written in it. A mark is put at the end of
+     * what the box holds instead, and the column it falls in is the last
+     * one.
+     * @param {!Element} box
+     * @param {!number} pitch from the left edge of a column to the next
+     * @return {!number}
+     */
+    function columnsIn(box, pitch) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            htmlns = doc.documentElement.namespaceURI,
+            mark = doc.createElementNS(htmlns, "span"),
+            /**@type{!number}*/
+            found;
+        mark.className = "webodf-pageEnd";
+        mark.appendChild(doc.createTextNode("\u00a0"));
+        box.appendChild(mark);
+        found = Math.floor((mark.getBoundingClientRect().left
+            - box.getBoundingClientRect().left) / pitch) + 1;
+        box.removeChild(mark);
+        return Math.max(1, found);
+    }
+    /**
      * Take away the boxes that hold the runs of pages, giving the text back
      * the paragraphs they hold.
      * @param {!Element} text
@@ -2051,6 +2091,10 @@ odf.TextLayout = function TextLayout() {
         sheet.insertRule(".webodf-pageRun {display:inline-block;"
             + "vertical-align:top;white-space:normal;}",
             sheet.cssRules.length);
+        // The notes of the annotations stand in the lane beside each page,
+        // so the pane that carries them beside the whole text is not drawn.
+        sheet.insertRule("#annotationsPane {display:none;}",
+            sheet.cssRules.length);
         // What the document asks to be written on a new page begins a new
         // column, which the browser answers for on its own.
         sheet.insertRule("*[webodfhelper|breakbefore] {break-before:column;}",
@@ -2063,7 +2107,7 @@ odf.TextLayout = function TextLayout() {
                 /**@type{!number}*/
                 height = dims.pageHeight - dims.marginTop - dims.marginBottom,
                 /**@type{!number}*/
-                pitch = dims.pageWidth + dims.pageSeparation,
+                pitch = dims.pageWidth + dims.pageSeparation + noteLane,
                 /**@type{!number}*/
                 broken;
             run.setAttributeNS(webodfhelperns, "webodfhelper:run",
@@ -2081,10 +2125,11 @@ odf.TextLayout = function TextLayout() {
                 // last column of it, so that the run that follows begins
                 // beyond the edge of the page and not on it.
                 + "margin:" + dims.marginTop + "px "
-                + (dims.marginRight + dims.pageSeparation) + "px "
+                + (dims.marginRight + dims.pageSeparation + noteLane)
+                + "px "
                 + dims.marginBottom + "px " + dims.marginLeft + "px;"
                 + "}", sheet.cssRules.length);
-            broken = Math.max(1, Math.round(run.scrollWidth / pitch));
+            broken = columnsIn(run, pitch);
             pages.push(broken);
             sofar += broken;
         });
@@ -2108,7 +2153,7 @@ odf.TextLayout = function TextLayout() {
                     width = dims.pageWidth - dims.marginLeft
                         - dims.marginRight,
                     /**@type{!number}*/
-                    pitch = dims.pageWidth + dims.pageSeparation;
+                    pitch = dims.pageWidth + dims.pageSeparation + noteLane;
                 sheet.insertRule(".webodf-pageRun[webodfhelper|run=\""
                     + index + "\"] {width:"
                     + (broken * pitch - (pitch - width)) + "px;}",
@@ -2128,10 +2173,9 @@ odf.TextLayout = function TextLayout() {
                 var /**@type{!odf.TextLayout.PageDimensions}*/
                     dims = plan.at(count),
                     /**@type{!number}*/
-                    pitch = dims.pageWidth + dims.pageSeparation,
+                    pitch = dims.pageWidth + dims.pageSeparation + noteLane,
                     /**@type{!number}*/
-                    asked = Math.max(1,
-                        Math.round(runs[index].scrollWidth / pitch));
+                    asked = columnsIn(runs[index], pitch);
                 if (asked > broken) {
                     pages[index] = asked;
                     settled = false;
@@ -2219,7 +2263,7 @@ odf.TextLayout = function TextLayout() {
             var /**@type{!odf.TextLayout.PageDimensions}*/
                 dims = plan.at(total),
                 /**@type{!number}*/
-                pitch = dims.pageWidth + dims.pageSeparation,
+                pitch = dims.pageWidth + dims.pageSeparation + noteLane,
                 /**@type{!number}*/
                 n;
             // Where the run stands is read from the run itself: the boxes
@@ -2234,6 +2278,10 @@ odf.TextLayout = function TextLayout() {
             total += pages;
         });
         plan.beginsAt(begins);
+        columnPageSize = {
+            width: plan.at(0).pageWidth,
+            height: plan.at(0).pageHeight
+        };
         columnPages = Math.min(total, maxPages);
         drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
     }
@@ -2294,6 +2342,46 @@ odf.TextLayout = function TextLayout() {
      */
     this.setColumns = function (enable) {
         columnsMode = enable;
+    };
+    /**
+     * Leave a lane beside each page for the notes of the annotations, of the
+     * width a note is drawn at, or none.
+     * @param {!number} width
+     * @return {undefined}
+     */
+    this.setNoteLane = function (width) {
+        noteLane = width;
+    };
+    /**
+     * Where the page that holds a place of the text begins and ends across,
+     * when the pages stand beside one another: a note of an annotation is
+     * drawn in the lane beside the page it belongs to.
+     * @param {!number} x from the left edge of the body of the document
+     * @return {?{left:!number,right:!number}}
+     */
+    this.pageAt = function (x) {
+        var found = null;
+        if (!columnsMode) {
+            return null;
+        }
+        columnPageOrigins.forEach(function (left) {
+            if (left <= x && (!found || left > found.left)) {
+                found = {left: left, right: left + columnPageSize.width};
+            }
+        });
+        return found;
+    };
+    /**
+     * How wide and how tall one page is, or nothing when the text is written
+     * as one run of text: a reader who fits a document to the window fits one
+     * page to it there, and not the whole run of pages that stand beside one
+     * another.
+     * @return {?{width:!number,height:!number}}
+     */
+    this.pageSize = function () {
+        return columnsMode && columnPageSize.width > 0
+            ? columnPageSize
+            : null;
     };
 };
 /**@typedef{{
