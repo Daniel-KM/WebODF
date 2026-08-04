@@ -373,8 +373,13 @@ set(WODOTEXTEDITORBUILDDIR ${CMAKE_CURRENT_BINARY_DIR}/wodotexteditor)
 set(WODOCOLLABTEXTEDITORBUILDDIR ${CMAKE_BINARY_DIR}/wodocollabtexteditor)
 set(WODOCOLLABTEXTEDITOR_ZIP ${CMAKE_CURRENT_BINARY_DIR}/wodocollabtexteditor-${WEBODF_VERSION}.zip)
 
+# The add-on is packed twice, from the same scripts: the manifest version 3
+# needs Firefox 109, of 2023, and the version 2 reaches back to Firefox 48, of
+# 2016. See "README-Products.md".
 set(FIREFOX_EXTENSION_ODFVIEWER_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extension-odfviewer-${WEBODF_VERSION})
 set(FIREFOX_EXTENSION_ODFVIEWER ${FIREFOX_EXTENSION_ODFVIEWER_DIR}.xpi)
+set(FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extension-odfviewer-mv2-${WEBODF_VERSION})
+set(FIREFOX_EXTENSION_ODFVIEWER_MV2 ${FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR}.xpi)
 
 
 ####################
