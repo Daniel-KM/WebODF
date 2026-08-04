@@ -35,9 +35,9 @@ var fs = require("fs"),
         ".odp": "application/vnd.oasis.opendocument.presentation",
         ".png": "image/png"
     },
-    page = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>tests</title>"
-        + "</head><body><div id=\"console\"></div>"
-        + "<script src=\"/tests.js\"></script></body></html>";
+    page = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>tests</title>`
+        + `</head><body><div id="console"></div>`
+        + `<script src="/tests.js"></script></body></html>`;
 
 /**
  * The first browser found among the usual paths.

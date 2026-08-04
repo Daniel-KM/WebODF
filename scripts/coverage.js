@@ -30,12 +30,14 @@ function main() {
         c8,
         result;
 
-    fs.writeFileSync(bundlePath, built.code
-        + "\n//# sourceMappingURL=tests.js.map\n");
+    fs.writeFileSync(bundlePath, `${built.code}
+//# sourceMappingURL=tests.js.map
+`);
     fs.writeFileSync(bundlePath + ".map", JSON.stringify(built.map));
     fs.writeFileSync(path.join(dir, "run.js"),
-        "require(" + JSON.stringify(path.join(__dirname, "lib/dom.js"))
-        + ").install();\nrequire(" + JSON.stringify(bundlePath) + ");\n");
+        `require(${JSON.stringify(path.join(__dirname, "lib/dom.js"))}).install();
+require(${JSON.stringify(bundlePath)});
+`);
     fs.symlinkSync(path.join(rootDir, "node_modules"), path.join(dir, "node_modules"));
 
     try {

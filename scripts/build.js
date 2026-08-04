@@ -43,8 +43,7 @@ function main() {
     }
     if (!minify) {
         fs.writeFileSync(outputPath, header + code);
-        console.log("Built " + outputPath + " (" + (header.length + code.length)
-            + " bytes, not minified)");
+        console.log(`Built ${outputPath} (${header.length + code.length} bytes, not minified)`);
         return Promise.resolve();
     }
     terser = require("terser");
@@ -66,8 +65,8 @@ function main() {
         format: {comments: false}
     }).then(function (result) {
         fs.writeFileSync(outputPath, header + result.code);
-        console.log("Built " + outputPath + " (" + (header.length + result.code.length)
-            + " bytes, from " + code.length + " bytes)");
+        console.log(`Built ${outputPath} (${header.length + result.code.length}`
+            + ` bytes, from ${code.length} bytes)`);
     });
 }
 
