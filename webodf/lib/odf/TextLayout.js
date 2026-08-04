@@ -33,12 +33,15 @@ odf.TextLayout = function TextLayout() {
         styleCacheRoot = null,
         /**@type{!Object.<!string,?Element>}*/
         styleCache = {},
+        /**@type{!Object.<!string,!boolean>}*/
+        breakCache = {},
         domUtils = webodfcore.DomUtils,
         odfUtils = odf.OdfUtils,
         fons = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
         stylens = "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
         textns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
         drawns = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0",
+        tablens = "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
         officens = "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
         webodfhelperns = "urn:webodf:names:helper",
         svgns = "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
@@ -197,6 +200,7 @@ odf.TextLayout = function TextLayout() {
         if (styleCacheRoot !== odfroot) {
             styleCacheRoot = odfroot;
             styleCache = {};
+            breakCache = {};
         }
         if (styleCache.hasOwnProperty(key)) {
             return styleCache[key];
@@ -1554,6 +1558,197 @@ odf.TextLayout = function TextLayout() {
         spreadLines(drawn);
     }
     /**
+     * Whether a paragraph or a table asks to be written on a new page.
+     *
+     * The standard says it with "fo:break-before" on the style of the
+     * paragraph, and with "fo:break-after" on the style of the one before
+     * it, which comes to the same: what follows is written on a page of its
+     * own. A style says it for itself or leans on one that says it.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} node
+     * @param {!string} which "break-before" or "break-after"
+     * @return {!boolean}
+     */
+    function asksForABreak(odfroot, node, which) {
+        var /**@type{!string}*/
+            first = node.getAttributeNS(textns, "style-name")
+                || node.getAttributeNS(tablens, "style-name")
+                || "",
+            /**@type{!string}*/
+            key = which + "/" + first,
+            /**@type{!string}*/
+            name = first,
+            /**@type{!string}*/
+            family = node.namespaceURI === tablens
+                ? "table"
+                : "paragraph",
+            /**@type{?Element}*/
+            style,
+            /**@type{?Element}*/
+            properties,
+            /**@type{!string}*/
+            box = family === "table"
+                ? "table-properties"
+                : "paragraph-properties",
+            /**@type{!number}*/
+            depth = 0;
+        // A document holds a handful of styles for thousands of paragraphs,
+        // and each one is read once: the answer is kept beside the styles
+        // themselves, and dropped with them.
+        if (styleCacheRoot === odfroot && breakCache.hasOwnProperty(key)) {
+            return breakCache[key];
+        }
+        while (name !== "" && depth < 16) {
+            style = styleOf(odfroot, name, family);
+            if (!style && plainStyleName(name) !== name) {
+                name = plainStyleName(name);
+                style = styleOf(odfroot, name, family);
+            }
+            if (!style) {
+                break;
+            }
+            properties = domUtils.getDirectChild(style, stylens, box);
+            if (properties
+                    && properties.getAttributeNS(fons, which) === "page") {
+                breakCache[key] = true;
+                return true;
+            }
+            name = style.getAttributeNS(stylens, "parent-style-name") || "";
+            depth += 1;
+        }
+        breakCache[key] = false;
+        return false;
+    }
+    /**
+     * Take away the room left before the paragraphs that are written on a new
+     * page, so that a text is measured as it was written.
+     * @param {!Element} root
+     * @return {undefined}
+     */
+    function removeGaps(root) {
+        var /**@type{?Element}*/
+            node = root.firstElementChild,
+            /**@type{?Element}*/
+            next;
+        // The room is left among the paragraphs themselves, so the children
+        // of the text answer for all of it: nothing deeper is read, which a
+        // text of a thousand pages would make dear.
+        while (node) {
+            next = node.nextElementSibling;
+            if (node.className === "webodf-pageBreak") {
+                root.removeChild(node);
+            }
+            node = next;
+        }
+    }
+    /**
+     * Write on a new page what the document asks to be written on one.
+     *
+     * A text is one run of text here, and a page is a box that floats beside
+     * it: a break is made by leaving as much room before the paragraph as
+     * what is left of the page it stands on. The room is a box of the reader
+     * and not of the document, so nothing of the document is moved, and it
+     * is taken away before it is measured again.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!PagePlan} plan
+     * @param {!HTMLDivElement} pagesDiv
+     * @return {!boolean} whether room was left anywhere
+     */
+    function forcePageBreaks(odfroot, plan, pagesDiv) {
+        var /**@type{!Element}*/
+            text = /**@type{!Element}*/(odfroot.body.lastElementChild),
+            doc = pagesDiv.ownerDocument,
+            htmlns = pagesDiv.namespaceURI,
+            /**@type{!number}*/
+            origin,
+            /**@type{!Array.<!Element>}*/
+            nodes = [],
+            /**@type{!Array.<!Element>}*/
+            wanted = [],
+            /**@type{!Array.<!number>}*/
+            tops = [],
+            /**@type{!Array.<!number>}*/
+            rooms = [],
+            /**@type{!Array.<!number>}*/
+            starts = [],
+            /**@type{!number}*/
+            shift = 0,
+            /**@type{!number}*/
+            page = 0,
+            /**@type{!number}*/
+            top,
+            /**@type{!number}*/
+            room,
+            /**@type{!number}*/
+            i,
+            /**@type{?Element}*/
+            node;
+        removeGaps(text);
+        node = text.firstElementChild;
+        while (node) {
+            nodes.push(node);
+            node = node.nextElementSibling;
+        }
+        nodes.forEach(function (element, index) {
+            if (asksForABreak(odfroot, element, "break-before")
+                    || (index > 0 && asksForABreak(odfroot, nodes[index - 1],
+                        "break-after"))) {
+                wanted.push(element);
+            }
+        });
+        if (wanted.length === 0) {
+            return false;
+        }
+        // Everything is read before anything is written: a browser lays the
+        // whole text out again at each read that follows a write, and a text
+        // of a thousand pages would be laid out a thousand times over.
+        origin = pagesDiv.getBoundingClientRect().top;
+        wanted.forEach(function (element) {
+            tops.push(element.getBoundingClientRect().top - origin);
+        });
+        // Where each page begins, from the first to one beyond the last that
+        // may be asked for: the room left before a paragraph is read from it
+        // rather than from the pages that are drawn, which are not drawn yet.
+        top = 0;
+        for (i = 0; i < maxPages; i += 1) {
+            starts.push(top);
+            top += plan.at(i).pageHeight + plan.at(i).pageSeparation;
+        }
+        tops.forEach(function (start, index) {
+            top = start + shift;
+            while (page + 1 < starts.length && starts[page + 1] <= top) {
+                page += 1;
+            }
+            room = starts[page] + plan.at(page).marginTop;
+            if (top <= room + 1 || page + 1 >= starts.length) {
+                rooms.push(0);
+                return;
+            }
+            // The paragraph stands in the middle of a page, so it is given
+            // what is left of it: the room of a page and the room of the
+            // margin of the next one.
+            room = starts[page + 1] + plan.at(page + 1).marginTop - top;
+            rooms.push(room > 0
+                ? room
+                : 0);
+            shift += rooms[index];
+        });
+        i = 0;
+        wanted.forEach(function (element, index) {
+            var /**@type{!Element}*/
+                gap;
+            if (rooms[index] <= 0) {
+                return;
+            }
+            gap = doc.createElementNS(htmlns, "div");
+            gap.className = "webodf-pageBreak";
+            /**@type{!HTMLElement}*/(gap).style.height = rooms[index] + "px";
+            element.parentNode.insertBefore(gap, element);
+            i += 1;
+        });
+        return i > 0;
+    }
+    /**
      * Layout the text by resizing frames and updating the numbers of pages.
      * This function runs for the maximum allocated time and returns true if
      * it is done in that time.
@@ -1574,6 +1769,14 @@ odf.TextLayout = function TextLayout() {
             updateNumberOfPages(odfroot, plan, pagesDiv, maxTime);
             round += 1;
         } while (plan.follow(countPages(pagesDiv)) && round < 3);
+        // The paragraphs that ask for a page of their own are given one, and
+        // the pages are counted again, as the text is longer for it. A break
+        // made on one page may push the next one onto another page, so it is
+        // done again, twice, which answers for a text of breaks that follow
+        // one another.
+        if (forcePageBreaks(odfroot, plan, pagesDiv)) {
+            updateNumberOfPages(odfroot, plan, pagesDiv, maxTime);
+        }
         drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
         return maxTime > 0;
     }
