@@ -18,5 +18,17 @@
     "about": {
         "message": "About this viewer",
         "description": "The entry of the menu of the viewer that leads to the page of the welcome."
+    },
+    "onePage": {
+        "message": "One page",
+        "description": "The entry of the menu that lays the pages one under another."
+    },
+    "twoPages": {
+        "message": "Two pages",
+        "description": "The entry of the menu that lays the pages two to a row."
+    },
+    "twoPagesRight": {
+        "message": "Two pages, first on the right",
+        "description": "The entry of the menu that lays the pages two to a row, the first one alone on the right."
     }
 }

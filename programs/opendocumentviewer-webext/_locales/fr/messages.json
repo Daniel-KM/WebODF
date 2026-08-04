@@ -18,5 +18,17 @@
     "about": {
         "message": "À propos de ce lecteur",
         "description": "The entry of the menu of the viewer that leads to the page of the welcome."
+    },
+    "onePage": {
+        "message": "Une page",
+        "description": "L’entrée du menu qui dispose les pages l’une sous l’autre."
+    },
+    "twoPages": {
+        "message": "Deux pages",
+        "description": "L’entrée du menu qui dispose les pages deux par rangée."
+    },
+    "twoPagesRight": {
+        "message": "Deux pages, la première à droite",
+        "description": "L’entrée du menu qui dispose les pages deux par rangée, la première seule à droite."
     }
 }

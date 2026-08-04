@@ -133,6 +133,22 @@
             if (canvas) {
                 canvas.fitToWidth(available());
             }
+        },
+
+        /**
+         * How the pages are laid out: one to a row, as a document is
+         * scrolled; two to a row, as a book is read; or two to a row with
+         * the first on the right of its own, as the first page of a book
+         * faces nothing.
+         * @param {!number} perRow one or two
+         * @param {!boolean} firstAlone
+         * @return {undefined}
+         */
+        setPages: function (perRow, firstAlone) {
+            if (canvas) {
+                canvas.setPagesPerRow(perRow);
+                canvas.setFirstPageOnItsOwn(firstAlone);
+            }
         }
     };
 }());
