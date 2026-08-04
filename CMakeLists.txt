@@ -233,32 +233,6 @@ add_custom_target(coverage
 # for, so that the library builds without them.
 option(WEBODF_PROGRAMS "Build the editors and the extensions of programs/" OFF)
 
-# The apk of android is one more output of programs/cordova, so it is only
-# looked for along with the programs. Nothing of that toolchain is available
-# any more: it drives cordova 3.5, of 2014, that builds android with ant,
-# which google dropped in 2015 for gradle, through the executable "android",
-# that the sdk replaced by "sdkmanager" in 2018. It is kept as it is until
-# programs/ is either brought up to date or dropped.
-if (WEBODF_PROGRAMS)
-  # If android sdk is properly installed, cmake only needs to know where to find
-  # the executable 'android'.
-  # The variable ANDROID_SDK_DIR can be provided if a specific android sdk version
-  # is desired or if the android executable is not in the path.
-  if (ANDROID_SDK_DIR)
-    set(ANDROID ${ANDROID_SDK_DIR}/tools/android)
-  else (ANDROID_SDK_DIR)
-    find_program(ANDROID NAMES android DOC "Path to the Android executable.")
-  endif(ANDROID_SDK_DIR)
-  FIND_PROGRAM(ANT NAMES ant DOC "Path to the Ant executable.")
-  if(ANDROID AND ANT)
-    set(BUILD_APK TRUE)
-    message(STATUS "Found Android and Ant: building an APK for Android.")
-    message(STATUS "android: ${ANDROID}")
-    message(STATUS "ant: ${ANT}")
-  else()
-    message(STATUS "Android was not found: APK will not be built.")
-  endif()
-endif ()
 
 
 # Dojo
