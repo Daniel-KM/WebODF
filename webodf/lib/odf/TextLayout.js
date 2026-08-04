@@ -2496,9 +2496,10 @@ odf.TextLayout = function TextLayout() {
             next,
             /**@type{!ClientRect}*/
             rect;
-        if (element.getBoundingClientRect().bottom <= bottom) {
-            return null;
-        }
+        // What the element itself says of its size is not read: a section
+        // and a list of the standard are drawn of no height at all while
+        // what they hold is drawn under them, and nothing of them would
+        // ever be cut. The children answer for it.
         while (node && !from && !inner) {
             rect = node.nodeType === Node.TEXT_NODE
                 ? rangeOf(doc, node).getBoundingClientRect()
