@@ -34,6 +34,8 @@ odf.TextLayout = function TextLayout() {
         fons = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
         stylens = "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
         textns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+        drawns = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0",
+        svgns = "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
         dcns = "http://purl.org/dc/elements/1.1/",
         metans = "urn:oasis:names:tc:opendocument:xmlns:meta:1.0",
         /**
@@ -88,10 +90,12 @@ odf.TextLayout = function TextLayout() {
             pageSeparation: pageSeparation,
             header: {height: 0, gap: 0},
             footer: {height: 0, gap: 0},
-            firstPage: {header: null, footer: null, headerLeft: null,
-                footerLeft: null, headerFirst: null, footerFirst: null},
-            otherPages: {header: null, footer: null, headerLeft: null,
-                footerLeft: null, headerFirst: null, footerFirst: null}
+            firstPage: {shapes: [], header: null, footer: null,
+                headerLeft: null, footerLeft: null, headerFirst: null,
+                footerFirst: null},
+            otherPages: {shapes: [], header: null, footer: null,
+                headerLeft: null, footerLeft: null, headerFirst: null,
+                footerFirst: null}
         };
     /**
      * Read a length of the page layout, in pixels, and fall back on the given
@@ -143,6 +147,61 @@ odf.TextLayout = function TextLayout() {
         return area;
     }
     /**
+     * The shapes a master page draws on every page: a watermark, a banner
+     * along an edge, a note in a margin. The standard allows them beside the
+     * header and the footer, and it is where they are written, as the margins
+     * of a page carry no area of their own.
+     * @param {?Element} masterPage
+     * @return {!Array.<!Element>}
+     */
+    function shapesOf(masterPage) {
+        var shapes = [],
+            node = masterPage && masterPage.firstElementChild;
+        while (node) {
+            if (node.namespaceURI === drawns) {
+                shapes.push(node);
+            }
+            node = node.nextElementSibling;
+        }
+        return shapes;
+    }
+    /**
+     * Draw the shapes of a master page on one page, where the shape itself
+     * says where it goes: what a master page draws is placed against the
+     * sheet, so the box is the sheet and the offsets are the ones written.
+     * @param {!Array.<!Element>} shapes
+     * @param {!HTMLDivElement} box
+     * @return {undefined}
+     */
+    function fillPageShapes(shapes, box) {
+        var doc = box.ownerDocument;
+        shapes.forEach(function (shape) {
+            var copy = doc.importNode(shape, true),
+                x = shape.getAttributeNS(svgns, "x"),
+                y = shape.getAttributeNS(svgns, "y"),
+                width = shape.getAttributeNS(svgns, "width"),
+                height = shape.getAttributeNS(svgns, "height"),
+                /**@type{!HTMLDivElement}*/
+                place = /**@type{!HTMLDivElement}*/(doc.createElementNS(
+                    box.namespaceURI, "div"));
+            // A node of the document is placed by a box of the page around it:
+            // an element of another namespace is no HTMLElement, so it carries
+            // no style of its own to write into, and the styles of the
+            // document are the ones that draw it.
+            place.style.position = "absolute";
+            place.style.left = x || "0";
+            place.style.top = y || "0";
+            if (width) {
+                place.style.width = width;
+            }
+            if (height) {
+                place.style.height = height;
+            }
+            place.appendChild(copy);
+            box.appendChild(place);
+        });
+    }
+    /**
      * What a master page writes at the top and at the bottom of a page.
      * @param {?Element} masterPage
      * @return {!odf.TextLayout.PageFurniture}
@@ -158,6 +217,7 @@ odf.TextLayout = function TextLayout() {
                 : null;
         }
         return {
+            shapes: shapesOf(masterPage),
             header: child("header"),
             footer: child("footer"),
             headerLeft: child("header-left"),
@@ -173,7 +233,8 @@ odf.TextLayout = function TextLayout() {
     function hasFurniture(furniture) {
         return Boolean(furniture.header || furniture.footer
             || furniture.headerLeft || furniture.footerLeft
-            || furniture.headerFirst || furniture.footerFirst);
+            || furniture.headerFirst || furniture.footerFirst
+            || furniture.shapes.length > 0);
     }
     /**
      * The master page a document names after the first one: a title page is
@@ -545,11 +606,15 @@ odf.TextLayout = function TextLayout() {
             header,
             /**@type{?Element}*/
             footer,
+            /**@type{!Array.<!Element>}*/
+            shapes,
             top,
             n;
         while (pagesDiv.lastChild
-                && /**@type{!Element}*/(pagesDiv.lastChild).className
-                    === "webodf-pageFurniture") {
+                && (/**@type{!Element}*/(pagesDiv.lastChild).className
+                        === "webodf-pageFurniture"
+                    || /**@type{!Element}*/(pagesDiv.lastChild).className
+                        === "webodf-pageShapes")) {
             pagesDiv.removeChild(pagesDiv.lastChild);
         }
         if (!hasFurniture(dims.firstPage) && !hasFurniture(dims.otherPages)) {
@@ -559,6 +624,19 @@ odf.TextLayout = function TextLayout() {
             top = n * (dims.pageHeight + dims.pageSeparation);
             header = pageArea(dims, "header", n + 1);
             footer = pageArea(dims, "footer", n + 1);
+            shapes = (n === 0 ? dims.firstPage : dims.otherPages).shapes;
+            if (shapes.length > 0) {
+                box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
+                    "div"));
+                box.className = "webodf-pageShapes";
+                box.style.position = "absolute";
+                box.style.left = 0;
+                box.style.right = 0;
+                box.style.top = top + "px";
+                box.style.height = dims.pageHeight + "px";
+                fillPageShapes(shapes, box);
+                pagesDiv.appendChild(box);
+            }
             if (header) {
                 box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
                     "div"));
@@ -612,6 +690,7 @@ odf.TextLayout = function TextLayout() {
     this.layout = layout;
 };
 /**@typedef{{
+    shapes:!Array.<!Element>,
     header:?Element,
     footer:?Element,
     headerLeft:?Element,
