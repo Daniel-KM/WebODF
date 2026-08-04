@@ -200,6 +200,38 @@
     }
 
     /**
+     * Where a part of a message stands in it, as a list of numbers: the name
+     * of a part is written "1.2", "1.10", and the two are read as numbers so
+     * that the tenth part comes after the second one and not before it.
+     * @param {!Object} attachment
+     * @return {!Array.<!number>}
+     */
+    function partNumbers(attachment) {
+        return String(attachment.partName || "").split(".").map(Number);
+    }
+
+    /**
+     * @param {!Object} a
+     * @param {!Object} b
+     * @return {!number}
+     */
+    function byPart(a, b) {
+        var left = partNumbers(a),
+            right = partNumbers(b),
+            i;
+        for (i = 0; i < left.length && i < right.length; i += 1) {
+            if (left[i] !== right[i]) {
+                return left[i] - right[i];
+            }
+        }
+        return left.length - right.length;
+    }
+
+    /**
+     * The documents a message carries, in the order the message carries them.
+     * The list the mail answers with follows no order of its own, so it is put
+     * back in the order of the parts, which is the order the attachments are
+     * shown in.
      * @param {!Array.<!Object>} attachments
      * @return {!Array.<!Object>}
      */
@@ -210,6 +242,7 @@
                 found.push(attachments[i]);
             }
         }
+        found.sort(byPart);
         return found;
     }
 
