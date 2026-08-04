@@ -259,8 +259,15 @@ function onLoadRng(err, document) {
     resolveDefines(attributes, defines);
 
     elementNames = Object.keys(elements).sort();
+    // The grammar says whether an element may hold text of its own, so the
+    // category the list of "OdfSchema.js" carries is told from it: an element
+    // that holds text is read as text, and one that holds none is read as an
+    // object. The list of that file was written by hand over the years, so
+    // what is written here is what the schema says and no more: it is read
+    // beside the list rather than put in its place.
     doc = elementNames.map(function (elementName) {
-        return "[" + pad('"' + elementName + '"', 40) + ", TODO]";
+        var category = elements[elementName].text ? "TEXT" : "OBJECT";
+        return "[" + pad('"' + elementName + '"', 40) + ", " + category + "]";
     }).join(",\n");
 
     console.log(doc + "\n");
