@@ -100,6 +100,55 @@ function hasBrowserLikeDom() {
     }
 }
 
+/**
+ * Two suites measure where the text is drawn. A dom without a layout engine,
+ * like jsdom, has no geometry at all and cannot run them.
+ * @return {!boolean}
+ */
+function hasLayout() {
+    "use strict";
+    var window = runtime.getWindow();
+    if (!window || !window.document) {
+        return false;
+    }
+    try {
+        return typeof window.document.createRange().getClientRects === "function";
+    } catch (ignore) {
+        return false;
+    }
+}
+
+/**
+ * The suite on the styles of the lists compares the rules of a stylesheet one
+ * by one. A permissive css parser, like the one of jsdom, keeps a rule that a
+ * browser drops, so the lists do not match.
+ * @return {!boolean}
+ */
+function hasStrictCssParser() {
+    "use strict";
+    var window = runtime.getWindow(),
+        style,
+        sheet,
+        count;
+    if (!window || !window.document) {
+        return false;
+    }
+    style = window.document.createElement("style");
+    window.document.head.appendChild(style);
+    sheet = style.sheet;
+    try {
+        sheet.insertRule("@namespace text url(urn:webodf:names:test);", 0);
+        count = sheet.cssRules.length;
+        sheet.insertRule("text|a > :not(text|b){margin-left:0;}", count);
+        return sheet.cssRules.length === count;
+    } catch (ignore) {
+        // The engine refused the rule, as a browser does.
+        return true;
+    } finally {
+        style.parentNode.removeChild(style);
+    }
+}
+
 // add tests depending on runtime with XML parser
 if (hasBrowserLikeDom()) {
 // TODO: fix test and enable
@@ -109,18 +158,15 @@ if (hasBrowserLikeDom()) {
     tests.push(webodfcore.EventSubscriptionsTests);
     tests.push(webodfcore.StepIteratorTests);
     tests.push(gui.DirectFormattingControllerTests);
-    tests.push(gui.GuiStepUtilsTests);
     tests.push(gui.UndoStateRulesTests);
     tests.push(gui.TextControllerTests);
     tests.push(gui.ImageControllerTests);
     tests.push(gui.TrivialUndoManagerTests);
     tests.push(gui.MetadataControllerTests);
-    tests.push(gui.SelectionControllerTests);
     tests.push(gui.StyleSummaryTests);
     tests.push(odf.OdfUtilsTests);
     tests.push(odf.ObjectNameGeneratorTests);
     tests.push(odf.FormattingTests);
-    tests.push(odf.ListStyleToCssTests);
     tests.push(odf.MaliciousDocumentTests);
     tests.push(odf.OdfContainerTests);
     tests.push(odf.OdfContainerSafetyTests);
@@ -131,6 +177,18 @@ if (hasBrowserLikeDom()) {
     tests.push(ops.OdtStepsTranslatorTests);
     tests.push(ops.TransformerTests);
 }
+
+// add tests needing a css parser as strict as the one of a browser
+if (hasStrictCssParser()) {
+    tests.push(odf.ListStyleToCssTests);
+}
+
+// add tests needing the geometry of a layout engine
+if (hasLayout()) {
+    tests.push(gui.GuiStepUtilsTests);
+    tests.push(gui.SelectionControllerTests);
+}
+
 // add tests depending on browser runtime
 if (runtime.type() === "BrowserRuntime") {
     tests.push(xmldom.LSSerializerTests);

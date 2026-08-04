@@ -902,6 +902,8 @@ function BrowserRuntime() {
  */
 function NodeJSRuntime() {
     "use strict";
+    var /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/
+        globalScope = /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/(globalThis);
     var self = this,
         fs = require('fs'),
         pathmod = require('path'),
@@ -1146,8 +1148,12 @@ function NodeJSRuntime() {
         return parser.parseFromString(xml, "text/xml");
     };
     this.exit = process.exit;
+    /**
+     * The window of the host, when it provides a full dom, for example jsdom.
+     * @return {?Window}
+     */
     this.getWindow = function () {
-        return null;
+        return globalScope.window || null;
     };
     /**
      * @param {!function():undefined} callback
@@ -1207,20 +1213,26 @@ function NodeJSRuntime() {
             xmldomPackage = /**@type{!XmlDom}*/(require('@xmldom/xmldom')),
             /**@type{function(new:DOMParser)}*/
             XmlDomParser = xmldomPackage.DOMParser;
-        parser = new XmlDomParser();
+        // A host may provide a full dom, for example jsdom: it is used when it
+        // is there, since the package xmldom has no range and no tree walker.
+        if (globalScope.DOMParser) {
+            parser = new (/**@type{function(new:DOMParser)}*/(globalScope.DOMParser))();
+        } else {
+            parser = new XmlDomParser();
+        }
         domImplementation = self.parseXML("<a/>").implementation;
         // A browser exposes the dom interfaces globally and the whole library
         // uses their constants. The package xmldom provides Node, but not
         // NodeFilter, that is only a set of constants. They are not replaced
         // when they exist already, for example under a full dom like jsdom.
-        if (!global.Node) {
-            global.Node = xmldomPackage.Node;
+        if (!globalScope.Node) {
+            globalScope.Node = xmldomPackage.Node;
         }
         addElementTraversal(xmldomPackage.Node.prototype);
-        if (global.NodeFilter) {
+        if (globalScope.NodeFilter) {
             return;
         }
-        global.NodeFilter = {
+        globalScope.NodeFilter = {
             SHOW_ALL: 4294967295,
             SHOW_ELEMENT: 1,
             SHOW_ATTRIBUTE: 2,
@@ -1591,10 +1603,14 @@ Runtime.create = function create() {
     "use strict";
     var /**@type{!Runtime}*/
         result;
-    if (String(typeof window) !== "undefined") {
-        result = new BrowserRuntime();
-    } else if (String(typeof require) !== "undefined") {
+    // Node comes first: a dom like jsdom may add a window to its globals, and
+    // the runtime of a browser would then be chosen by mistake. A bundler for
+    // a browser defines process, but not its versions.
+    if (String(typeof process) !== "undefined" && process.versions
+            && process.versions.node) {
         result = new NodeJSRuntime();
+    } else if (String(typeof window) !== "undefined") {
+        result = new BrowserRuntime();
     } else {
         result = new RhinoRuntime();
     }

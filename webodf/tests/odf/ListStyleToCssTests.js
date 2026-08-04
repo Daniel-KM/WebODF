@@ -201,6 +201,9 @@ odf.ListStyleToCssTests = function ListStyleToCssTests(runner) {
 
         // Replace counters as they report counter(<SOME RANDOM NUMBER>) in qtjsruntimetests... grrr..
         content = content.replace(/counter\([^)]*\)/g, "counter(...)");
+        // A dom without a browser, like jsdom, writes the value of the content
+        // on several lines, where a browser keeps a single space.
+        content = content.replace(/\s*\n\s*/g, " ");
         for (stringStartIndex = 0, currentCharIndex = 0; currentCharIndex < content.length; currentCharIndex += 1) {
             currentCharacter = content[currentCharIndex];
 

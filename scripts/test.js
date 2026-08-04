@@ -21,11 +21,16 @@ function main() {
     var dir = fs.mkdtempSync(path.join(os.tmpdir(), "webodf-test-")),
         bundlePath = path.join(dir, "tests.js"),
         result;
+    // The bundle is loaded by a small script that adds a dom to the globals
+    // first, so that the tests walking a document are not skipped.
     fs.writeFileSync(bundlePath, bundle.withTests());
+    fs.writeFileSync(path.join(dir, "run.js"),
+        "require(" + JSON.stringify(path.join(__dirname, "lib/dom.js"))
+        + ").install();\nrequire(" + JSON.stringify(bundlePath) + ");\n");
     // The tests read their documents from the current directory, and require()
     // resolves the dependencies from the directory of the bundle.
     fs.symlinkSync(path.join(rootDir, "node_modules"), path.join(dir, "node_modules"));
-    result = child.spawnSync(process.execPath, [bundlePath], {
+    result = child.spawnSync(process.execPath, [path.join(dir, "run.js")], {
         cwd: sources.testsDir,
         stdio: "inherit"
     });

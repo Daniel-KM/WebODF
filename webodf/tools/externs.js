@@ -181,6 +181,13 @@ var JSON;
  * @type {!NodeJSProcess}
  */
 var process;
+
+/**
+ * The versions of node and of its libraries. It tells a real node from a
+ * bundler that only defines an object named process.
+ * @type {(!{node:(!string|undefined)}|undefined)}
+ */
+NodeJSProcess.prototype.versions;
 /**
  * @type {!string}
  */
