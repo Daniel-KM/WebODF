@@ -54,7 +54,8 @@
     "test:rhino": "node scripts/test-rhino.js",
     "coverage": "node scripts/coverage.js",
     "all": "npm run check && npm run check:tests && npm test && npm run build && npm run doc",
-    "test:browser": "node scripts/test-browser.js"
+    "test:browser": "node scripts/test-browser.js",
+    "test:extension": "node scripts/test-extension.js"
   },
   "files": [
     "dist",

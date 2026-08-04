@@ -288,6 +288,7 @@ npm run check:tests # check the types of the library and of the tests
 npm test            # run the tests with node
 npm run test:rhino  # run the tests with Rhino, on a java virtual machine
 npm run test:browser  # run the tests in a browser, with all the suites
+npm run test:extension # run the add-on of Chrome and check it shows a document
 npm run all         # check, test, build and doc
 ```
 
@@ -399,11 +400,23 @@ chromium --user-data-dir=$(mktemp -d) --no-first-run \
 
 web-ext writes a temporary profile, installs the add-on in it and follows the
 changes of the files; "--firefox" chooses the binary and "--url" opens a page
-at once. Firefox refuses an unsigned xpi, but not a directory loaded this way,
+at once. Open the page after the add-on is installed, not with it:
+a page that is asked for while Firefox is still starting is not redirected,
+and the add-on looks broken when it is not. Firefox refuses an unsigned xpi, but not a directory loaded this way,
 which is what "about:debugging" does by hand.
 
 Chrome keeps the profile of "--user-data-dir", hence the temporary directory,
 and "--load-extension" only takes a directory, never a zip.
+
+"npm run test:extension" does all of it for Chrome: it builds the package,
+serves a document under a type that says nothing, asks the browser for it and
+checks that the viewer of the add-on drew it. It needs a chromium, like
+"npm run test:browser", and the library of "dist".
+
+It is worth running: a rule Chrome refuses is dropped without a word, and the
+documents are downloaded as if the add-on were not installed. Neither the
+linter of addons.mozilla.org nor the closure compiler sees it. Firefox is not
+driven, as web-ext is not a dependency of this project.
 
 ### What the closure compiler is used for
 
