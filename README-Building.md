@@ -26,23 +26,37 @@ library.
 Two parts of the build with cmake are opt-in, so that a plain build stays short
 and needs nothing but node, java and cmake:
 
-| Option             | What it adds                                          |
-|--------------------|-------------------------------------------------------|
-| WEBODF_PROGRAMS    | The editors and the extensions of "programs/"         |
-| WEBODF_QTJSRUNTIME | qtjsruntime, that runs the tests in the webkit of qt  |
-| WEBODF_ANDROID     | The viewer of OpenDocument for android, with its sdk  |
+| Option             | What it adds                                            |
+|--------------------|---------------------------------------------------------|
+| WEBODF_PROGRAMS    | The editors and the extensions of "programs/"           |
+| WEBODF_QTJSRUNTIME | qtjsruntime, that runs the tests in the webengine of qt |
+| WEBODF_ANDROID     | The viewer of OpenDocument for android, with its sdk    |
 
-WEBODF_QTJSRUNTIME needs Qt5Network, Qt5Xml, Qt5PrintSupport and
-Qt5WebKitWidgets, that Debian 12 and older install with:
+WEBODF_QTJSRUNTIME needs Qt 6.4 or later, with the modules Core, Gui, Widgets,
+WebChannel, WebEngineCore and WebEngineWidgets, that Debian 12 and later install
+with:
 
 ```sh
-apt-get install qtbase5-dev libqt5webkit5-dev
+apt-get install qt6-base-dev qt6-base-dev-tools qt6-webchannel-dev \
+    qt6-webengine-dev qt6-webengine-dev-tools
 ```
 
-Qt WebKit was dropped from Qt in 5.6, kept alive as a separate project, and is
-not packaged any more by Debian since 13, so the modules are out of reach there.
-The suite it runs is the same as the one "npm run test:browser" runs, in a
-browser that is still maintained, which is the reason this option is off.
+qtjsruntime ran in Qt WebKit until 2026, that Qt dropped in 5.6, in 2016, and
+that Debian stopped packaging in 13: the program was rewritten for webengine,
+which is the blink of chromium. Its option stays off because the modules of qt
+weigh more than the rest of the build together, and because "npm run
+test:browser" runs the same suite in a browser that is installed anyway.
+
+On a machine without a screen, a build server for instance, the platform without
+one is used:
+
+```sh
+QT_QPA_PLATFORM=offscreen make -C build test-qtjsruntime
+```
+
+It runs the whole suite of the browser, 35 files of tests where the run with
+node runs 3: the others need a dom, a layout and computed styles, which is what
+this program is kept for.
 
 
 ## Coverage
@@ -79,8 +93,8 @@ does not build any more on a recent distribution.
 For creating the file "webodf.js" out of the sources CMake and Java needs to be
 installed.
 
-Another optional, but recommended requirement are the Qt5 libs, which are used
-to create and run tests.
+Another optional, but recommended requirement are the Qt 6 libs, which are used
+to run the tests in the webengine of qt.
 
 Further requirements, like the [Closure Compiler][], will be conveniently
 downloaded automatically during the build, as usually the latest version will be
@@ -193,12 +207,12 @@ msbuild WebODF.sln
 
 ## Building WebODF on OSX 10.7.5 (Lion) or OSX 10.9.5 (Mavericks)
 
-Qt5 can be installed via homebrew, but will not be linked by default. CMake must
-be instructed where to find this package by specifying the Qt5 location in
+Qt can be installed via homebrew, but will not be linked by default. CMake must
+be instructed where to find this package by specifying the Qt location in
 CMAKE_PATH_PREFIX environment variable:
 
 ```sh
-cmake -DCMAKE_PREFIX_PATH=/usr/local/Cellar/qt5/5.4.1 ../webodf
+cmake -DCMAKE_PREFIX_PATH=$(brew --prefix qt) ../webodf
 ```
 
 If the build process returns an error `(libuv) Failed to create kqueue (24)`,

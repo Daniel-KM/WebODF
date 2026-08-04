@@ -1,114 +1,72 @@
-#include "nativeio.h"
-#include <QWebPage>
-#include <QCoreApplication>
-#include <QTextCodec>
+/**
+ * Copyright (C) 2026 Daniel Berthereau <Daniel.git@Berthereau.net>
+ *
+ * @licstart
+ * This file is part of WebODF.
+ *
+ * WebODF is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License (GNU AGPL) as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * WebODF is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with WebODF.  If not, see <http://www.gnu.org/licenses/>.
+ * @licend
+ *
+ * @source: http://www.webodf.org/
+ * @source: https://github.com/kogmbh/WebODF/
+ */
 
-NativeIO::NativeIO(QObject* parent, const QDir& runtimedir_,
-         const QDir& cwd_,
-         const QMap<QString, QFile::Permissions>& pathPermissions_)
-    :QObject(parent), runtimedir(runtimedir_), cwd(cwd_),
-      pathPermissions(pathPermissions_) {
+#include "nativeio.h"
+
+#include <QCoreApplication>
+#include <QFile>
+#include <QFileInfo>
+
+NativeIO::NativeIO(QObject* parent, const QDir& cwd_)
+    : QObject(parent),
+      cwd(cwd_) {
 }
-QString
-NativeIO::readFileSync(const QString& path, const QString& encoding) {
-    errstr = QString();
-    QFile file(cwd.absoluteFilePath(path));
-    QByteArray data;
-    if (file.open(QIODevice::ReadOnly)) {
-        data = file.readAll();
-    } else {
-        errstr = "Could not read file.";
-        return QString();
-    }
-    QString out;
-    if (encoding != "binary") {
-        QTextCodec *codec = QTextCodec::codecForName(encoding.toLatin1());
-        if (codec) {
-            out = codec->toUnicode(data);
-        }
-    }
-    if (out.length() == 0 && data.length() > 0) {
-        out = QString(data.length(), 0);
-        for (int i = 0; i < data.length(); ++i) {
-            out[i] = data[i];
-        }
-    }
-    return out;
+
+QString NativeIO::absolute(const QString& path) const {
+    return cwd.absoluteFilePath(path);
 }
-QString
-NativeIO::read(const QString& path, int offset, int length) {
-    errstr = QString();
-    QFile file(cwd.absoluteFilePath(path));
-    QByteArray data;
-    if (file.open(QIODevice::ReadOnly) && (offset == 0 || file.seek(offset))) {
-        int lastLength = 0;
-        do {
-            lastLength = data.length();
-            data += file.read(length - data.length());
-        } while (data.length() < length && data.length() != lastLength);
-    }
-    if (length != data.length()) {
-        errstr = "Not enough data: " + QString::number(length) +
-                " instead of " + QString::number(data.length());
-        return QString();
-    }
-    QString out(length, 0);
-    for (int i = 0; i < length; ++i) {
-        out[i] = data[i];
-    }
-    return out;
-}
-void
-NativeIO::writeFile(const QString& path, const QString& data) {
-    QFile file(cwd.absoluteFilePath(path));
-    errstr = QString();
+
+QString NativeIO::writeFile(const QString& path, const QString& base64) {
+    const QByteArray data = QByteArray::fromBase64(base64.toLatin1());
+    QFile file(absolute(path));
     if (!file.open(QIODevice::WriteOnly)) {
-        errstr = "Could not open file for writing.";
-        return;
+        return "Could not open file for writing.";
     }
-    int length = data.length();
-    QByteArray out(length, 0);
-    for (int i = 0; i < length; ++i) {
-        out[i] = data[i].unicode();
+    if (file.write(data) != data.length()) {
+        return "Could not write to file.";
     }
-    if (file.write(out) != out.length()) {
-        errstr = "Could not write to file.";
-    }
-    return;
+    return QString();
 }
-void
-NativeIO::unlink(const QString& path) {
-    errstr = QString();
-    QFile file(cwd.absoluteFilePath(path));
+
+QString NativeIO::deleteFile(const QString& path) {
+    QFile file(absolute(path));
     if (!file.exists()) {
-        errstr = "File does not exist.";
-    } else if (!file.remove()) {
-        errstr = "Could not delete file";
+        return "File does not exist.";
     }
-    if (QFile(cwd.absoluteFilePath(path)).exists()) {
-        errstr = "File still exists.";
+    if (!file.remove()) {
+        return "Could not delete file.";
     }
+    return QString();
 }
-int
-NativeIO::getFileSize(const QString& path) {
-    errstr = QString();
-    QFile file(cwd.absoluteFilePath(path));
-    if (!file.exists()) {
-        errstr = "Could not determine file size.";
-    }
-    return file.size();
+
+qint64 NativeIO::getFileSize(const QString& path) {
+    const QFileInfo info(absolute(path));
+    return info.exists()
+        ? info.size()
+        : -1;
 }
-void
-NativeIO::exit(int exitcode) {
-    qApp->exit(exitcode);
-}
-QString
-NativeIO::currentDirectory() const {
-    return QDir::currentPath();
-}
-QStringList
-NativeIO::libraryPaths() const {
-    QStringList paths;
-    paths << runtimedir.absolutePath() << cwd.absolutePath();
-    return paths;
+
+void NativeIO::exit(int code) {
+    qApp->exit(code);
 }

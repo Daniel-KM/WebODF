@@ -84,25 +84,28 @@ string(REGEX REPLACE "-dirty$" "" WEBODF_MANIFEST_VERSION "${WEBODF_MANIFEST_VER
 ## Find installed dependencies
 #########################################################
 
-# qtjsruntime runs the tests in the webkit of qt, see "webodf/tests". It is
-# opt-in: Qt WebKit was dropped from Qt in 5.6 and is not packaged any more by
-# Debian since 13, and "npm run test:browser" runs the same tests in a browser
-# that is still maintained. Without the option, the modules are not looked for
+# qtjsruntime runs the tests in the webengine of qt, see "webodf/tests". It is
+# opt-in, as it needs the modules of qt, that weigh more than the rest of the
+# build together, while "npm run test:browser" runs the same tests in a browser
+# that is installed anyway. Without the option, the modules are not looked for
 # at all, so no warning is reported for something that is not asked for.
-option(WEBODF_QTJSRUNTIME "Build qtjsruntime, that runs the tests in the webkit of qt" OFF)
+#
+# It ran in Qt WebKit until 2026, that Qt dropped in 5.6, in 2016, and that
+# Debian stopped packaging in 13: the program was rewritten for webengine, that
+# is the blink of chromium, see "programs/qtjsruntime".
+option(WEBODF_QTJSRUNTIME "Build qtjsruntime, that runs the tests in the webengine of qt" OFF)
 
+# 6.4 is the oldest version the program is written for, the one of Debian 12.
+# Everything it uses was already in the first release of Qt 6: a channel to the
+# page, a collection of scripts on the profile, and printing to a pdf.
 set(BUILD_QTJSRUNTIME FALSE)
 if (WEBODF_QTJSRUNTIME)
-  set(QT_MIN_VERSION "5.1.1")
-  find_package(Qt5Network)
-  find_package(Qt5Xml)
-  find_package(Qt5PrintSupport)
-  find_package(Qt5WebKitWidgets)
+  find_package(Qt6 6.4 COMPONENTS Core Gui Widgets WebChannel WebEngineCore WebEngineWidgets)
 
-  if (Qt5Network_FOUND AND Qt5Xml_FOUND AND Qt5PrintSupport_FOUND AND Qt5WebKitWidgets_FOUND)
+  if (Qt6_FOUND)
     set(BUILD_QTJSRUNTIME TRUE)
   else ()
-    message(FATAL_ERROR "Qt5 with modules Qt5Network Qt5Xml Qt5PrintSupport Qt5WebKitWidgets was not found, so qtjsruntime cannot be built. On Debian 12 and older: apt-get install qtbase5-dev libqt5webkit5-dev")
+    message(FATAL_ERROR "Qt6 with the modules Core Gui Widgets WebChannel WebEngineCore WebEngineWidgets was not found, so qtjsruntime cannot be built. On Debian 12 and later: apt-get install qt6-base-dev qt6-base-dev-tools qt6-webchannel-dev qt6-webengine-dev qt6-webengine-dev-tools")
   endif ()
 endif ()
 
@@ -427,6 +430,10 @@ add_subdirectory(webodf)
 # the programs/components
 if (WEBODF_PROGRAMS)
     add_subdirectory(programs)
-endif (WEBODF_PROGRAMS)
+elseif (BUILD_QTJSRUNTIME)
+    # It is a program, but the tests of the library are run with it, so it is
+    # built for them alone as well.
+    add_subdirectory(programs/qtjsruntime)
+endif ()
 
 # vim:expandtab
