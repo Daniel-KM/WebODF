@@ -55,6 +55,13 @@ office|body {
 office|body[webodfhelper|paginated] {
   background: none;
 }
+/* The fill of a page is painted by the sheet of each page, so neither the body
+   nor the text of the document paints it: a text that painted it would paint
+   the gap between two pages as well, and no page would be seen to end. The
+   fill is given to the text by the page layout, see "Style2CSS.js". */
+office|body[webodfhelper|paginated] office|text {
+  background: none;
+}
 .webodf-pageSheet {
   background: white;
 }
