@@ -216,6 +216,7 @@
         /**@const@type {!string}*/svgns   = odf.Namespaces.svgns,
         /**@const@type {!string}*/tablens = odf.Namespaces.tablens,
         /**@const@type {!string}*/chartns = odf.Namespaces.chartns,
+        /**@const@type {!string}*/mathns  = odf.Namespaces.mathns,
         /**@const@type {!string}*/textns  = odf.Namespaces.textns,
         /**@const@type {!string}*/xlinkns = odf.Namespaces.xlinkns,
         /**@const@type {!string}*/presentationns = odf.Namespaces.presentationns,
@@ -3609,6 +3610,71 @@
             }
         }
         /**
+         * Draw the formulas a text holds.
+         *
+         * A formula is a document of its own inside the package, written in
+         * MathML: it is read and put in the element that stands for it, which
+         * the browser draws, as it draws MathML of its own. An office writes
+         * an image of the formula beside it, under "ObjectReplacements", but
+         * a package need not hold one, and this document holds none.
+         * @param {!odf.OdfContainer} container
+         * @param {!Element} odffragment
+         * @return {undefined}
+         */
+        function loadFormulas(container, odffragment) {
+            var objects = odffragment.getElementsByTagNameNS(drawns, "object"),
+                /**@type{!number}*/
+                i;
+            /**
+             * @param {!Element} object
+             * @return {undefined}
+             */
+            function loadFormula(object) {
+                var href = object.getAttributeNS(xlinkns, "href"),
+                    /**@type{!string}*/
+                    path;
+                if (!href) {
+                    return;
+                }
+                path = href.replace(/^\.?\//, "").replace(/\/$/, "")
+                    + "/content.xml";
+                container.getPartData(path, function (err, data) {
+                    var /**@type{?Document}*/
+                        formula = null;
+                    if (err || !data) {
+                        return;
+                    }
+                    try {
+                        formula = runtime.parseXML(
+                            runtime.byteArrayToString(data, "utf8")
+                        );
+                    } catch (e) {
+                        formula = null;
+                    }
+                    if (!formula || !formula.documentElement
+                            || formula.documentElement.namespaceURI
+                                !== mathns) {
+                        return;
+                    }
+                    while (object.firstChild) {
+                        object.removeChild(object.firstChild);
+                    }
+                    object.appendChild(
+                        object.ownerDocument.importNode(
+                            formula.documentElement,
+                            true
+                        )
+                    );
+                    object.setAttributeNS(webodfhelperns,
+                        "webodfhelper:formula", "true");
+                });
+            }
+            for (i = 0; i < objects.length; i += 1) {
+                loadFormula(/**@type{!Element}*/(objects.item(i)));
+            }
+        }
+
+        /**
          * Render embedded chart objects (draw:object -> chart sub-document) as
          * static SVG backgrounds on the object element.
          * @param {!odf.OdfContainer} container
@@ -4291,6 +4357,7 @@
             textLayout.layOutTabs(odfnode);
             loadImages(container, odfnode.body, css);
             loadCharts(container, odfnode.body, css);
+            loadFormulas(container, odfnode.body);
             loadVideos(container, odfnode.body);
             // WebODF's default graphic style lists "page" among its tags, so it
             // leaks a fill/border onto every draw:page. Reset it (low specificity)
