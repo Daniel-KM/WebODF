@@ -3867,6 +3867,8 @@
             }
             pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
             pagesDiv.className = 'webodf-pages';
+            // The header and the footer of each page are laid inside it.
+            pagesDiv.style.position = 'relative';
             container.getContentElement().parentNode.insertBefore(pagesDiv,
                 container.getContentElement());
             textLayout.layout(odfnode, pagesDiv, 100);

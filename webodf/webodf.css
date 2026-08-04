@@ -781,3 +781,10 @@ div.webodf-customScrollbars::-webkit-scrollbar-thumb
 .webodf-pageSeparator {
   background: rgba(0, 0, 0, 0.15);
 }
+
+/* The header and the footer of a page, laid over the room the boxes of the
+   pages left between the text and the edge of the sheet, see "TextLayout.js".
+   The nodes are of the document, so the styles of the document draw them. */
+.webodf-pageFurniture {
+  position: absolute;
+}
