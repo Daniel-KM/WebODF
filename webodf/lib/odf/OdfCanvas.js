@@ -3545,6 +3545,8 @@
             waitingForDoneTimeoutId,
             /**@type{!webodfcore.ScheduledTask}*/redrawContainerTask,
             shouldRefreshCss = false,
+            /**@type{!Object.<string,!Element>}*/
+            formulas = {},
             /**@type{?odf.ListStyleToCss}*/
             numbering = null,
             shouldRerenderAnnotations = false,
@@ -3633,7 +3635,18 @@
                 var href = object.getAttributeNS(xlinkns, "href"),
                     /**@type{!string}*/
                     path;
-                if (!href) {
+                if (!href
+                        || object.getElementsByTagNameNS(mathns,
+                            "math").length > 0) {
+                    return;
+                }
+                if (formulas.hasOwnProperty(href)) {
+                    // The formula was read already: a copy of it is put in
+                    // this one too, as an element that was cut in two is
+                    // written on two pages and each holds the formula.
+                    object.appendChild(
+                        object.ownerDocument.importNode(formulas[href], true)
+                    );
                     return;
                 }
                 path = href.replace(/^\.?\//, "").replace(/\/$/, "")
@@ -3656,6 +3669,7 @@
                                 !== mathns) {
                         return;
                     }
+                    formulas[href] = formula.documentElement;
                     while (object.firstChild) {
                         object.removeChild(object.firstChild);
                     }
@@ -4382,6 +4396,13 @@
             // scale the document anew: a row of two pages is twice as wide as
             // one, and is only that wide once the last page is drawn.
             textLayout.whenDrawn(function () {
+                // An element that was cut in two is written on two pages,
+                // and the copy of it that holds a formula may have been made
+                // before the formula was read: what is empty is filled from
+                // what was read already.
+                if (odfcontainer) {
+                    loadFormulas(odfcontainer, odfnode.body);
+                }
                 fireEvent("pagesdrawn", []);
             });
 
