@@ -2585,6 +2585,35 @@ odf.TextLayout = function TextLayout() {
             : false;
     }
     /**
+     * How many of the nodes a page was given stand within it.
+     *
+     * The nodes are read where they stand and none of them is moved, so the
+     * page is laid out once for the whole of the reading: what is read after
+     * something is written is laid out anew, and taking the nodes back one
+     * at a time lays the page out once for each of them.
+     * @param {!Element} box
+     * @param {!Array.<!Node>} added the nodes that were written on the page
+     * @return {!number} how many of them the page holds
+     */
+    function firstOver(box, added) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            edge = box.getBoundingClientRect().bottom,
+            range = doc.createRange(),
+            /**@type{!ClientRect}*/
+            rect,
+            /**@type{!number}*/
+            i;
+        for (i = 0; i < added.length; i += 1) {
+            range.setStartBefore(added[i]);
+            range.setEndAfter(added[i]);
+            rect = range.getBoundingClientRect();
+            if ((rect.height > 0 || rect.width > 0) && rect.bottom > edge + 1) {
+                return i;
+            }
+        }
+        return added.length;
+    }
+    /**
      * Whether what a box holds is taller than the box.
      * @param {!Element} box
      * @param {?Node=} from the first node to read, the head of the box by
@@ -3057,15 +3086,21 @@ odf.TextLayout = function TextLayout() {
             if (added.length === 0) {
                 break;
             }
-            while (added.length > 1 && overflows(box, added[0])) {
-                // The chunk is more than the page holds: what is over is
-                // taken back one node at a time, from the end, and the rest
-                // is left where it is. Taking the whole chunk back and
-                // writing it again one node at a time reads the page once
-                // for every node of it.
-                taken = /**@type{!Node}*/(added.pop());
-                box.removeChild(taken);
-                state.waiting.unshift(taken);
+            if (added.length > 1 && overflows(box, added[0])) {
+                // The chunk is more than the page holds: the first node of
+                // it that crosses the end of the page is looked for, and
+                // everything from there is taken back at once.
+                //
+                // The nodes are read where they stand, one reading of the
+                // page answering for all of them: taking them back one at a
+                // time reads the page again for each, as the browser lays
+                // out anew whatever is read after something is written.
+                held = firstOver(box, added);
+                while (added.length > held) {
+                    taken = /**@type{!Node}*/(added.pop());
+                    box.removeChild(taken);
+                    state.waiting.unshift(taken);
+                }
                 state.chunk = Math.max(1, added.length);
             }
             if (added.length === 0
