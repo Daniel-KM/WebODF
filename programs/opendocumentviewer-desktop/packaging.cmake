@@ -82,6 +82,12 @@ add_custom_target(package-archive
     DEPENDS opendocumentviewer-desktop
     COMMENT "The archive of the viewer of the desktop")
 
+# The archive is the way the viewer of the desktop is handed over without a
+# tool of a distribution, so it stands among the products beside the add-ons
+# and the editors: "products" builds it and names it with the others. The
+# packages are left to "packages", as each one asks for a tool of its own.
+WEBODF_PRODUCT(package-archive ${VIEWER_ARCHIVE})
+
 # A package of a system, that names the qt it needs rather than carrying it.
 # CPack writes it from the same "install" rules as everything else.
 set(CPACK_PACKAGE_NAME "opendocumentviewer")
