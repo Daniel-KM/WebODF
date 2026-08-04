@@ -17,3 +17,5 @@ add_subdirectory(editor)
 add_subdirectory(cordova)
 
 add_subdirectory(opendocumentviewer-android)
+
+add_subdirectory(opendocumentviewer-ios)

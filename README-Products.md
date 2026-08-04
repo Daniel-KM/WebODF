@@ -502,6 +502,48 @@ xcrun notarytool submit --wait ...
 xcrun stapler staple "dist/OpenDocument Viewer.app"
 ```
 
+### OpenDocument Viewer for iOS
+
+Apple allows no engine of the web but its own on iOS, so a viewer there is a
+shell around WKWebView, the view of the system, which is the WebKit of Safari.
+It is what Cordova did in 2012, in the project that was in "attic/programs/ios",
+with the UIWebView of the time: the same architecture, without the framework
+between, and with the engine of today, that compiles the javascript rather than
+reading it.
+
+The shell is written in Swift, in "Sources", and it is the one of android in the
+words of another system: the page, the library, the way a document is served and
+the way a link is followed are the same, see "ViewerActivity.java" beside it.
+Everything is served under "odf://viewer/", by a handler of that scheme, so that
+the page and the document are of one origin: it is what lets the library read a
+document with a request, and no name a document holds reaches anything else. No
+request of this viewer ever leaves the device.
+
+The page it shows is the page of android, file for file: cmake copies it, with
+the library and the pages about the format, into "Resources".
+
+```sh
+cmake -S ../webodf -DWEBODF_IOS=ON
+make product-opendocumentviewer-ios
+```
+
+The application itself is built by Xcode, on a mac: nothing else builds one for
+iOS. The project is written by [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+from "project.yml", a project of Xcode being a file no one writes by hand:
+
+```sh
+brew install xcodegen
+cd programs/opendocumentviewer-ios
+xcodegen generate
+open OpenDocumentViewer.xcodeproj
+```
+
+What is needed beyond the code is not code: a mac with Xcode, an account of the
+developer program of Apple, that costs a hundred dollars a year, the signature
+of the application, and the review of the App Store. There is no F-Droid there,
+and no way to hand an application over outside the store, save to the devices of
+the developer.
+
 ### One text for every product
 
 The pages of the products tell what the OpenDocument format is worth, and they
