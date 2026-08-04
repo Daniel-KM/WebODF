@@ -12,7 +12,16 @@ The library "webodf.js" is built in two ways.
   compiler, Rhino and Dojo are downloaded from maven central and from the
   registry of npm, at the same versions as the build with node uses.
 
-Both produce the same library, from the same sources and in the same order.
+Both produce the same file, byte for byte: the build with cmake writes the
+library by running "scripts/build.js" as well. It still compiles the sources
+with the closure compiler, but only to check their types, as it compiles with
+SIMPLE_OPTIMIZATIONS, which neither folds the definition IS_COMPILED_CODE nor
+drops what it makes unreachable: the loader of the classes and the runner of
+the scripts stayed in a library that never calls them, with the eval() they
+read a file with.
+
+So "npm install" is needed for the build with cmake too, as terser minifies
+the library.
 
 Two parts of the build with cmake are opt-in, so that a plain build stays
 short and needs nothing but node, java and cmake:

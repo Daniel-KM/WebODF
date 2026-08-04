@@ -5,7 +5,7 @@
  * compiler: the sources are concatenated in the order of their dependencies,
  * as the compiled file of the original build was, then minified with terser.
  *
- * Usage: node scripts/build.js [--no-minify]
+ * Usage: node scripts/build.js [--no-minify] [--output path]
  */
 
 var fs = require("fs"),
@@ -14,20 +14,32 @@ var fs = require("fs"),
     sources = require("./lib/sources.js"),
     rootDir = path.resolve(__dirname, ".."),
     distDir = path.join(rootDir, "dist"),
-    outputPath = path.join(distDir, "webodf.js"),
+    outputIndex = process.argv.indexOf("--output"),
+    // The build with cmake writes it in its own directory, see
+    // "webodf/CMakeLists.txt": both builds run this script, so that they
+    // produce the same file.
+    outputPath = outputIndex === -1
+        ? path.join(distDir, "webodf.js")
+        : path.resolve(process.argv[outputIndex + 1]),
+    headerIndex = process.argv.indexOf("--header"),
+    // A release replaces the license of the compiled file, as the build with
+    // cmake does with -DHEADERCOMPILED_FILE.
+    headerPath = headerIndex === -1
+        ? path.join(sources.libDir, "HeaderCompiled.js")
+        : path.resolve(process.argv[headerIndex + 1]),
     minify = process.argv.indexOf("--no-minify") === -1;
 
 function main() {
     var code = bundle.library(),
         // License of the compiled file, that keeps the exception of the AGPL
         // for the pages that only call the library.
-        header = fs.readFileSync(path.join(sources.libDir, "HeaderCompiled.js"), "utf8"),
+        header = fs.readFileSync(headerPath, "utf8"),
         terser;
     if (!/var IS_COMPILED_CODE = true;/.test(code)) {
         throw new Error("IS_COMPILED_CODE was not set, the runtime would try to load the classes.");
     }
-    if (!fs.existsSync(distDir)) {
-        fs.mkdirSync(distDir);
+    if (!fs.existsSync(path.dirname(outputPath))) {
+        fs.mkdirSync(path.dirname(outputPath), {recursive: true});
     }
     if (!minify) {
         fs.writeFileSync(outputPath, header + code);
