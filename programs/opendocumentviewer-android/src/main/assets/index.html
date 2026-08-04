@@ -5,17 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OpenDocument Viewer</title>
   <link rel="stylesheet" href="index.css">
+  <script defer src="webodf.js"></script>
+  <script defer src="index.js"></script>
 </head>
 <body>
+  <!-- With no document, the whole page asks for one: the address is caught by
+       the activity, that opens the picker of the system. There is no bar and
+       no button, as there would be one of each. The words of every language
+       are written here, in the attribute of the language, so that the script
+       holds no sentence of its own. -->
   <a id="empty" href="/open"><span>
-    <strong>Touch to open a document</strong>
-    <small>Text (.odt), spreadsheets (.ods) and presentations (.odp) of
-      LibreOffice and OpenOffice, in the OpenDocument format: the first format
-      of office documents approved as an international standard, and the only
-      one that belongs to no company.</small>
+    <strong data-fr="Touchez pour ouvrir un document">Touch to open a
+      document</strong>
+    <small data-fr="Les textes (.odt), les tableurs (.ods) et les présentations
+      (.odp) de LibreOffice et des autres suites bureautiques, au format
+      OpenDocument : le premier format de documents bureautiques approuvé comme
+      norme internationale et le seul qui soit partageable, durable et
+      indépendant d’une entreprise.">Text (.odt), spreadsheets (.ods) and
+      presentations (.odp) of LibreOffice and of every other office suite, in
+      the OpenDocument format: the first format of office documents approved as
+      an international standard, and the only one that is shareable, lasting
+      and independent of any company.</small>
   </span></a>
+  <a id="about" href="/about.en.html" data-fr="À propos de ce lecteur">About
+    this viewer</a>
   <div id="odf"></div>
-  <script src="webodf.js"></script>
-  <script src="index.js"></script>
 </body>
 </html>
