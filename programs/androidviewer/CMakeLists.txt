@@ -40,29 +40,43 @@ if (WEBODF_ANDROID)
     )
     set(GRADLE ${CMAKE_CURRENT_BINARY_DIR}/Gradle-prefix/src/Gradle/bin/gradle)
 
+    set(ANDROIDVIEWER_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/build.gradle
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/AndroidManifest.xml
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/webodf/viewer/ViewerActivity.java
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.html
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.js
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.css)
+
+    # Two apk are built from the same sources. The one of the release is not
+    # signed, as only its author may sign it; the one of the debug is, with
+    # the key gradle writes for that, so that it installs on a device or in an
+    # emulator without anything else, see "README-Products.md".
+    macro(BUILD_ANDROIDVIEWER apk task)
+        add_custom_command(
+            OUTPUT ${apk}
+            # The library is read from the assets, as the page is.
+            COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_BINARY_DIR}/webodf/webodf.js
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/webodf.js
+            COMMAND ${GRADLE} --project-dir ${CMAKE_CURRENT_SOURCE_DIR}
+                --project-cache-dir ${CMAKE_CURRENT_BINARY_DIR}/.gradle
+                -PwebodfVersion=${WEBODF_MANIFEST_VERSION}
+                -PbuildDir=${CMAKE_CURRENT_BINARY_DIR}/build
+                ${task}
+            DEPENDS webodf.js-target Gradle ${ANDROIDVIEWER_SOURCES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+    endmacro()
+
     set(ANDROIDVIEWER_APK
         ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/release/androidviewer-release-unsigned.apk)
+    set(ANDROIDVIEWER_APK_DEBUG
+        ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/debug/androidviewer-debug.apk)
 
-    add_custom_command(
-        OUTPUT ${ANDROIDVIEWER_APK}
-        # The library is read from the assets, as the page is.
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_BINARY_DIR}/webodf/webodf.js
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/webodf.js
-        COMMAND ${GRADLE} --project-dir ${CMAKE_CURRENT_SOURCE_DIR}
-            --project-cache-dir ${CMAKE_CURRENT_BINARY_DIR}/.gradle
-            -PwebodfVersion=${WEBODF_MANIFEST_VERSION}
-            -PbuildDir=${CMAKE_CURRENT_BINARY_DIR}/build
-            assembleRelease
-        DEPENDS webodf.js-target Gradle
-            ${CMAKE_CURRENT_SOURCE_DIR}/build.gradle
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/AndroidManifest.xml
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/webodf/viewer/ViewerActivity.java
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.html
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.js
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.css
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+    BUILD_ANDROIDVIEWER(${ANDROIDVIEWER_APK} assembleRelease)
+    BUILD_ANDROIDVIEWER(${ANDROIDVIEWER_APK_DEBUG} assembleDebug)
 
     add_custom_target(product-androidviewer DEPENDS ${ANDROIDVIEWER_APK})
+    add_custom_target(androidviewer-debug DEPENDS ${ANDROIDVIEWER_APK_DEBUG})
 endif ()
