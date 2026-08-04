@@ -2359,19 +2359,27 @@ odf.TextLayout = function TextLayout() {
     /**
      * Whether what a box holds is taller than the box.
      * @param {!Element} box
+     * @param {?Node=} from the first node to read, the head of the box by
+     *                 default: what stands before it was read already.
      * @return {!boolean}
      */
-    function overflows(box) {
+    function overflows(box, from) {
         var doc = /**@type{!Document}*/(box.ownerDocument),
             /**@type{!number}*/
             edge = box.getBoundingClientRect().bottom,
             /**@type{?Node}*/
-            node = box.firstChild,
+            node = from || box.firstChild,
             /**@type{!ClientRect}*/
             rect;
         // Every child is read and not the last of them alone: a frame set
         // against the page stands where the page says, so the last child of
         // a page is not always the lowest of them.
+        //
+        // What was measured before and held is not measured again: a node
+        // that is written after another does not move it, so a page that is
+        // filled a few nodes at a time is read from the first of them and
+        // not from the head of the page, which would read a page of a
+        // hundred nodes a hundred times over.
         while (node) {
             rect = node.nodeType === Node.TEXT_NODE
                 ? rangeOf(doc, node).getBoundingClientRect()
@@ -2705,7 +2713,7 @@ odf.TextLayout = function TextLayout() {
             if (added.length === 0) {
                 break;
             }
-            if (overflows(box) && added.length > 1) {
+            if (overflows(box, added[0]) && added.length > 1) {
                 while (added.length > 0) {
                     taken = /**@type{!Node}*/(added.pop());
                     if (taken) {
@@ -2715,7 +2723,8 @@ odf.TextLayout = function TextLayout() {
                 }
                 state.chunk = 1;
             }
-            if (added.length === 0 || !overflows(box)) {
+            if (added.length === 0
+                    || !overflows(box, added[0])) {
                 node = null;
             } else {
                 node = /**@type{!Node}*/(added[added.length - 1]);
@@ -2841,7 +2850,13 @@ odf.TextLayout = function TextLayout() {
         clearOwnRules(sheet);
         sheet.insertRule("office|text {width:auto;margin:0;padding:0;"
             + "position:relative;}", sheet.cssRules.length);
-        sheet.insertRule(".webodf-pageBox {overflow:hidden;}",
+        // A page holds what it holds and is of the size the plan gives it:
+        // the browser is told so, so that a page that is filled is laid out
+        // on its own and not with the pages that went before it. Without it
+        // every measure of the page being filled lays out the whole of the
+        // document again, and a document of eight hundred pages is laid out
+        // eight hundred times over.
+        sheet.insertRule(".webodf-pageBox {overflow:hidden;contain:strict;}",
             sheet.cssRules.length);
         while (text.firstChild) {
             store.appendChild(text.firstChild);
