@@ -1,0 +1,44 @@
+# The project of Xcode, written by XcodeGen: https://github.com/yonaskolb/XcodeGen
+#
+#   brew install xcodegen
+#   cd programs/opendocumentviewer-ios
+#   xcodegen generate
+#   open OpenDocumentViewer.xcodeproj
+#
+# A project of Xcode is a file of some thousand lines that no one writes by
+# hand and that every change rewrites whole, so this file is kept instead: it
+# says what the project holds, and the project is made from it.
+#
+# The resources are the page, the library and the pages of the format, that
+# cmake writes into "Resources", see "CMakeLists.txt": they are the ones the
+# viewer for android reads, so a document is drawn the same way on both.
+
+name: OpenDocumentViewer
+options:
+  bundleIdPrefix: org.webodf
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+targets:
+  OpenDocumentViewer:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources
+        type: folder
+        buildPhase: resources
+    info:
+      path: Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.webodf.viewer
+        PRODUCT_NAME: OpenDocument Viewer
+        MARKETING_VERSION: 0.0.0
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: 5.9
+        TARGETED_DEVICE_FAMILY: "1,2"
+        # The viewer reads a document and nothing else: no network is reached,
+        # so no exception of the transport security is asked for.
+        ENABLE_USER_SCRIPT_SANDBOXING: true
