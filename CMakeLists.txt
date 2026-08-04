@@ -59,6 +59,18 @@ else (OVERRULED_WEBODF_VERSION)
 endif (OVERRULED_WEBODF_VERSION)
 message(STATUS "WebODF version " ${WEBODF_VERSION})
 
+# The version is read once, when the build is configured, and it names the
+# packages, so a build made after a commit would keep the version of the one
+# before. Reading these two files here ties the configuration to them: cmake
+# runs itself again, before make, as soon as a commit or a checkout writes
+# them, and the version follows the sources without anything to remember.
+foreach (GIT_FILE .git/HEAD .git/index)
+    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${GIT_FILE})
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${GIT_FILE}
+            ${CMAKE_CURRENT_BINARY_DIR}/git-watch/${GIT_FILE} COPYONLY)
+    endif()
+endforeach()
+
 # The manifest of an add-on only takes up to four numbers separated by dots,
 # where git describe adds the number of commits and the hash of the last one:
 # "0.5.10-161-gc2572a4a" is written "0.5.10.161", so that the builds between
