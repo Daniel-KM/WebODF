@@ -221,8 +221,22 @@ odf.TextLayout = function TextLayout() {
                 "header-footer-properties"),
             area = {height: 0, gap: 0};
         if (box) {
-            area.height = lengthInPx(box, "min-height", 0);
-            area.gap = lengthInPx(box, gap, 0);
+            // A header or a foot is written of the height it is given, and
+            // of the height it asks for at the least where it is given
+            // none: "svg:height" says the one and "fo:min-height" the
+            // other, and a document that writes both is drawn of the
+            // greater, as the room the text is left is the room the
+            // furniture does not take.
+            area.height = Math.max(lengthInPx(box, "height", 0, svgns),
+                lengthInPx(box, "min-height", 0));
+            // The space between the furniture and the text gives way where
+            // the document asks for a dynamic spacing: the furniture grows
+            // into it, and the text is left the room all the same. Where it
+            // does not, the space is held and the text has that much less.
+            area.gap = box.getAttributeNS(stylens, "dynamic-spacing")
+                    === "true"
+                ? 0
+                : lengthInPx(box, gap, 0);
         }
         return area;
     }
@@ -556,16 +570,6 @@ odf.TextLayout = function TextLayout() {
         // The room a header takes is the room it takes on every page: the
         // pages of a document are of one height, and a title page that carries
         // no header is drawn with the same text area as the others.
-        if (dims.otherPages.header || dims.otherPages.headerLeft
-                || dims.otherPages.headerFirst || dims.firstPage.header
-                || dims.firstPage.headerLeft || dims.firstPage.headerFirst) {
-            dims.marginTop += dims.header.height + dims.header.gap;
-        }
-        if (dims.otherPages.footer || dims.otherPages.footerLeft
-                || dims.otherPages.footerFirst || dims.firstPage.footer
-                || dims.firstPage.footerLeft || dims.firstPage.footerFirst) {
-            dims.marginBottom += dims.footer.height + dims.footer.gap;
-        }
         return dims;
     }
     this.readPageDimensions = readPageDimensions;
@@ -1253,6 +1257,78 @@ odf.TextLayout = function TextLayout() {
         return sequence;
     }
     /**
+     * The room a header or a foot takes once it is written.
+     *
+     * A document says how tall its furniture is, and writes in it what it
+     * writes: a foot of two lines in a box of one is drawn of two all the
+     * same, and the text of the page is left that much less room. The
+     * height is measured on a copy drawn out of sight, of the width the
+     * page gives it.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {?Element} source <style:header/> or <style:footer/>
+     * @param {!number} width of the text area, in pixels
+     * @return {!number}
+     */
+    function roomTaken(odfroot, source, width) {
+        var doc = /**@type{!Document}*/(odfroot.ownerDocument),
+            htmlns = doc.documentElement.namespaceURI,
+            /**@type{!Element}*/
+            box,
+            /**@type{!number}*/
+            height;
+        if (!source || width <= 0) {
+            return 0;
+        }
+        box = /**@type{!Element}*/(doc.createElementNS(htmlns, "div"));
+        /**@type{!HTMLElement}*/(box).style.position = "absolute";
+        /**@type{!HTMLElement}*/(box).style.visibility = "hidden";
+        /**@type{!HTMLElement}*/(box).style.left = "-10000px";
+        /**@type{!HTMLElement}*/(box).style.top = "0";
+        /**@type{!HTMLElement}*/(box).style.width = width + "px";
+        box.appendChild(doc.importNode(source, true));
+        unstampStyleNames(odfroot, box);
+        expandSpaces(box);
+        odfroot.body.appendChild(box);
+        height = box.getBoundingClientRect().height;
+        odfroot.body.removeChild(box);
+        return height;
+    }
+    /**
+     * The margins of a page, once the furniture is written inside them.
+     *
+     * A header and a foot are written between the edge of the page and its
+     * text, so the text is left that much less room: the height the
+     * document gives them, or the height what they hold takes where that is
+     * the greater, and the space that parts them from the text where it
+     * does not give way. The room a header takes is the room it takes on
+     * every page: the pages of a document are of one height, and a title
+     * page that carries no header is drawn with the same text area as the
+     * others.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!odf.TextLayout.PageDimensions} dims
+     * @return {!odf.TextLayout.PageDimensions}
+     */
+    function roomForFurniture(odfroot, dims) {
+        var width = dims.pageWidth - dims.marginLeft - dims.marginRight,
+            /**@type{?Element}*/
+            head = dims.otherPages.header || dims.otherPages.headerLeft
+                || dims.otherPages.headerFirst || dims.firstPage.header
+                || dims.firstPage.headerLeft || dims.firstPage.headerFirst,
+            /**@type{?Element}*/
+            foot = dims.otherPages.footer || dims.otherPages.footerLeft
+                || dims.otherPages.footerFirst || dims.firstPage.footer
+                || dims.firstPage.footerLeft || dims.firstPage.footerFirst;
+        if (head) {
+            dims.marginTop += Math.max(dims.header.height,
+                roomTaken(odfroot, head, width)) + dims.header.gap;
+        }
+        if (foot) {
+            dims.marginBottom += Math.max(dims.footer.height,
+                roomTaken(odfroot, foot, width)) + dims.footer.gap;
+        }
+        return dims;
+    }
+    /**
      * The plan of the pages: the geometry of each master page a text goes
      * through, and the page each one begins at. A page takes the geometry of
      * the master page in force at it, so a landscape page in the middle of a
@@ -1265,7 +1341,8 @@ odf.TextLayout = function TextLayout() {
             sequence = masterPageSequence(odfroot),
             /**@type{!Array.<!odf.TextLayout.PageDimensions>}*/
             geometry = sequence.map(function (entry) {
-                return readPageDimensions(odfroot, entry.master);
+                return roomForFurniture(odfroot,
+                    readPageDimensions(odfroot, entry.master));
             }),
             /**@type{!Array.<!number>}*/
             // Until the pages are drawn, each change is taken to be one page
