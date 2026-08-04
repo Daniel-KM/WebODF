@@ -32,6 +32,36 @@
             - parseFloat(style.paddingRight);
     }
 
+    // A document of eight hundred pages is a very tall thing to paint: the
+    // engine rasterises what is near the window and leaves the rest, and a
+    // reader that jumps far ahead lands on a page that was never painted.
+    // The pages are told to be drawn only when they come near the window,
+    // each keeping the room of a page while it is away, so that the reader
+    // scrolls over the same length and the engine paints far less.
+    function skipPagesAway(on) {
+        var sheet = document.getElementById("pagesaway"),
+            first = document.querySelector(".webodf-pageSheet"),
+            box;
+        if (!on) {
+            if (sheet) {
+                sheet.parentNode.removeChild(sheet);
+            }
+            return;
+        }
+        if (!first) {
+            return;
+        }
+        box = first.getBoundingClientRect();
+        if (!sheet) {
+            sheet = document.createElement("style");
+            sheet.id = "pagesaway";
+            document.head.appendChild(sheet);
+        }
+        sheet.textContent = ".webodf-pageSheet {content-visibility:auto;"
+            + "contain-intrinsic-size:" + Math.round(box.width) + "px "
+            + Math.round(box.height) + "px;}";
+    }
+
     // How the first page came out: the height of its text, how far its text
     // reaches, and where the foot drawn on it begins. A foot that begins
     // above the end of the text is drawn over the last line of it.
@@ -125,6 +155,7 @@
             message.hidden = true;
             failure.hidden = true;
             ways.hidden = true;
+            skipPagesAway(false);
             canvas = new odf.OdfCanvas(container);
             // A row of two pages is twice as wide as one, so the document is
             // scaled to the window anew when the reader asks for another way
@@ -136,6 +167,10 @@
                 // "webodf.viewer" is turned on: it tells a foot drawn over
                 // the last line of a page apart from one that stands clear.
                 window.console.log("pages " + pageReport());
+                // The pages are all broken, so nothing of them is measured
+                // any more: the ones away from the window may be left
+                // undrawn until the reader comes to them.
+                skipPagesAway(true);
                 if (!refitting) {
                     return;
                 }
@@ -225,6 +260,9 @@
         setPages: function (perRow, firstAlone) {
             if (canvas) {
                 refitting = true;
+                // The pages are about to be broken again, and what is broken
+                // is measured: a page that is not drawn measures nothing.
+                skipPagesAway(false);
                 canvas.setPagesPerRow(perRow);
                 canvas.setFirstPageOnItsOwn(firstAlone);
             }
