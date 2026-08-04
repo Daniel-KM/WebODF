@@ -586,9 +586,14 @@ function Main(cmakeListPath) {
             path,
             license,
             licenses = {},
-            // files for which jslint is not run
+            // files for which jslint is not run. The jslint that is kept here
+            // is the one of 2014, that reads the javascript of the library,
+            // which has to run in older engines as well; a script that only
+            // runs in node is written in the javascript of today, that jslint
+            // stops at.
             jslintExceptions = [
                 "lib/externs/JSZip.js",
+                "../programs/benchmark/libexec/bundle.js",
                 "../programs/editor/plugins/bella/seedrandom.js"].map(pathModule.normalize),
             // files for which the license is not checked
             licenseExceptions = [

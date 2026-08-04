@@ -27,6 +27,7 @@
 define([
     "Benchmark",
     "HTMLResultsRenderer",
+    "HTMLMatrixRenderer",
     "OpenDocument",
     "EnterEditMode",
     "MoveCursorToEndDirect",
@@ -41,7 +42,7 @@ define([
     "MoveCursorToEnd",
     "MoveCursorToStart",
     "SaveDocument"
-], function (Benchmark, HTMLResultsRenderer,
+], function (Benchmark, HTMLResultsRenderer, HTMLMatrixRenderer,
              OpenDocument, EnterEditMode, MoveCursorToEndDirect,InsertLetterA, RemovePositions, MoveCursorLeft,
              SelectEntireDocument, RemoveCurrentSelection, PreloadDocument, BoldCurrentSelection,
              AlignCurrentSelectionJustified, MoveCursorToEnd, MoveCursorToStart, SaveDocument) {
@@ -73,17 +74,33 @@ define([
 
     /**
      * Extract supported benchmark options from the url query parameters
-     * @return {!{fileUrl: !string, includeSlow: !boolean, colour: (string|undefined)}}
+     * @return {!{fileUrls: !Array.<!string>, includeSlow: !boolean,
+     *            colour: (string|undefined), matrix: !boolean}}
      */
     function getConfiguration() {
         var params = getQueryParams();
         return {
-            /** Test document to load. Relative or absolute urls are supported */
-            fileUrl: params.fileUrl || "100pages.odt",
-            /** Include known slow actions in the benchmark. These can take 10 or more minutes each on large docs */
-            includeSlow: params.includeSlow === "false" ? false : true,
+            /**
+             * Test documents to load, one after the other, separated by
+             * commas. Relative or absolute urls are supported. One document
+             * is measured unless others are named, as the four of them take
+             * minutes: "all.html" names them, see "README-Building.md".
+             */
+            fileUrls: (params.fileUrl || "100pages.odt").split(","),
+            /**
+             * Include the known slow actions in the benchmark. They take a
+             * minute on a hundred pages and far more on a thousand, as one
+             * operation is made for each paragraph of the selection, and they
+             * are left out by "includeSlow=false" when the wait is too long.
+             */
+            includeSlow: params.includeSlow !== "false",
             /** Background colour of the benchmark results. Useful for distinguishing different benchmark versions */
-            colour: params.colour
+            colour: params.colour,
+            /**
+             * One table of an action to a line and a document to a column,
+             * rather than the actions of a document one under the other.
+             */
+            matrix: params.layout === "matrix"
         };
     }
 
@@ -95,40 +112,95 @@ define([
         var loadingScreenElement = document.getElementById('loadingScreen'),
             canvasElement = document.getElementById("canvas"),
             benchmarkResultsElement = document.getElementById("benchmarkResults").getElementsByTagName("tbody")[0],
+            benchmarkHeadElement = document.getElementById("benchmarkResults").getElementsByTagName("thead")[0],
             versionElement = document.getElementById("version"),
             config = getConfiguration(),
-            benchmark = new Benchmark(canvasElement),
-            renderer = new HTMLResultsRenderer(benchmark, benchmarkResultsElement);
+            documents = config.fileUrls.slice(),
+            matrix = null,
+            column = -1,
+            self = this;
 
         versionElement.textContent = webodf.Version;
-        renderer.setBackgroundColour(config.colour);
-
         loadingScreenElement.style.display = "none";
 
-        benchmark.actions.push(new PreloadDocument(config.fileUrl));
-        benchmark.actions.push(new OpenDocument(config.fileUrl));
-        benchmark.actions.push(new EnterEditMode());
-        benchmark.actions.push(new MoveCursorToEnd());
-        benchmark.actions.push(new MoveCursorToStart());
-        benchmark.actions.push(new InsertLetterA(100));
-        benchmark.actions.push(new RemovePositions(100, true));
-        benchmark.actions.push(new MoveCursorToEndDirect());
-        benchmark.actions.push(new InsertLetterA(1));
-        benchmark.actions.push(new InsertLetterA(100));
-        benchmark.actions.push(new RemovePositions(1, true));
-        benchmark.actions.push(new MoveCursorLeft(1));
-        benchmark.actions.push(new MoveCursorLeft(100));
-        benchmark.actions.push(new RemovePositions(1, false));
-        benchmark.actions.push(new RemovePositions(100, true));
-        benchmark.actions.push(new SelectEntireDocument());
-        benchmark.actions.push(new BoldCurrentSelection());
-        benchmark.actions.push(new AlignCurrentSelectionJustified());
-        benchmark.actions.push(new SaveDocument());
-        if (config.includeSlow) {
-            benchmark.actions.push(new RemoveCurrentSelection());
+        /**
+         * A line that says which document the rows under it belong to.
+         * @param {!string} fileUrl
+         * @return {undefined}
+         */
+        function writeHeading(fileUrl) {
+            var row = document.createElement("tr"),
+                cell = document.createElement("th");
+            cell.colSpan = 5;
+            cell.textContent = fileUrl;
+            cell.style.textAlign = "left";
+            cell.style.paddingTop = "1em";
+            row.appendChild(cell);
+            benchmarkResultsElement.appendChild(row);
         }
 
-        this.start = benchmark.start;
+        /**
+         * @param {!string} fileUrl
+         * @param {!function():undefined} callback
+         * @return {undefined}
+         */
+        function runOne(fileUrl, callback) {
+            var benchmark = new Benchmark(canvasElement),
+                renderer;
+
+            if (config.matrix) {
+                column += 1;
+            } else {
+                renderer = new HTMLResultsRenderer(benchmark, benchmarkResultsElement);
+                renderer.setBackgroundColour(config.colour);
+                writeHeading(fileUrl);
+            }
+
+            benchmark.actions.push(new PreloadDocument(fileUrl));
+            benchmark.actions.push(new OpenDocument(fileUrl));
+            benchmark.actions.push(new EnterEditMode());
+            benchmark.actions.push(new MoveCursorToEnd());
+            benchmark.actions.push(new MoveCursorToStart());
+            benchmark.actions.push(new InsertLetterA(100));
+            benchmark.actions.push(new RemovePositions(100, true));
+            benchmark.actions.push(new MoveCursorToEndDirect());
+            benchmark.actions.push(new InsertLetterA(1));
+            benchmark.actions.push(new InsertLetterA(100));
+            benchmark.actions.push(new RemovePositions(1, true));
+            benchmark.actions.push(new MoveCursorLeft(1));
+            benchmark.actions.push(new MoveCursorLeft(100));
+            benchmark.actions.push(new RemovePositions(1, false));
+            benchmark.actions.push(new RemovePositions(100, true));
+            benchmark.actions.push(new SelectEntireDocument());
+            benchmark.actions.push(new BoldCurrentSelection());
+            benchmark.actions.push(new AlignCurrentSelectionJustified());
+            benchmark.actions.push(new SaveDocument());
+            if (config.includeSlow) {
+                benchmark.actions.push(new RemoveCurrentSelection());
+            }
+
+            if (config.matrix) {
+                matrix.follow(benchmark, column);
+            }
+            benchmark.subscribe("complete", callback);
+            benchmark.start();
+        }
+
+        // The documents are measured one after the other, in one table: a run
+        // is read as a whole, and two runs are compared line by line.
+        function runNext() {
+            var fileUrl = documents.shift();
+            if (fileUrl) {
+                runOne(fileUrl, runNext);
+            }
+        }
+
+        if (config.matrix) {
+            matrix = new HTMLMatrixRenderer(benchmarkResultsElement,
+                benchmarkHeadElement, config.fileUrls);
+        }
+
+        self.start = runNext;
     }
 
     return HTMLBenchmark;
