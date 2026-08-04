@@ -39,6 +39,9 @@
     document.getElementById("empty").style.display = "none";
     about.style.display = "none";
     canvas = new odf.OdfCanvas(container);
+    // A text is drawn over pages, as it is printed, which the library does
+    // not do on its own.
+    canvas.setPaginated(true);
     canvas.addListener("statereadychange", fit);
     window.addEventListener("resize", fit);
     canvas.load(url);

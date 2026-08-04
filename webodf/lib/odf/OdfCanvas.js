@@ -37,14 +37,25 @@
     function LoadingQueue() {
         var /**@type{!Array.<!Function>}*/
             queue = [],
-            taskRunning = false;
+            taskRunning = false,
+            /**@type{!boolean}*/
+            destroyed = false,
+            /**@type{!number}*/
+            timeoutId = -1;
         /**
          * @param {!Function} task
          * @return {undefined}
          */
         function run(task) {
             taskRunning = true;
-            runtime.setTimeout(function () {
+            timeoutId = runtime.setTimeout(function () {
+                // The queue outlives the canvas by the time of one timeout: a
+                // task that runs after the canvas was destroyed draws into a
+                // document that was taken apart, and holds it from being
+                // collected.
+                if (destroyed) {
+                    return;
+                }
                 try {
                     task();
                 } catch (/**@type{Error}*/e) {
@@ -61,6 +72,18 @@
          */
         this.clearQueue = function () {
             queue.length = 0;
+        };
+        /**
+         * Drop what is waiting and what was about to run.
+         * @return {undefined}
+         */
+        this.destroy = function () {
+            destroyed = true;
+            queue.length = 0;
+            if (timeoutId !== -1) {
+                runtime.clearTimeout(timeoutId);
+                timeoutId = -1;
+            }
         };
         /**
          * @param {!Function} loadingTask
@@ -309,25 +332,23 @@
      * @param {!string} x svg:x
      * @param {?string} horizontalPos style:horizontal-pos
      * @param {?string} horizontalRel style:horizontal-rel
-     * @param {!Element} frame
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {!number}
      */
-    function getHorizontalOffset(x, horizontalPos, horizontalRel, frame) {
-        var parentRect = frame.parentElement.getBoundingClientRect(),
-            pageRect,
-            nx = 0;
+    function getHorizontalOffset(x, horizontalPos, horizontalRel, margins) {
+        var nx = 0;
         if (horizontalPos === null || horizontalPos === "from-left"
                 || horizontalPos === "from-inside") {
             nx = odfUtils.convertToPx(x || 0);
         }
+        // What the standard calls the page is the sheet, margins included,
+        // where "page-content" is the area a text is written in. A frame is
+        // laid out inside that area, so a distance from the edge of the sheet
+        // is written as the distance from the area, less the margin, and it is
+        // read from the page layout rather than from the rectangles of the
+        // moment: nothing is drawn yet when this is written.
         if (horizontalRel === "page") {
-            pageRect = odfUtils.getPageRect(frame);
-            if (parentRect) {
-                nx -= parentRect.left;
-            }
-            if (pageRect) {
-                nx += pageRect.left;
-            }
+            nx -= margins.left;
         }
         return nx;
     }
@@ -337,24 +358,16 @@
      * @param {!string} y svg:y
      * @param {?string} verticalPos style:vertical-pos
      * @param {?string} verticalRel style:vertical-rel
-     * @param {!Element} frame
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {!number}
      */
-    function getVerticalOffset(y, verticalPos, verticalRel, frame) {
-        var parentRect = frame.parentElement.getBoundingClientRect(),
-            pageRect,
-            ny = 0;
+    function getVerticalOffset(y, verticalPos, verticalRel, margins) {
+        var ny = 0;
         if (verticalPos === null || verticalPos === "from-top") {
             ny = odfUtils.convertToPx(y || 0);
         }
         if (verticalRel === "page") {
-            pageRect = odfUtils.getPageRect(frame);
-            if (parentRect) {
-                ny -= parentRect.top;
-            }
-            if (pageRect) {
-                ny += pageRect.top;
-            }
+            ny -= margins.top;
         }
         return ny;
     }
@@ -364,9 +377,10 @@
      * @param {string} styleid
      * @param {!Element} frame
      * @param {!CSSStyleSheet} stylesheet
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {undefined}
      **/
-    function setDrawElementPosition(odfnode, styleid, frame, stylesheet) {
+    function setDrawElementPosition(odfnode, styleid, frame, stylesheet, margins) {
         frame.setAttributeNS(webodfhelperns, 'styleid', styleid);
         var rule,
             anchor = frame.getAttributeNS(textns, 'anchor-type') || "paragraph",
@@ -412,26 +426,30 @@
             }
         }
 
+        properties = styleInfo.getStyleProperties(odfnode.styles,
+                odfnode.automaticStyles, styleName, "graphic",
+                {
+            style: {
+                "vertical-pos": null,
+                "vertical-rel": null,
+                "horizontal-pos": null,
+                "horizontal-rel": null
+            }
+        })["style"];
         if (anchor === "as-char") {
             rule = 'display: inline-block;';
-        } else if (x || y || frame.hasAttributeNS(textns, 'anchor-type')) {
+        } else if (x || y || frame.hasAttributeNS(textns, 'anchor-type')
+                || properties["horizontal-rel"] || properties["vertical-rel"]) {
             // Where the frame says where it goes, it goes there: the offset is
             // read from the style, that tells what the position is relative to,
-            // the page or the paragraph, see "getHorizontalOffset".
-            properties = styleInfo.getStyleProperties(odfnode.styles,
-                    odfnode.automaticStyles, styleName, "graphic",
-                    {
-                style: {
-                    "vertical-pos": null,
-                    "vertical-rel": null,
-                    "horizontal-pos": null,
-                    "horizontal-rel": null
-                }
-            })["style"];
+            // the page or the paragraph, see "getHorizontalOffset". A frame
+            // that names no place of its own but says what it is placed
+            // against, "style:horizontal-rel", is placed all the same: it is
+            // how a frame is written flush to a corner of the sheet.
             x = getHorizontalOffset(x, properties["horizontal-pos"],
-                     properties["horizontal-rel"], frame);
+                     properties["horizontal-rel"], margins);
             y = getVerticalOffset(y, properties["vertical-pos"],
-                     properties["vertical-rel"], frame);
+                     properties["vertical-rel"], margins);
             rule = 'position: absolute;';
             rule += 'left: ' + x + 'px;';
             rule += 'top: ' + y + 'px;';
@@ -3100,9 +3118,10 @@
     /**
      * @param {!odf.ODFDocumentElement} odfnode
      * @param {!CSSStyleSheet} stylesheet
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {undefined}
      **/
-    function modifyDrawElements(odfnode, stylesheet) {
+    function modifyDrawElements(odfnode, stylesheet, margins) {
         var node,
             odfbody = odfnode.body,
             /**@type{!Array.<!Element>}*/
@@ -3128,7 +3147,8 @@
         // adjust all the frame positions
         for (i = 0; i < drawElements.length; i += 1) {
             node = drawElements[i];
-            setDrawElementPosition(odfnode, 'frame' + String(i), node, stylesheet);
+            setDrawElementPosition(odfnode, 'frame' + String(i), node, stylesheet,
+                margins);
         }
         formatParagraphAnchors(odfbody);
     }
@@ -3139,9 +3159,10 @@
      * @param {!Element} shadowContent
      * @param {!odf.ODFDocumentElement} odfnode
      * @param {!CSSStyleSheet} stylesheet
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {undefined}
      **/
-    function cloneMasterPages(formatting, odfContainer, shadowContent, odfnode, stylesheet) {
+    function cloneMasterPages(formatting, odfContainer, shadowContent, odfnode, stylesheet, margins) {
         var masterPageName,
             masterPageElement,
             styleId,
@@ -3181,7 +3202,8 @@
                             /**@type{!Element}*/(elementToClone))) {
                         clonedElement = /**@type{!Element}*/(elementToClone.cloneNode(true));
                         clonedPageElement.appendChild(clonedElement);
-                        setDrawElementPosition(odfnode, styleId + '_' + i, clonedElement, stylesheet);
+                        setDrawElementPosition(odfnode, styleId + '_' + i, clonedElement,
+                            stylesheet, margins);
                     }
                     elementToClone = elementToClone.nextElementSibling;
                     i += 1;
@@ -3192,7 +3214,8 @@
                 // Position all elements
                 clonedDrawElements = domUtils.getElementsByTagNameNS(clonedPageElement, drawns, '*');
                 for (i = 0; i < clonedDrawElements.length; i += 1) {
-                    setDrawElementPosition(odfnode, styleId + '_' + i, clonedDrawElements[i], stylesheet);
+                    setDrawElementPosition(odfnode, styleId + '_' + i, clonedDrawElements[i],
+                        stylesheet, margins);
                 }
 
                 // Append the cloned master page to the "Shadow Content" element outside the main ODF dom
@@ -3209,7 +3232,8 @@
                 setContainerValue(clonedPageElement, presentationns, 'footer', getHeaderFooter(odfContainer, /**@type{!Element}*/(element), 'footer'));
 
                 // Now call setDrawElementPosition on this new page to set the proper dimensions
-                setDrawElementPosition(odfnode, styleId, clonedPageElement, stylesheet);
+                setDrawElementPosition(odfnode, styleId, clonedPageElement, stylesheet,
+                    margins);
                 // Add a custom attribute with the style name of the normal page, so the CSS rules created for the styles of the normal page
                 // to display/hide frames of certain classes from the master page can address the cloned master page belonging to that normal page
                 // Cmp. addDrawPageFrameDisplayRules in Style2CSS
@@ -3413,8 +3437,10 @@
             shadowContent,
             /**@type{!number}*/
             autofitCounter = 0,
-            /**@type{!HTMLDivElement}*/
-            pagesDiv,
+            /**@type{?HTMLDivElement}*/
+            pagesDiv = null,
+            /**@type{!boolean}*/
+            paginated = false,
             /**@type{!Object.<string,!Array.<!Function>>}*/
             eventHandlers = {},
             waitingForDoneTimeoutId,
@@ -3816,13 +3842,83 @@
         }
 
         /**
+         * Break a text over pages, when the reader asked for it.
+         *
+         * The pages are boxes that float to the right of the text, of the
+         * height a page has in the document: the text flows around them, so it
+         * breaks where a page ends, and the gap between two pages is a box of
+         * its own. Nothing of the text is moved, which is what lets a selection
+         * and a search cross a page.
+         *
+         * Only a text is broken over pages: a presentation is drawn as the
+         * slides it is made of, and a spreadsheet as its tables.
+         * @param {!odf.OdfContainer} container
+         * @param {!odf.ODFDocumentElement} odfnode
+         * @return {undefined}
+         */
+        function drawPages(container, odfnode) {
+            if (pagesDiv && pagesDiv.parentNode) {
+                pagesDiv.parentNode.removeChild(pagesDiv);
+            }
+            pagesDiv = null;
+            if (!paginated
+                    || !domUtils.getDirectChild(odfnode.body, officens, 'text')) {
+                // A text drawn as one run is drawn on a ground of its own, as
+                // it was before the pages were drawn. A presentation keeps a
+                // clear ground, so that the gap between two slides is seen.
+                if (sizer
+                        && domUtils.getDirectChild(odfnode.body, officens,
+                            'text')) {
+                    sizer.style.background = "white";
+                }
+                return;
+            }
+            // Each page paints itself from here on, so the box that holds them
+            // is left clear and the ground of the reader is seen between two
+            // of them, as it is between two slides.
+            if (sizer) {
+                sizer.style.background = "";
+            }
+            pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
+            pagesDiv.className = 'webodf-pages';
+            // The header and the footer of each page are laid inside it.
+            pagesDiv.style.position = 'relative';
+            container.getContentElement().parentNode.insertBefore(pagesDiv,
+                container.getContentElement());
+            textLayout.layout(odfnode, pagesDiv, 100);
+        }
+        /**
+         * Draw a text over pages, or as one run of text, which is how it is
+         * drawn until a reader asks otherwise. A reader that asks for it once a
+         * document is drawn has it drawn again.
+         * @param {!boolean} enable
+         * @return {undefined}
+         */
+        this.setPaginated = function (enable) {
+            if (paginated === enable) {
+                return;
+            }
+            paginated = enable;
+            if (odfcontainer && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * @return {!boolean}
+         */
+        this.isPaginated = function () {
+            return paginated;
+        };
+        /**
          * A new content.xml has been loaded. Update the live document with it.
          * @param {!odf.OdfContainer} container
          * @param {!odf.ODFDocumentElement} odfnode
          * @return {undefined}
          **/
         function handleContent(container, odfnode) {
-            var css = /**@type{!CSSStyleSheet}*/(positioncss.sheet);
+            var css = /**@type{!CSSStyleSheet}*/(positioncss.sheet),
+                /**@type{!odf.Formatting.PageGeometry}*/
+                margins;
             // only append the content at the end
             domUtils.removeAllChildNodes(element);
 
@@ -3870,21 +3966,13 @@
             shadowContent.style.left = 0;
             container.getContentElement().appendChild(shadowContent);
 
-            modifyDrawElements(odfnode, css);
-            // The pages are boxes that float to the right of the text, of the
-            // height a page has in the document: the text flows around them, so
-            // it breaks where a page ends, and the gap between two pages is a
-            // box of its own. Nothing of the text is moved, which is what lets
-            // a selection and a search cross a page.
-            // Only a text is broken over pages: a presentation is drawn as
-            // the slides it is made of, and a spreadsheet as its tables.
-            if (domUtils.getDirectChild(odfnode.body, officens, 'text')) {
-                pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
-                pagesDiv.className = 'webodf-pages';
-                container.getContentElement().parentNode.insertBefore(pagesDiv, container.getContentElement());
-                textLayout.layout(odfnode, pagesDiv, 100);
-            }
-            cloneMasterPages(formatting, container, shadowContent, odfnode, css);
+            // The margins of the page, that a frame placed against the sheet is
+            // written from, see "getHorizontalOffset".
+            margins = formatting.getPageMargins("", "paragraph");
+            modifyDrawElements(odfnode, css, margins);
+            drawPages(container, odfnode);
+            cloneMasterPages(formatting, container, shadowContent, odfnode, css,
+                margins);
             modifyTables(odfnode.body, element.namespaceURI);
             modifyLineBreakElements(odfnode.body);
             hideEmptyListItems(odfnode.body, css);
@@ -4290,7 +4378,8 @@
             var frameName = frame.getAttributeNS(drawns, 'name'),
                 fc = frame.firstElementChild;
             setDrawElementPosition(odfcontainer.rootElement, frameName, frame,
-                    /**@type{!CSSStyleSheet}*/(positioncss.sheet));
+                    /**@type{!CSSStyleSheet}*/(positioncss.sheet),
+                    formatting.getPageMargins("", "paragraph"));
             if (fc) {
                 setImage(frameName + 'img', odfcontainer, fc,
                    /**@type{!CSSStyleSheet}*/( positioncss.sheet));
@@ -4305,10 +4394,21 @@
                 cleanup = [pageSwitcher.destroy, redrawContainerTask.destroy];
 
             runtime.clearTimeout(waitingForDoneTimeoutId);
-            // TODO: anything to clean with annotationViewManager?
+            // Nothing of the document is left wrapped or highlighted, and the
+            // manager is dropped with it: it holds every annotation of the
+            // document, and the elements it wrapped them in.
+            if (annotationViewManager) {
+                annotationViewManager.forgetAnnotations();
+                annotationViewManager = null;
+            }
             if (annotationsPane && annotationsPane.parentNode) {
                 annotationsPane.parentNode.removeChild(annotationsPane);
             }
+            // The pages a text was broken over, that hang beside the content.
+            if (pagesDiv && pagesDiv.parentNode) {
+                pagesDiv.parentNode.removeChild(pagesDiv);
+            }
+            pagesDiv = null;
 
             zoomHelper.destroy(function () {
                 if (sizer) {
@@ -4323,7 +4423,9 @@
             head.removeChild(stylesxmlcss);
             head.removeChild(positioncss);
 
-            // TODO: loadingQueue, make sure it is empty
+            // What was waiting to be loaded is dropped: a task that runs
+            // after this holds a document that no one reads any more.
+            loadingQueue.destroy();
             webodfcore.Async.destroyAll(cleanup, callback);
         };
 
