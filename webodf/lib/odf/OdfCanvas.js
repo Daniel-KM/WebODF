@@ -2721,12 +2721,13 @@
      * @param {!string} lineId
      * @param {!odf.ODFDocumentElement} rootElement
      * @param {!CSSStyleSheet} stylesheet
+     * @param {?{borderTopStyle:!string,borderTopColor:!string,borderTopWidth:!string,color:!string}} computed
+     *                  what the line is drawn with, read before any rule was
+     *                  written, see "loadLines"
      * @return {undefined}
      */
-    function renderLine(line, lineId, rootElement, stylesheet) {
-        var window = runtime.getWindow(),
-            computed = window && window.getComputedStyle(line, null),
-            x1 = parseLength(line.getAttributeNS(svgns, "x1")),
+    function renderLine(line, lineId, rootElement, stylesheet, computed) {
+        var x1 = parseLength(line.getAttributeNS(svgns, "x1")),
             y1 = parseLength(line.getAttributeNS(svgns, "y1")),
             x2 = parseLength(line.getAttributeNS(svgns, "x2")),
             y2 = parseLength(line.getAttributeNS(svgns, "y2")),
@@ -2822,10 +2823,35 @@
      */
     function loadLines(odfbody, rootElement, stylesheet) {
         var lines = domUtils.getElementsByTagNameNS(odfbody, drawns, "line"),
+            /**@type{!Array.<?{borderTopStyle:!string,borderTopColor:!string,borderTopWidth:!string,color:!string}>}*/
+            styles = [],
+            /**@type{?CSSStyleDeclaration}*/
+            computed,
+            window = runtime.getWindow(),
             i;
+        // The style each line is drawn with is read for all of them before
+        // any rule is written: a rule that is written tells the browser to
+        // work out the style of every element of the document again, and
+        // reading the style of the next line makes it do so at once. Seven
+        // lines in a document of twenty thousand nodes cost seven seconds
+        // that way, and one reading answers for all of them.
+        for (i = 0; i < lines.length; i += 1) {
+            computed = window
+                ? window.getComputedStyle(lines[i], null)
+                : null;
+            styles.push(computed
+                ? {
+                    borderTopStyle: String(computed.borderTopStyle),
+                    borderTopColor: String(computed.borderTopColor),
+                    borderTopWidth: String(computed.borderTopWidth),
+                    color: String(computed.color)
+                }
+                : null);
+        }
         for (i = 0; i < lines.length; i += 1) {
             try {
-                renderLine(lines[i], "line" + i, rootElement, stylesheet);
+                renderLine(lines[i], "line" + i, rootElement, stylesheet,
+                    styles[i]);
             } catch (/**@type{*}*/e) {
                 runtime.log("could not render line: " + String(e));
             }
