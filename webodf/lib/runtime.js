@@ -1256,8 +1256,8 @@ function RhinoRuntime() {
         // The global object is seen as a map holding them, since the type of
         // the compiler for globalThis refuses an object of constants alone.
         javaNode = Packages.org.w3c.dom.Node,
-        /**@type{!{Node:(!Function|undefined),NodeFilter:(!Object|undefined)}}*/
-        globalScope = /**@type{!{Node:(!Function|undefined),NodeFilter:(!Object|undefined)}}*/(globalThis),
+        /**@type{!{Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined)}}*/
+        globalScope = /**@type{!{Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined)}}*/(globalThis),
         /**@type{!Packages.javax.xml.parsers.DocumentBuilder}*/
         builder,
         entityresolver,
@@ -1265,6 +1265,9 @@ function RhinoRuntime() {
         currentDirectory = "";
     if (!globalScope.Node) {
         globalScope.Node = javaNode;
+    }
+    if (!globalScope.Element) {
+        globalScope.Element = Packages.org.w3c.dom.Element;
     }
     if (!globalScope.NodeFilter) {
         // Only the constants are used, so the object does not implement the

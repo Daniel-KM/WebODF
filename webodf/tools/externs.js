@@ -437,6 +437,11 @@ Packages.org.w3c.dom = {};
 Packages.org.w3c.dom.Node;
 
 /**
+ * @const {!Function}
+ */
+Packages.org.w3c.dom.Element;
+
+/**
  * @type {!StyleSheet}
  */
 HTMLStyleElement.prototype.sheet;

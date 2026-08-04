@@ -80,8 +80,28 @@ var tests = [
     webodfcore.Base64Tests
 ];
 
+/**
+ * The tests below need a dom close to the one of a browser: a range, and lists
+ * of nodes read with an index, that the dom of java, used by Rhino, does not
+ * provide.
+ * @return {!boolean}
+ */
+function hasBrowserLikeDom() {
+    "use strict";
+    var doc = runtime.parseXML("<a><b/></a>");
+    if (!runtime.getDOMImplementation() || !doc || !doc.createRange) {
+        return false;
+    }
+    try {
+        // A dom of java throws instead of returning undefined.
+        return Boolean(doc.documentElement && doc.documentElement.childNodes[0]);
+    } catch (ignore) {
+        return false;
+    }
+}
+
 // add tests depending on runtime with XML parser
-if (runtime.getDOMImplementation() && runtime.parseXML("<a/>").createRange) {
+if (hasBrowserLikeDom()) {
 // TODO: fix test and enable
 //     tests.push(webodfcore.CursorTests);
     tests.push(webodfcore.PositionIteratorTests);
