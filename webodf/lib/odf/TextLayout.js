@@ -935,6 +935,13 @@ odf.TextLayout = function TextLayout() {
         // canvas's to set, and the document is read as broken when it is.
         line = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "div"));
         line.style.position = "relative";
+        // The stops of the line are written on it: a tab goes to the first
+        // stop past what stands before it, which is known once the line is
+        // drawn and measured, see "spreadLines".
+        line.setAttributeNS(webodfhelperns, "webodfhelper:stops",
+            stops.map(function (stop) {
+                return String(Math.round(stop.at)) + ":" + stop.type;
+            }).join(","));
         paragraph.appendChild(line);
         // The line of the paragraph holds its own height from here on: the
         // zero width space that keeps an empty paragraph from collapsing
@@ -1034,6 +1041,26 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
+     * The tab stops a line was drawn with, as it carries them.
+     * @param {!HTMLElement} line
+     * @return {!Array.<!odf.TextLayout.TabStop>}
+     */
+    function stopsOfLine(line) {
+        var written = line.getAttributeNS(webodfhelperns, "stops") || "",
+            /**@type{!Array.<!odf.TextLayout.TabStop>}*/
+            stops = [];
+        if (!written) {
+            return stops;
+        }
+        written.split(",").forEach(function (one) {
+            var parts = one.split(":");
+            if (parts.length === 2) {
+                stops.push({at: parseFloat(parts[0]), type: parts[1]});
+            }
+        });
+        return stops;
+    }
+    /**
      * Push the parts of the lines apart where they would be written over.
      *
      * A part is laid at its stop, and a part that runs past the next stop
@@ -1099,21 +1126,59 @@ odf.TextLayout = function TextLayout() {
                 /**@type{!number}*/
                 right = room[l],
                 /**@type{!number}*/
-                gap = 4;
+                gap = 4,
+                /**@type{!number}*/
+                left = boxOf[l].getBoundingClientRect().left,
+                stops = stopsOfLine(boxOf[l]),
+                /**@type{!number}*/
+                next = 0;
             pieces.forEach(function (piece, i) {
                 var rect = rects[l][i],
+                    /**@type{?odf.TextLayout.TabStop}*/
+                    stop,
+                    /**@type{!number}*/
+                    at,
                     push;
+                push = 0;
+                if (i > 0 && stops.length > 0) {
+                    // A tab goes to the first stop past what stands before
+                    // it, and not to the stop of its own number: a line whose
+                    // words run past the stop in the middle goes on to the
+                    // one on the right, as an office writes it.
+                    while (next < stops.length
+                            && left + stops[next].at < edge + gap) {
+                        next += 1;
+                    }
+                    if (next < stops.length) {
+                        stop = stops[next];
+                        // The stop is taken by the tab whether anything is
+                        // written after it or not: a line that holds two
+                        // tabs and nothing between them writes what follows
+                        // against the second stop.
+                        next += 1;
+                        at = left + stop.at;
+                        if (stop.type === "right") {
+                            at -= rect.width;
+                        } else if (stop.type === "center") {
+                            at -= rect.width / 2;
+                        }
+                        push = at - rect.left;
+                    }
+                }
                 if (rect.width === 0) {
+                    // Nothing is drawn of it, so nothing is moved and
+                    // nothing stands in the way of what follows.
                     return;
                 }
-                push = 0;
-                if (edge > 0 && rect.left < edge + gap) {
+                if (edge > 0 && rect.left + push < edge + gap) {
                     // A blank is left between two parts that were pushed
                     // together, so the two are still read as two.
                     push = Math.min(edge + gap - rect.left,
                         Math.max(0, right - rect.right));
-                    // The part is already drawn against its stop, and is
-                    // only pushed from where it stands.
+                }
+                if (push !== 0) {
+                    // The part is already drawn against a stop, and is only
+                    // moved from where it stands.
                     piece.style.transform = piece.style.transform
                         + " translateX(" + push + "px)";
                 }
@@ -1354,6 +1419,25 @@ odf.TextLayout = function TextLayout() {
             top += getTop(/**@type{!Element}*/(he.offsetParent));
         }
         return top;
+    }
+    /**
+     * Lay the tabs of every paragraph of a text at their stops.
+     *
+     * It is done once for a document, whatever asks for it: the canvas asks
+     * as it draws, and the pages ask before they are broken, as a canvas
+     * that draws over pages takes the text out of the document to fill them
+     * and there is nothing left to lay out by then.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {undefined}
+     */
+    function layOutTabsOfText(odfroot) {
+        var text = getOfficeText(odfroot);
+        if (!text) {
+            return;
+        }
+        paragraphsOf(text).forEach(function (paragraph) {
+            layOutTabsInText(odfroot, paragraph);
+        });
     }
     /**
      * The master page a paragraph asks for, where it asks for one: a style of
@@ -3266,6 +3350,28 @@ odf.TextLayout = function TextLayout() {
         state.page += 1;
     }
     /**
+     * Put back in the text what a layout that is under way holds aside.
+     *
+     * The pages are filled a few at a time, and what is not written yet
+     * waits out of the document: a layout that begins while another is still
+     * filling would find the text short of everything that waits, and would
+     * draw the pages that were drawn already and nothing else. A reader that
+     * asks for two pages to a row in the middle of the filling asks for
+     * exactly that.
+     * @param {!Element} text
+     * @return {undefined}
+     */
+    function giveBackWaiting(text) {
+        if (!filling || filling.text !== text) {
+            filling = null;
+            return;
+        }
+        while (filling.waiting.length > 0) {
+            text.appendChild(/**@type{!Node}*/(filling.waiting.shift()));
+        }
+        filling = null;
+    }
+    /**
      * Make ready to break a text into pages: the rules the pages are drawn
      * by are written, and what is to be written is taken out of the document
      * while it is laid out, as a text that waits in the document is laid out
@@ -3355,6 +3461,9 @@ odf.TextLayout = function TextLayout() {
         // paragraphs of the document are read to know where a master page
         // changes, and they are read from the text itself.
         unwrapColumnRuns(text);
+        unwrapPageBoxes(text);
+        giveBackWaiting(text);
+        layOutTabsOfText(odfroot);
         plan = new PagePlan(odfroot);
         markPageBreaks(odfroot);
         runs = wrapColumnRuns(odfroot, plan);
@@ -3698,6 +3807,8 @@ odf.TextLayout = function TextLayout() {
         }
         unwrapColumnRuns(text);
         unwrapPageBoxes(text);
+        giveBackWaiting(text);
+        layOutTabsOfText(odfroot);
         plan = new PagePlan(odfroot);
         markPageBreaks(odfroot);
         columnPageOrigins = [];
@@ -3744,13 +3855,7 @@ odf.TextLayout = function TextLayout() {
      * @return {undefined}
      */
     this.layOutTabs = function (odfroot) {
-        var text = getOfficeText(odfroot);
-        if (!text) {
-            return;
-        }
-        paragraphsOf(text).forEach(function (paragraph) {
-            layOutTabsInText(odfroot, paragraph);
-        });
+        layOutTabsOfText(odfroot);
     };
     /**
      * The way a text is drawn over pages.
