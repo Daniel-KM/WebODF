@@ -3,6 +3,7 @@
  * This is a generated file. DO NOT EDIT.
  *
  * Copyright (C) 2010-2015 KO GmbH <copyright@kogmbh.com>
+ * Copyright (C) 2026 Daniel Berthereau <Daniel.git@Berthereau.net>
  *
  * @licstart
  * This file is the compiled version of the WebODF library.
