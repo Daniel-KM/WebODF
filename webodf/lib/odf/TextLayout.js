@@ -34,6 +34,25 @@ odf.TextLayout = function TextLayout() {
         fons = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
         stylens = "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
         textns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+        dcns = "http://purl.org/dc/elements/1.1/",
+        metans = "urn:oasis:names:tc:opendocument:xmlns:meta:1.0",
+        /**
+         * The fields a header or a footer carries that the metadata of the
+         * document answers, and where each one is read from. The rest of the
+         * fields keep the text the document was written with, which is what a
+         * document says of itself and what an office suite would show as well
+         * until it is edited again.
+         * @const
+         * @type{!Array.<!{field:!string, ns:!string, name:!string}>}
+         */
+        metaFields = [
+            {field: "title", ns: dcns, name: "title"},
+            {field: "subject", ns: dcns, name: "subject"},
+            {field: "description", ns: dcns, name: "description"},
+            {field: "author-name", ns: dcns, name: "creator"},
+            {field: "initial-creator", ns: metans, name: "initial-creator"},
+            {field: "keywords", ns: metans, name: "keyword"}
+        ],
         /**
          * The gap between two pages, in pixels: the one the readers of pdf
          * draw, ten pixels, and the one the slides of a presentation are drawn
@@ -425,6 +444,26 @@ odf.TextLayout = function TextLayout() {
         return timeLeft;
     }
     /**
+     * What the metadata of the document says of itself, for the fields a
+     * header or a footer may carry. A field that the metadata does not answer
+     * is left with the text the document was written with.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {!Object.<!string,!string>}
+     */
+    function readMeta(odfroot) {
+        var meta = {},
+            node;
+        metaFields.forEach(function (entry) {
+            node = odfroot.meta
+                ? domUtils.getDirectChild(odfroot.meta, entry.ns, entry.name)
+                : null;
+            if (node && node.textContent) {
+                meta[entry.field] = node.textContent;
+            }
+        });
+        return meta;
+    }
+    /**
      * Copy what a master page writes in a header or in a footer, and put the
      * number of the page where the document asks for it. The nodes are of the
      * document, so the styles of the document draw them as they draw the text.
@@ -432,21 +471,29 @@ odf.TextLayout = function TextLayout() {
      * @param {!HTMLDivElement} box
      * @param {!number} page the number of the page, from one
      * @param {!number} pages how many pages there are
+     * @param {!Object.<!string,!string>} meta what the document says of itself
      * @return {undefined}
      */
-    function fillPageArea(source, box, page, pages) {
-        var doc = box.ownerDocument,
-            fields,
-            i;
+    function fillPageArea(source, box, page, pages, meta) {
+        var doc = box.ownerDocument;
+        /**
+         * @param {!string} name
+         * @param {!string} value
+         * @return {undefined}
+         */
+        function fill(name, value) {
+            var fields = box.getElementsByTagNameNS(textns, name),
+                i;
+            for (i = 0; i < fields.length; i += 1) {
+                fields[i].textContent = value;
+            }
+        }
         box.appendChild(doc.importNode(source, true));
-        fields = box.getElementsByTagNameNS(textns, "page-number");
-        for (i = 0; i < fields.length; i += 1) {
-            fields[i].textContent = String(page);
-        }
-        fields = box.getElementsByTagNameNS(textns, "page-count");
-        for (i = 0; i < fields.length; i += 1) {
-            fields[i].textContent = String(pages);
-        }
+        fill("page-number", String(page));
+        fill("page-count", String(pages));
+        Object.keys(meta).forEach(function (name) {
+            fill(name, meta[name]);
+        });
     }
     /**
      * The header or the footer a page carries. A master page may write one for
@@ -485,9 +532,10 @@ odf.TextLayout = function TextLayout() {
      * that was left, one for each page. Nothing of the text is touched.
      * @param {!odf.TextLayout.PageDimensions} dims
      * @param {!HTMLDivElement} pagesDiv
+     * @param {!Object.<!string,!string>} meta what the document says of itself
      * @return {undefined}
      */
-    function drawPageFurniture(dims, pagesDiv) {
+    function drawPageFurniture(dims, pagesDiv, meta) {
         var doc = pagesDiv.ownerDocument,
             htmlns = pagesDiv.namespaceURI,
             pages = countPages(pagesDiv),
@@ -524,7 +572,7 @@ odf.TextLayout = function TextLayout() {
                 // two lines where one was asked for grows into the margin
                 // rather than being cut.
                 box.style.minHeight = dims.header.height + "px";
-                fillPageArea(header, box, n + 1, pages);
+                fillPageArea(header, box, n + 1, pages, meta);
                 pagesDiv.appendChild(box);
             }
             if (footer) {
@@ -537,7 +585,7 @@ odf.TextLayout = function TextLayout() {
                 box.style.top = (top + dims.pageHeight - dims.marginBottom
                     + dims.footer.gap) + "px";
                 box.style.minHeight = dims.footer.height + "px";
-                fillPageArea(footer, box, n + 1, pages);
+                fillPageArea(footer, box, n + 1, pages, meta);
                 pagesDiv.appendChild(box);
             }
         }
@@ -558,7 +606,7 @@ odf.TextLayout = function TextLayout() {
         }
         updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
         updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
-        drawPageFurniture(dims, pagesDiv);
+        drawPageFurniture(dims, pagesDiv, readMeta(odfroot));
         return maxTime > 0;
     }
     this.layout = layout;
