@@ -289,8 +289,12 @@
             }
 
             // Apply the counter increment to EVERY list item in this list that has content (AKA a visible list label)
+            // An item that was cut where a page ends is written again on the
+            // page that follows, and what is left of it is no new item of
+            // the list: it carries the number of the item it is the end of,
+            // and never one of its own.
             newRule = 'text|list[webodfhelper|counter-id="' + newListSelectorId + '"]';
-            newRule += ' > text|list-item > :not(text|list):first-child:before';
+            newRule += ' > text|list-item:not([webodfhelper|continued]) > :not(text|list):first-child:before';
             newRule += '{';
             newRule += contentRule;
             newRule += 'counter-increment: ' + newListCounterId + ';';
