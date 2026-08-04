@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "OpenDocument Viewer",
     "version": "@WEBODF_MANIFEST_VERSION@",
-    "description": "Viewer for files in OpenDocument Format (ODF), powered by WebODF, using only web standard technologies.",
+    "description": "Light reader for .odt, .ods and .odp documents of LibreOffice, OpenOffice and Office 365, without an office suite.",
     "author": "Daniel Berthereau",
     "homepage_url": "http://webodf.org/",
     "minimum_chrome_version": "88",
