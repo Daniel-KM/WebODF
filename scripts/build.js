@@ -36,12 +36,18 @@ function main() {
         return Promise.resolve();
     }
     terser = require("terser");
+    // The declaration is dropped and the value passed as a definition instead:
+    // terser only folds an identifier it holds as a constant, and a declared
+    // variable is not one. Folding it removes the loader of the classes and the
+    // runner of the scripts from the compiled library, that both read a file
+    // with eval() and are only used on the sources.
+    code = code.replace("var IS_COMPILED_CODE = true;", "");
     // ecma 5 because the sources are still written for ECMAScript 3. Three
-    // passes give the same size as the previous closure compiler, that is
-    // eight percent smaller than a single pass.
+    // passes give the same size as the previous closure compiler, that is eight
+    // percent smaller than a single pass.
     return terser.minify(code, {
         ecma: 5,
-        compress: {passes: 3},
+        compress: {passes: 3, global_defs: {IS_COMPILED_CODE: true}},
         mangle: true,
         // The license of each source file is dropped: the header of the
         // compiled file covers the whole result.
