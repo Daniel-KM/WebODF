@@ -2357,6 +2357,25 @@ odf.TextLayout = function TextLayout() {
         return null;
     }
     /**
+     * Whether an element is drawn out of the flow of the text.
+     *
+     * A frame anchored to the page is set against the page and stands where
+     * the page says, so it is not read with what follows the text: the
+     * browser is asked, and only of the few elements that may be so.
+     * @param {!Element} element
+     * @return {!boolean}
+     */
+    function isOutOfFlow(element) {
+        var style;
+        if (element.namespaceURI !== drawns) {
+            return false;
+        }
+        style = runtime.getWindow().getComputedStyle(element);
+        return style
+            ? style.position === "absolute" || style.position === "fixed"
+            : false;
+    }
+    /**
      * Whether what a box holds is taller than the box.
      * @param {!Element} box
      * @param {?Node=} from the first node to read, the head of the box by
@@ -2369,6 +2388,7 @@ odf.TextLayout = function TextLayout() {
             edge = box.getBoundingClientRect().bottom,
             /**@type{?Node}*/
             node = from || box.firstChild,
+            range = doc.createRange(),
             /**@type{!ClientRect}*/
             rect;
         // Every child is read and not the last of them alone: a frame set
@@ -2380,12 +2400,31 @@ odf.TextLayout = function TextLayout() {
         // filled a few nodes at a time is read from the first of them and
         // not from the head of the page, which would read a page of a
         // hundred nodes a hundred times over.
+        if (!node) {
+            return false;
+        }
+        // The nodes are read in one measure and not one by one: a range that
+        // holds them all answers with the rectangle that holds what they are
+        // drawn as, which is the one the page is read against. A page filled
+        // by chunks of sixty-four nodes is measured once for the chunk and
+        // not sixty-four times.
+        range.setStartBefore(node);
+        range.setEndAfter(/**@type{!Node}*/(box.lastChild));
+        rect = range.getBoundingClientRect();
+        if ((rect.height > 0 || rect.width > 0) && rect.bottom > edge + 1) {
+            return true;
+        }
+        // What is drawn out of the flow of the text — a frame set against the
+        // page — stands where the page says and is none of the range: those
+        // are read on their own, and there are few of them.
         while (node) {
-            rect = node.nodeType === Node.TEXT_NODE
-                ? rangeOf(doc, node).getBoundingClientRect()
-                : /**@type{!Element}*/(node).getBoundingClientRect();
-            if ((rect.height > 0 || rect.width > 0) && rect.bottom > edge + 1) {
-                return true;
+            if (node.nodeType === Node.ELEMENT_NODE
+                    && isOutOfFlow(/**@type{!Element}*/(node))) {
+                rect = /**@type{!Element}*/(node).getBoundingClientRect();
+                if ((rect.height > 0 || rect.width > 0)
+                        && rect.bottom > edge + 1) {
+                    return true;
+                }
             }
             node = node.nextSibling;
         }
