@@ -44,6 +44,7 @@ runtime.loadClass("gui.TrivialUndoManagerTests");
 runtime.loadClass("gui.UndoStateRulesTests");
 runtime.loadClass("odf.FormattingTests");
 runtime.loadClass("odf.LayoutTests");
+runtime.loadClass("odf.PageLayoutTests");
 runtime.loadClass("odf.ListStyleToCssTests");
 runtime.loadClass("odf.MaliciousDocumentTests");
 runtime.loadClass("odf.ObjectNameGeneratorTests");
@@ -196,6 +197,7 @@ if (runtime.type() === "BrowserRuntime") {
     tests.push(xmldom.LSSerializerTests);
     tests.push(xmldom.XPathTests);
     tests.push(odf.LayoutTests);
+    tests.push(odf.PageLayoutTests);
     tests.push(odf.StyleCacheTests);
     tests.push(ops.SessionTests);
     tests.push(ops.OperationTests);

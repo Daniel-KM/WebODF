@@ -151,6 +151,12 @@
         "odf.OdfUtils",
         "webodfcore.UnitTester"
     ],
+    "odf.PageLayoutTests": [
+        "odf.Namespaces",
+        "odf.OdfCanvas",
+        "odf.OdfContainer",
+        "webodfcore.UnitTester"
+    ],
     "odf.StyleCacheTests": [
         "odf.OdfContainer",
         "odf.StyleCache",
