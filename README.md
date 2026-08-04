@@ -48,13 +48,14 @@ please study ["README-Building.md"](README-Building.md).
 This repository not only contains code for the library webodf.js, but also a few
 products based on it. Here is the complete list:
 
-build target                 | output location (in build/)           | description                        | download/packages
------------------------------|---------------------------------------|------------------------------------|-----
-webodf.js-target             | webodf/webodf.js                      | the library                        | (see product-library)
-product-library              | webodf.js-x.y.z.zip                   | zip file with library and API docs | [WebODF homepage](http://webodf.org/download)
-product-wodotexteditor       | wodotexteditor-x.y.z.zip              | simple to use editor component     | [WebODF homepage](http://webodf.org/download)
-product-wodocollabtexteditor | wodocollabtexteditor-x.y.z.zip        | collaborative editor component     | [WebODF homepage](http://webodf.org/download)
-product-odfviewer-webext     | firefox-extension-odfviewer-x.y.z.xpi | ODF viewer Firefox add-on          | [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/)
+build target                           | output location (in build/)              | description                              | download/packages
+---------------------------------------|------------------------------------------|------------------------------------------|-----------------------------------------------------------------------------
+webodf.js-target                       | webodf/webodf.js                         | the library                              | (see product-library)
+product-library                        | webodf.js-x.y.z.zip                      | zip file with library and API docs       | [WebODF homepage](http://webodf.org/download)
+product-opendocumenttexteditor         | opendocumenttexteditor-x.y.z.zip         | simple to use editor component           | [WebODF homepage](http://webodf.org/download)
+product-opendocumenttextcollab         | opendocumenttextcollab-x.y.z.zip         | collaborative editor component           | [WebODF homepage](http://webodf.org/download)
+product-opendocumentviewer-webext      | opendocumentviewer-firefox-x.y.z.xpi     | ODF viewer add-on for Firefox and Chrome | [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/)
+product-opendocumentviewer-android     | opendocumentviewer-x.y.z.apk             | ODF viewer application for Android       | (not published yet)
 
 ("x.y.z" is a placeholder for the actual version number)
 

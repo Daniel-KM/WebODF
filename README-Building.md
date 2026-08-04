@@ -384,14 +384,14 @@ with cmake runs "scripts/build.js" as well, see "Two ways to build" above.
 
 ### Running the add-ons without installing them
 
-The three packages of "programs/odfviewer-webext", see "README-Products.md", are
+The three packages of "programs/opendocumentviewer-webext", see "README-Products.md", are
 loaded from their directory, with a profile of their own, so that nothing has to
 be clicked and nothing is kept:
 
 ```sh
-npx web-ext run --source-dir build/firefox-extension-odfviewer-mv2-x.y.z/
+npx web-ext run --source-dir build/opendocumentviewer-firefox-mv2-x.y.z/
 chromium --user-data-dir=$(mktemp -d) --no-first-run \
-    --load-extension=build/chrome-extension-odfviewer-x.y.z/
+    --load-extension=build/opendocumentviewer-chrome-x.y.z/
 ```
 
 web-ext writes a temporary profile, installs the add-on in it and follows the

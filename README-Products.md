@@ -53,12 +53,12 @@ the component in one zip file.
 With a prepared setup for building, you execute this command:
 
 ```sh
-make product-wodotexteditor
+make product-opendocumenttexteditor
 ```
 
-It creates a file "wodotexteditor-x.y.z.zip", which can be copied and used on a
-system where you want to develop using the component. Unzip it there and read
-the included HOWTO.md file.
+It creates a file "opendocumenttexteditor-x.y.z.zip", which can be copied and
+used on a system where you want to develop using the component. Unzip it there
+and read the included HOWTO.md file.
 
 See the online demo on [webodf.org/demo](http://webodf.org/demo) and download
 the latest officially released version from the [WebODF homepage](http://webodf.org/download).
@@ -80,17 +80,17 @@ one zip file.
 With a prepared setup for building, you execute this command:
 
 ```sh
-make product-wodocollabtexteditor
+make product-opendocumenttextcollab
 ```
 
-It creates a file "wodocollabtexteditor-x.y.z.zip", which can be copied and used
-on a system where you want to develop using the component. Unzip it there and
-move the subdirectory "wodo" to your deployment.
+It creates a file "opendocumenttextcollab-x.y.z.zip", which can be copied and
+used on a system where you want to develop using the component. Unzip it there
+and move the subdirectory "wodo" to your deployment.
 
 Download the latest officially released version from the [WebODF homepage](http://webodf.org/download).
 
 
-### Firefox Add-on ODF Viewer
+### OpenDocument Viewer, the add-ons of the browsers
 
 This Firefox add-on enables to view files in the OpenDocument format directly in
 your Firefox browser, without installing a big office suite.
@@ -98,16 +98,16 @@ your Firefox browser, without installing a big office suite.
 With a prepared setup for building, you execute this command:
 
 ```sh
-make product-odfviewer-webext
+make product-opendocumentviewer-webext
 ```
 
 This creates three files:
 
-- "firefox-extension-odfviewer-x.y.z.xpi", of the manifest version 3, that
+- "opendocumentviewer-firefox-x.y.z.xpi", of the manifest version 3, that
   Firefox reads from its version 109, of 2023;
-- "firefox-extension-odfviewer-mv2-x.y.z.xpi", of the manifest version 2, that
+- "opendocumentviewer-firefox-mv2-x.y.z.xpi", of the manifest version 2, that
   it reads from its version 52, of 2017, and still reads today;
-- "chrome-extension-odfviewer-x.y.z.zip", for Chrome from its version 88, of
+- "opendocumentviewer-chrome-x.y.z.zip", for Chrome from its version 88, of
   2021, and the browsers built on it, Edge and Opera among them.
 
 Chrome for Android runs no extension at all, whatever its version, so only its
@@ -138,9 +138,9 @@ Both browsers load a package from a directory, with a profile of their own, so
 that nothing has to be clicked and nothing is kept:
 
 ```sh
-npx web-ext run --source-dir build/firefox-extension-odfviewer-mv2-x.y.z/
+npx web-ext run --source-dir build/opendocumentviewer-firefox-mv2-x.y.z/
 chromium --user-data-dir=$(mktemp -d) --no-first-run \
-    --load-extension=build/chrome-extension-odfviewer-x.y.z/
+    --load-extension=build/opendocumentviewer-chrome-x.y.z/
 ```
 
 web-ext writes a temporary profile, installs the add-on in it and follows the
@@ -162,8 +162,31 @@ keeps reading the version 2, unlike Chrome, so the version 2 alone would reach
 every Firefox in use; the version 3 is built as well because it is the one
 addons.mozilla.org asks for.
 
-Download and install the latest officially released version from [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/). An add-on has to
-be signed by Mozilla to install in a release Firefox, whoever distributes it.
+Download and install the latest officially released version from [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/).
+The description the stores are given, that the field "description" of the
+manifests holds a shortened form of, as Chrome only takes 132 characters
+there:
+
+> OpenDocument Viewer reads the documents of the OpenDocument format, the
+> ones of LibreOffice, OpenOffice and Collabora: text (.odt, .fodt, .ott),
+> spreadsheets (.ods, .fods, .ots) and presentations (.odp, .fodp, .otp).
+>
+> A document opens in the browser, at once, with no download and no office
+> suite to install.
+>
+> The add-on is light, half a megabyte, where the readers of the format that
+> are installed apart weigh a hundred times that.
+>
+> OpenDocument is the first format of office documents that was approved as
+> an international standard, ISO/IEC 26300, in 2006, and the only one that
+> works as one: it is written in the open by OASIS, it belongs to no company,
+> and several programs of several makers write and read the whole of it.
+>
+> A document written today is still read in twenty years, by whoever, with
+> whatever.
+
+An add-on has to be signed by Mozilla to install in a release Firefox, whoever
+distributes it.
 
 The add-on replaces the bootstrapped one of 2012, that declared an XPCOM
 stream converter and targeted the versions 6 to 15 of Firefox: that kind of
@@ -195,7 +218,7 @@ the key "author" needs. Chrome is out of reach for both: its manifest version
 3 wants a service worker as background, that Firefox does not support, and it
 dropped the blocking webRequest this add-on redirects with.
 
-### OpenDocument viewer for Android
+### OpenDocument Viewer for Android
 
 This application shows a document in the OpenDocument format on Android, so
 that the documents a phone receives are read without an office suite. It
@@ -215,7 +238,7 @@ With a prepared setup for building, from the build directory:
 
 ```sh
 cmake -S ../webodf -DWEBODF_PROGRAMS=ON -DWEBODF_ANDROID=ON
-make product-odfviewer-android
+make product-opendocumentviewer-android
 ```
 
 It is behind the option WEBODF_ANDROID, as it needs the sdk of android and a
@@ -236,16 +259,16 @@ installs nowhere as it is. A second one is built for a test, that gradle signs
 with the key it writes for that:
 
 ```sh
-make odfviewer-android-debug
+make opendocumentviewer-android-debug
 ```
 
-It is written next to the other, in "build/programs/odfviewer-android/build/
-outputs/apk/debug/odfviewer-android-debug.apk", and installs on a device with
+It is written next to the other, in "build/programs/opendocumentviewer-android/build/
+outputs/apk/debug/opendocumentviewer-android-debug.apk", and installs on a device with
 "adb install", or in Waydroid, that runs Android on a Linux desktop:
 
 ```sh
 waydroid session start
-waydroid app install .../odfviewer-android-debug.apk
+waydroid app install .../opendocumentviewer-android-debug.apk
 ```
 
 A document is read from the shared storage of Waydroid, "~/.local/share/waydroid/data/media/0",
@@ -254,6 +277,25 @@ that offers the viewer among the applications that read the format.
 
 Waydroid needs a web view of its own, that its images hold; the viewer draws
 nothing without one.
+
+The texts of the stores are in the sources, under
+"programs/opendocumentviewer-android/src/main/fastlane/metadata/android/", in
+the layout fastlane defines: a directory for each locale, with "title.txt", a
+"short_description.txt" of 80 characters at most, a "full_description.txt" of
+4000, and a changelog for each version code. F-Droid reads them from the
+repository at each build, so the description of the store is written and
+reviewed with the code; Google Play does not, and its console asks for the
+same texts by hand, or its publishing api does.
+
+The icon is drawn once, in 512 pixels, and the sizes are cut from it. F-Droid
+reads it in "images/icon.png" of the locale, transparent, as it draws it on
+the ground of its own card. Google Play refuses a transparency and masks the
+corners itself, so it is given an opaque copy, "store/icon-play.png", that is
+uploaded by hand and is in no package. The launcher of android gets an
+adaptive icon, "mipmap-anydpi-v26/icon.xml": a white ground and a drawing that
+holds in the 72dp of the 108dp that every shape of every maker shows, with the
+sizes of the five densities beside it, and a square icon with a margin for the
+launchers before android 8.
 
 The sdk is the only part of the build that is not free software, and the reason
 this product is off by default. The build tools are free: Debian builds them
@@ -266,7 +308,7 @@ under the license of WebODF.
 
 It is a web view that reads a page and the library from the assets of the
 application, with no framework, no plugin and no dependency at all: the sources
-are in "programs/odfviewer-android" and hold one class. Everything is served
+are in "programs/opendocumentviewer-android" and hold one class. Everything is served
 over "https://webodf.invalid/", from the requests the web view is intercepted
 on, as a page loaded from "file://" may not read another file with XMLHttpRequest,
 which is how the library reads a document. Only the four files of the viewer and
@@ -318,7 +360,7 @@ One product of "programs/cordova" is still declared, and no version of its
 toolchain is available: it is kept until it is either brought up to date or
 dropped.
 
-"make product-firefoxosviewer" packs it for Firefox OS. The system was abandoned
+"make product-opendocumentviewer-firefoxos" packs it for Firefox OS. The system was abandoned
 by Mozilla in 2016, but it lives on through its forks, B2G OS, KaiOS and
 Capyloon, so the product is worth reviving rather than dropping. KaiOS in
 particular runs on feature phones that no office suite serves, which is the kind
