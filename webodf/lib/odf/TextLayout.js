@@ -23,15 +23,137 @@
  */
 
 
-/*global odf, window, webodfcore, NodeFilter*/
+/*global odf, runtime, webodfcore*/
 /**
  * @constructor
  */
 odf.TextLayout = function TextLayout() {
     "use strict";
     var domUtils = webodfcore.DomUtils,
-        officens = "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
-        textns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0";
+        odfUtils = odf.OdfUtils,
+        fons = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
+        stylens = "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
+        /**
+         * The gap between two pages, in pixels: the one the readers of pdf
+         * draw, ten pixels, and the one the slides of a presentation are drawn
+         * with here, see "draw|page + draw|page" in "webodf.css". OpenDocument
+         * says nothing of it, as it is a matter of the reader and not of the
+         * document. A zoom is a transform, so the gap follows it as the page
+         * does.
+         * @const
+         * @type{!number}
+         */
+        pageSeparation = 10,
+        /**
+         * How many pages are drawn at the most. A document of a thousand pages
+         * is already far more than a reader shows at once, and the bound is
+         * what keeps a page height read as something absurd, or a text that
+         * grows as pages are added to it, from writing pages without end.
+         * @const
+         * @type{!number}
+         */
+        maxPages = 2000,
+        /**
+         * A4 in pixels at 96 dpi, and the margin LibreOffice writes, for a
+         * document that declares no page layout at all.
+         * @const
+         * @type{!odf.TextLayout.PageDimensions}
+         */
+        defaultDimensions = {
+            pageHeight: 1123,
+            marginTop: 76,
+            marginBottom: 76,
+            pageSeparation: pageSeparation
+        };
+    /**
+     * Read a length of the page layout, in pixels, and fall back on the given
+     * one when the attribute is absent or written in a unit that is not read.
+     * @param {!Element} properties
+     * @param {!string} name
+     * @param {!number} fallback
+     * @return {!number}
+     */
+    function lengthInPx(properties, name, fallback) {
+        var value = properties.getAttributeNS(fons, name),
+            px = fallback;
+        // A length in a unit that is not read, "em" for one, throws rather
+        // than answering, and a page that is drawn at the size of A4 is better
+        // than a page that is not drawn at all.
+        if (value) {
+            try {
+                px = odfUtils.convertToPx(value);
+            } catch (e) {
+                runtime.log("The page layout names a length that is not read: "
+                    + value);
+                px = fallback;
+            }
+        }
+        if (!isFinite(px) || px <= 0) {
+            px = fallback;
+        }
+        return px;
+    }
+    /**
+     * The size of a page, read from the page layout the first master page
+     * names. A text document has one master page in all but the rarest cases,
+     * and the pages are all of that size until the layout follows the master
+     * page of each paragraph, which it does not do yet.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {!odf.TextLayout.PageDimensions}
+     */
+    function readPageDimensions(odfroot) {
+        var /**@type{!NodeList}*/
+            masterPages = odfroot.masterStyles.getElementsByTagNameNS(stylens,
+                "master-page"),
+            /**@type{!string}*/
+            layoutName = "",
+            /**@type{!NodeList}*/
+            layouts = odfroot.automaticStyles.getElementsByTagNameNS(stylens,
+                "page-layout"),
+            /**@type{?Element}*/
+            properties = null,
+            /**@type{!Element}*/
+            layout,
+            /**@type{!odf.TextLayout.PageDimensions}*/
+            dims,
+            /**@type{!number}*/
+            i;
+        if (masterPages.length > 0) {
+            layoutName = /**@type{!Element}*/(masterPages[0])
+                .getAttributeNS(stylens, "page-layout-name") || "";
+        }
+        for (i = 0; i < layouts.length && properties === null; i += 1) {
+            layout = /**@type{!Element}*/(layouts[i]);
+            if (layoutName === ""
+                    || layout.getAttributeNS(stylens, "name") === layoutName) {
+                properties = domUtils.getDirectChild(layout, stylens,
+                    "page-layout-properties");
+            }
+        }
+        if (properties === null) {
+            return defaultDimensions;
+        }
+        dims = {
+            pageHeight: lengthInPx(properties, "page-height",
+                defaultDimensions.pageHeight),
+            marginTop: defaultDimensions.marginTop,
+            marginBottom: defaultDimensions.marginBottom,
+            pageSeparation: pageSeparation
+        };
+        // One margin for the four sides, or one by side.
+        if (properties.getAttributeNS(fons, "margin")) {
+            dims.marginTop = lengthInPx(properties, "margin",
+                defaultDimensions.marginTop);
+            dims.marginBottom = dims.marginTop;
+        } else {
+            dims.marginTop = lengthInPx(properties, "margin-top",
+                defaultDimensions.marginTop);
+            dims.marginBottom = lengthInPx(properties, "margin-bottom",
+                defaultDimensions.marginBottom);
+        }
+        return dims;
+    }
+    this.readPageDimensions = readPageDimensions;
     /**
      * @param {!HTMLDivElement} pagesDiv
      * @return {!number}
@@ -95,7 +217,7 @@ odf.TextLayout = function TextLayout() {
             if (n > 0) {
                 div.style.height = dims.pageSeparation + "px";
                 div.style.marginTop = dims.marginBottom + "px";
-                div.style.background = dims.background;
+                div.className = "webodf-pageSeparator";
             }
             frag.appendChild(div);
             div = doc.createElementNS(htmlns, "div");
@@ -128,6 +250,11 @@ odf.TextLayout = function TextLayout() {
         var missingHeight = bodyHeight - getPagesHeight(dims, pagesDiv),
             missingPages = Math.ceil(missingHeight / dims.pageHeight),
             pageCountChanged = false;
+        if (!isFinite(missingPages)) {
+            return false;
+        }
+        missingPages = Math.min(missingPages,
+            maxPages - countPages(pagesDiv));
         if (missingPages > 0) {
             // too few pages
             pageCountChanged = true;
@@ -183,277 +310,18 @@ odf.TextLayout = function TextLayout() {
      */
     function layout(odfroot, pagesDiv, maxTime, dims) {
         if (!dims) {
-            dims = {
-                pageHeight: 1130, // ~ 30 cm
-                marginTop: 60,
-                marginBottom: 60,
-                pageSeparation: 30,// ~ 1 cm
-                background: "black"
-            };
+            dims = readPageDimensions(odfroot);
         }
         updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
         updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
         return maxTime > 0;
     }
     this.layout = layout;
-    /**
-     * @param {!odf.ODFDocumentElement} odfRoot
-     * @return {?Element}
-     */
-    function getOfficeText(odfRoot) {
-        return domUtils.getDirectChild(odfRoot.body, officens, "text");
-    }
-    /**
-     * @param {!Node} node
-     * @return {!number}
-     */
-    function paragraphNodeFilter(node) {
-        var r = NodeFilter.FILTER_ACCEPT;
-        if (node.localName !== "p" && node.localName !== "h") {
-            r = NodeFilter.FILTER_REJECT;
-        } else if (node.namespaceURI !== textns) {
-            r = NodeFilter.FILTER_REJECT;
-        }
-        return r;
-    }
-    /**
-     * @param {!Element} officeText
-     * @return {!TreeWalker}
-     */
-    function createParagraphWalker(officeText) {
-        var doc = officeText.ownerDocument;
-        return doc.createTreeWalker(officeText, NodeFilter.SHOW_ELEMENT,
-            paragraphNodeFilter, false);
-    }
-    /**
-     * @param {!Element} element
-     * @return {!number}
-     */
-    function getTop(element) {
-        var he = /**@type{!HTMLElement}*/(element),
-            top = he.offsetTop || 0;
-        if (he.offsetParent) {
-            top += getTop(he.offsetParent);
-        }
-        return top;
-    }
-    /**
-     * @param {!Element} element
-     * @return {!number}
-     */
-    function getBottom(element) {
-        var height = /**@type{!HTMLElement}*/(element).offsetHeight || 0;
-        return height + getTop(element);
-    }
-    /**
-     * @param {!HTMLDivElement} pagesDiv
-     * @return {!HTMLDivElement}
-     */
-    function createPageDiv(pagesDiv) {
-        var doc = pagesDiv.ownerDocument,
-            htmlns = pagesDiv.namespaceURI,
-            page = doc.createElementNS(htmlns, "div"),
-            header = doc.createElementNS(htmlns, "div"),
-            footer = doc.createElementNS(htmlns, "div");
-        page.style.cssFloat = "right";
-        page.style.width = "1px";
-        page.style.height = "10cm";
-        page.style.position = "relative";
-
-        header.style.position = "absolute";
-        header.style.right = 0;
-        header.style.top = 0;
-        header.style.width = "1cm";
-        header.style.height = "1cm";
-        header.style.background = "yellow";
-
-        footer.style.position = "absolute";
-        footer.style.right = 0;
-        footer.style.bottom = 0;
-        footer.style.width = "1cm";
-        footer.style.height = "1cm";
-        footer.style.background = "red";
-
-        page.appendChild(header);
-        page.appendChild(footer);
-        return /**@type{!HTMLDivElement}*/(page);
-    }
-    /**
-     * @param {!HTMLDivElement} pagesDiv
-     * @return {!HTMLDivElement}
-     */
-    function createSeparator(pagesDiv) {
-        var doc = pagesDiv.ownerDocument,
-            htmlns = pagesDiv.namespaceURI,
-            separator = doc.createElementNS(htmlns, "div");
-        separator.style.cssFloat = "right";
-        separator.style.width = "100%";
-        separator.style.height = "1cm";
-        separator.style.background = "black";
-        return /**@type{!HTMLDivElement}*/(separator);
-    }
-    /**
-     * @param {!number} page
-     * @param {!HTMLDivElement} pagesDiv
-     * @return {!HTMLDivElement}
-     */
-    function getPageDiv(page, pagesDiv) {
-        var pageDiv = pagesDiv.firstElementChild;
-        if (pageDiv === null) {
-            pagesDiv.appendChild(createSeparator(pagesDiv));
-        }
-        while (page > 0 && pageDiv !== null) {
-            pageDiv = pageDiv.nextElementSibling;
-            pageDiv = pageDiv && pageDiv.nextElementSibling;
-            if (pageDiv !== null) {
-                page -= 1;
-            }
-        }
-        if (pageDiv === null) {
-            while (page > 0) {
-                pageDiv = pagesDiv.appendChild(createPageDiv(pagesDiv));
-                pagesDiv.appendChild(createSeparator(pagesDiv));
-                page -= 1;
-            }
-        }
-        return /**@type{!HTMLDivElement}*/(pageDiv);
-    }
-    /**
-     * @param {!number} pageBottom
-     * @param {?Element} officeText
-     * @param {?Element} previousFirstPageParagraph
-     * @return {?Element}
-     */
-    function getFirstPageParagraph(pageBottom, officeText, previousFirstPageParagraph) {
-        if (!officeText) {
-            return null;
-        }
-        var walker = createParagraphWalker(officeText),
-            top,
-            e;
-        if (previousFirstPageParagraph) {
-            walker.currentNode = previousFirstPageParagraph;
-        }
-        e = /**@type{?Element}*/(walker.nextNode());
-        while (e) {
-            top = getTop(e);
-            if (top >= pageBottom) {
-                break;
-            }
-            e = /**@type{?Element}*/(walker.nextNode());
-        }
-        return e;
-    }
-    /**
-     * @param {!Element} masterPageStyle
-     * @return {!odf.TextLayout.PageDimensions}
-     */
-    function getPageDimensions(masterPageStyle) {
-        var dims = {
-                pageHeight: 1130, // ~ 30 cm
-                marginTop: 60,
-                marginBottom: 60,
-                pageSeparation: 30,// ~ 1 cm
-                background: "black"
-            };
-        if (masterPageStyle) {
-            dims.background = "black";
-        }
-        return dims;
-    }
-    /**
-     * @param {!HTMLDivElement} pageDiv
-     * @param {!Element} masterPageStyle
-     * @return {undefined}
-     */
-    function updatePageSize(pageDiv, masterPageStyle) {
-        var dim = getPageDimensions(masterPageStyle),
-            h = dim.pageHeight + "px";
-        if (pageDiv.style.height !== h) {
-            pageDiv.style.height = h;
-        }
-    }
-    /**
-     * @param {!number} currentPage
-     * @param {!Element} paragraph
-     * @param {!odf.ODFDocumentElement} odfroot
-     * @return {!Element}
-     */
-    function getMasterPageStyle(currentPage, paragraph, odfroot) {
-        var styleElements = [odfroot.automaticStyles, odfroot.styles],
-            //styleName,
-            //style,
-            p = paragraph;
-        if (styleElements && currentPage) {
-            p = paragraph;
-        }
-/* TODO: implement
-        do {
-            if (p.hasAttributeNS(textns, "style-name")) {
-                styleName = p.getAttributeNS(textns, "style-name");
-                style = styleInfo.getStyleElement(styleName, "paragraph",
-                        styleElements);
-                if (style) {
-                }
-            } else {
-            }
-            p = p.previousElementSibling;
-        } while (p !== null);
-*/
-        return p;
-    }
-    /**
-     * Update the layout of pages.
-     * Returns the number of the next page that should be layed out or 0 if
-     * layout is done.
-     * @param {!odf.ODFDocumentElement} odfroot
-     * @param {!HTMLDivElement} pagesDiv
-     * @param {!number} maxTime (milliseconds)
-     * @param {!number} currentPage
-     * @return {!number}
-     */
-    function updateLayout(odfroot, pagesDiv, maxTime, currentPage) {
-        currentPage = Math.max(1, currentPage);
-        var officeText = getOfficeText(odfroot),
-            masterPageStyle,
-            firstPageParagraph = getFirstPageParagraph(0, officeText, null),
-            end = endTime(maxTime),
-            pageBottom,
-            pageDiv,
-            timeLeft = true;
-        while (timeLeft && firstPageParagraph) {
-            masterPageStyle = getMasterPageStyle(currentPage,
-                    firstPageParagraph, odfroot);
-            pageDiv = getPageDiv(currentPage, pagesDiv);
-            updatePageSize(pageDiv, masterPageStyle);
-            currentPage += 1;
-            pageBottom = getBottom(pageDiv);
-            firstPageParagraph = getFirstPageParagraph(pageBottom, officeText, firstPageParagraph);
-            timeLeft = checkTime(end);
-        }
-        return timeLeft ? 0 : currentPage;
-    }
-    this.updateLayout = updateLayout;
-    /**
-     * @param {!odf.ODFDocumentElement} odfroot
-     * @param {!HTMLDivElement} pagesDiv
-     * @return {undefined}
-     */
-    function updateCompleteLayout(odfroot, pagesDiv) {
-        var page = 1,
-            count = 0;
-        do {
-            page = updateLayout(odfroot, pagesDiv, 1, page);
-            count += 1;
-        } while (page !== 0 && count < 10);
-    }
-    this.updateCompleteLayout = updateCompleteLayout;
 };
 /**@typedef{{
     pageHeight:!number,
     marginTop:!number,
     marginBottom:!number,
-    pageSeparation:!number,
-    background:!string
+    pageSeparation:!number
 }}*/
 odf.TextLayout.PageDimensions;

@@ -3871,10 +3871,19 @@
             container.getContentElement().appendChild(shadowContent);
 
             modifyDrawElements(odfnode, css);
-            pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
-            container.getContentElement().parentNode.insertBefore(pagesDiv, container.getContentElement());
-            //textLayout.layout(odfnode, pagesDiv, 100);
-            textLayout.updateCompleteLayout(odfnode, pagesDiv);
+            // The pages are boxes that float to the right of the text, of the
+            // height a page has in the document: the text flows around them, so
+            // it breaks where a page ends, and the gap between two pages is a
+            // box of its own. Nothing of the text is moved, which is what lets
+            // a selection and a search cross a page.
+            // Only a text is broken over pages: a presentation is drawn as
+            // the slides it is made of, and a spreadsheet as its tables.
+            if (domUtils.getDirectChild(odfnode.body, officens, 'text')) {
+                pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
+                pagesDiv.className = 'webodf-pages';
+                container.getContentElement().parentNode.insertBefore(pagesDiv, container.getContentElement());
+                textLayout.layout(odfnode, pagesDiv, 100);
+            }
             cloneMasterPages(formatting, container, shadowContent, odfnode, css);
             modifyTables(odfnode.body, element.namespaceURI);
             modifyLineBreakElements(odfnode.body);

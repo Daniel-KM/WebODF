@@ -286,7 +286,8 @@
         "odf.Namespaces"
     ],
     "odf.TextLayout": [
-        "odf.OdfContainer"
+        "odf.OdfContainer",
+        "odf.OdfUtils"
     ],
     "odf.TextProperties": [
         "odf.StyleParseUtils"

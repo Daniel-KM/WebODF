@@ -153,7 +153,9 @@ draw|page {
 }
 /* The slides of a presentation are drawn one under the other, so the ground is
    seen between two of them and each is read as a page of its own. The gap is
-   written in the unit of a page, and follows the zoom as the page does.
+   ten pixels, the one the readers of pdf draw and the one the pages of a text
+   are drawn with, see "TextLayout.js"; a zoom is a transform, so it follows
+   the zoom as the page does.
 
    The rule holds for the slides of the document and for the master pages that
    are cloned behind them, in "#shadowContent": the two are stacked the same
@@ -162,7 +164,7 @@ draw|page {
    layout of the document is written as "draw|page[draw|master-page-name=...]"
    and would otherwise set the margins back to its own. */
 draw|page + draw|page[draw|master-page-name] {
-  margin-top: 0.5cm;
+  margin-top: 10px;
 }
 
 presentation|notes, presentation|footer-decl, presentation|date-time-decl {
@@ -762,4 +764,20 @@ div.webodf-customScrollbars::-webkit-scrollbar-thumb
 .webodf-hyperlinkTooltipText {
     display: block;
     font-weight: bold;
+}
+
+/* The pages a text is broken over, see "TextLayout.js": the boxes themselves
+   are never seen, the text flows around them, and only the gap between two
+   pages is drawn, in the grey a reader expects between two sheets. The gap is
+   the one the slides of a presentation are drawn with, ten pixels, see the
+   rule of "draw|page" above.
+
+   TODO: the gap of the slides is a margin, that shows the ground of the
+   reader, where this one is painted: a text is one "office:text" whose fill
+   runs from the first page to the last, so a gap left clear would be white on
+   white and no page would be seen to end. Drawing the fill by page instead of
+   by document would make the two the same, and it touches what a document
+   says of its own ground, so it is left for later. */
+.webodf-pageSeparator {
+  background: rgba(0, 0, 0, 0.15);
 }
