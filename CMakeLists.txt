@@ -149,6 +149,10 @@ ExternalProject_Add(
     ClosureCompiler
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
     URL "https://repo1.maven.org/maven2/com/google/javascript/closure-compiler/v20260804/closure-compiler-v20260804.jar"
+    # Without the hash, cmake has no way to tell whether the file it already has
+    # is the right one, so it downloads it again at every build, see the target
+    # Gradle below.
+    URL_HASH SHA256=0cb86a4b96769c679b4fc2d2dc0e5acd0abd0dff932945b90fbe327247466a29
     DOWNLOAD_NO_EXTRACT TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -162,6 +166,7 @@ ExternalProject_Add(
     Rhino
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
     URL "https://repo1.maven.org/maven2/org/mozilla/rhino-all/1.9.1/rhino-all-1.9.1.jar"
+    URL_HASH SHA256=1cc2b468a51857747dcb29ae533e352a2abc04e81c5aa61e397dc774dd395329
     DOWNLOAD_NO_EXTRACT TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -257,6 +262,9 @@ ExternalProject_Add(
     DojoCore
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
     URL "https://registry.npmjs.org/dojo/-/dojo-${DOJO_VERSION}.tgz"
+    # Without the hash, cmake downloads the archive again at every build, as it
+    # cannot tell whether the one it holds is the right one.
+    URL_HASH SHA256=84d7e0e59a024885631276f2ae44064b778fbb83d12ecfa0d3fc93f44c9d38b1
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
@@ -265,6 +273,7 @@ ExternalProject_Add(
     DojoDijit
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
     URL "https://registry.npmjs.org/dijit/-/dijit-${DOJO_VERSION}.tgz"
+    URL_HASH SHA256=d1e0e41d21ebfd0214ec4c1956816d04efcdf68a84c4aa85600a7c34846b5a26
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
@@ -273,6 +282,7 @@ ExternalProject_Add(
     DojoDojox
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
     URL "https://registry.npmjs.org/dojox/-/dojox-${DOJO_VERSION}.tgz"
+    URL_HASH SHA256=ba6fa9e334a9519247afc7cf52a72f57458078d8e4ef1074ee4ca4e826b7203e
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
@@ -281,6 +291,7 @@ ExternalProject_Add(
     DojoUtil
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
     URL "https://registry.npmjs.org/dojo-util/-/dojo-util-${DOJO_VERSION}.tgz"
+    URL_HASH SHA256=1811801438bd81f306834b2c864d6345d649797a32088b3333a7f6732a97e484
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
