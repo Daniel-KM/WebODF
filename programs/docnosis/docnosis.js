@@ -175,6 +175,13 @@ function UnpackJob() {
             return callback();
         }
         var e = input.file.entries[position];
+        // A name that ends with a slash is a directory of the zip, that holds
+        // no bytes: asking for its content answered "not found", which said
+        // that a package was broken when it was not.
+        if (e.filename.charAt(e.filename.length - 1) === "/") {
+            e.directory = true;
+            return loadZipEntries(input, zip, position + 1, callback);
+        }
         zip.load(e.filename, function (err, data) {
             if (err) {
                 input.errors.unpackErrors.push(err);
@@ -361,6 +368,11 @@ function VersionTestJob() {
                 log.push("content.xml has no version number.");
             }
         }
+        if (vinfo.version === undefined) {
+            log.push("No version of the standard is declared. One is required"
+                + " from 1.2 on, so this document is of 1.1 or older, and it is"
+                + " read against the schema of 1.1.");
+        }
         input.version = vinfo.version;
         callback();
     };
@@ -392,31 +404,119 @@ function GetThumbnailJob() {
         callback();
     };
 }
+/**
+ * Names the namespaces of a document that the standard does not define, and
+ * tells how many elements and attributes are written in each.
+ *
+ * A document is allowed to hold them: the standard says that a program writes
+ * its additions under a name of its own, LibreOffice under "loext", and that a
+ * reader that does not know them ignores them and reads on. Such a document is
+ * of the standard, and it is what LibreOffice writes by default, but it does
+ * not fit the schema, which describes what the standard defines and nothing
+ * else. Saying so apart from the errors is the whole point: without it, a
+ * document that is perfectly readable everywhere is reported as broken.
+ */
+function ExtensionsJob() {
+    "use strict";
+    this.inputpattern = { file: { entries: [] } };
+    this.outputpattern = { extensions: [], errors: { extensionErrors: [] } };
+    /**
+     * A namespace is of the standard when OASIS defines it, and the standard
+     * borrows a few from the w3c and from Dublin Core. Anything else is an
+     * addition of a program, "urn:org:documentfoundation:..." for LibreOffice
+     * and "urn:openoffice:names:experimental:..." for OpenOffice.
+     */
+    function isOfTheStandard(ns) {
+        return ns === null
+            || ns.indexOf("urn:oasis:names:tc:opendocument:") === 0
+            || ns.indexOf("http://docs.oasis-open.org/ns/office/") === 0
+            || ns.indexOf("http://www.w3.org/") === 0
+            || ns.indexOf("http://purl.org/dc/") === 0;
+    }
+    function count(node, found) {
+        var i, attributes;
+        if (node.nodeType === 1) {
+            if (!isOfTheStandard(node.namespaceURI)) {
+                found[node.namespaceURI] = (found[node.namespaceURI] || 0) + 1;
+            }
+            attributes = node.attributes;
+            for (i = 0; i < attributes.length; i += 1) {
+                if (!isOfTheStandard(attributes[i].namespaceURI)
+                        && attributes[i].namespaceURI !== null) {
+                    found[attributes[i].namespaceURI] =
+                        (found[attributes[i].namespaceURI] || 0) + 1;
+                }
+            }
+        }
+        for (i = 0; i < node.childNodes.length; i += 1) {
+            count(node.childNodes[i], found);
+        }
+    }
+    this.run = function (input, callback) {
+        var found = {}, named = [], ns, i, entries;
+        input.errors = input.errors || {};
+        input.errors.extensionErrors = [];
+        input.extensions = [];
+        // A document is read as one file when it is written as one xml, and as
+        // the entries of its package otherwise.
+        if (input.file.dom) {
+            count(input.file.dom.documentElement, found);
+        } else {
+            entries = input.file.entries || [];
+            for (i = 0; i < entries.length; i += 1) {
+                if (entries[i].dom) {
+                    count(entries[i].dom.documentElement, found);
+                }
+            }
+        }
+        for (ns in found) {
+            if (found.hasOwnProperty(ns)) {
+                named.push(ns + ": " + found[ns] + " elements or attributes");
+            }
+        }
+        named.sort();
+        input.extensions = named;
+        if (named.length) {
+            input.errors.extensionErrors.push("This document holds additions"
+                + " that the standard does not define, which it allows: a"
+                + " reader that does not know them ignores them. They are why"
+                + " a document of LibreOffice does not fit the schema. "
+                + named.join("; ") + ".");
+        }
+        callback(input);
+    };
+}
+
 function RelaxNGJob() {
     "use strict";
+    // The schemas of every version of the standard, as published by OASIS: a
+    // document names the one it was written to, and it is read against that
+    // one. The versions of 1.2 and after are the approved ones, the "os",
+    // where the two that were here before were of a draft, "cos01".
     var parser = new xmldom.RelaxNGParser(),
-        validators = {};
+        validators = {},
+        schemas = {
+        "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0": {
+            "1.0": "OpenDocument-manifest-schema-v1.0-os.rng",
+            "1.1": "OpenDocument-manifest-schema-v1.1.rng",
+            "1.2": "OpenDocument-v1.2-os-manifest-schema.rng",
+            "1.3": "OpenDocument-v1.3-manifest-schema.rng",
+            "1.4": "OpenDocument-v1.4-manifest-schema.rng"
+        },
+        "urn:oasis:names:tc:opendocument:xmlns:office:1.0": {
+            "1.0": "OpenDocument-schema-v1.0-os.rng",
+            "1.1": "OpenDocument-schema-v1.1.rng",
+            "1.2": "OpenDocument-v1.2-os-schema.rng",
+            "1.3": "OpenDocument-v1.3-schema.rng",
+            "1.4": "OpenDocument-v1.4-schema.rng"
+        }
+    };
     this.inputpattern = { file: {dom: null}, version: null };
     this.outputpattern = { errors: { relaxngErrors: [] } };
     function loadValidator(ns, version, callback) {
-        var rng;
-        if (ns === "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0") {
-            if (version === "1.2") {
-                rng = "OpenDocument-v1.2-cos01-manifest-schema.rng";
-            } else if (version === "1.1") {
-                rng = "OpenDocument-manifest-schema-v1.1.rng";
-            } else if (version === "1.0") {
-                rng = "OpenDocument-manifest-schema-v1.0-os.rng";
-            }
-        } else if (ns === "urn:oasis:names:tc:opendocument:xmlns:office:1.0") {
-            if (version === "1.2") {
-                rng = "OpenDocument-v1.2-cos01-schema.rng";
-            } else if (version === "1.1") {
-                rng = "OpenDocument-schema-v1.1.rng";
-            } else if (version === "1.0") {
-                rng = "OpenDocument-schema-v1.0-os.rng";
-            }
-        }
+        var rng = schemas.hasOwnProperty(ns)
+            ? schemas[ns][version]
+            : undefined;
         if (rng) {
             runtime.loadXML(rng, function (err, dom) {
                 var relaxng;
@@ -439,6 +539,20 @@ function RelaxNGJob() {
             callback(null);
         }
     }
+    /**
+     * The schema a document is read against, by the version it names. A
+     * document that names none is read against 1.1, as one was only required
+     * from 1.2 on; the report says so, as the answer depends on it.
+     */
+    function schemaOf(ns, version) {
+        if (!version && (ns === "urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+                || ns === "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0")) {
+            version = "1.1";
+        }
+        return schemas.hasOwnProperty(ns)
+            ? schemas[ns][version]
+            : undefined;
+    }
     function getValidator(ns, version, callback) {
         if (ns === "urn:oasis:names:tc:opendocument:xmlns:office:1.0" ||
                 ns === "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0") {
@@ -452,9 +566,14 @@ function RelaxNGJob() {
         loadValidator(ns, version, callback);
     }
     function validate(log, dom, filename, version, callback) {
-        var ns = dom.documentElement.namespaceURI;
+        var ns = dom.documentElement.namespaceURI,
+            schema = schemaOf(ns, version);
         getValidator(ns, version, function (relaxng) {
             if (!relaxng) {
+                // Nothing to read it against: say so rather than pass in
+                // silence, which read as "nothing to report".
+                log.push(filename + ": no schema is here for this version of"
+                    + " the standard, so it was not read against one.");
                 return callback();
             }
             var walker = dom.createTreeWalker(dom.firstChild, 0xFFFFFFFF, {
@@ -467,7 +586,8 @@ function RelaxNGJob() {
                 var i;
                 if (err) {
                     for (i = 0; i < err.length; i += 1) {
-                        log.push(filename + ": " + err[i]);
+                        log.push(filename + ", read against " + schema + ": "
+                            + err[i]);
                     }
                 }
                 callback();
@@ -496,7 +616,6 @@ function RelaxNGJob() {
     this.run = function (input, callback) {
         input.errors = input.errors || {};
         input.errors.relaxngErrors = [];
-        runtime.log(input.version);
         if (input.file.dom) {
             validate(input.errors.relaxngErrors, input.file.dom,
                 input.file.path, input.version, callback);
@@ -601,6 +720,7 @@ function JobRunner(datarenderer) {
     jobtypes.push(new GetThumbnailJob());
     jobtypes.push(new VersionTestJob());
     jobtypes.push(new ParseXMLJob());
+    jobtypes.push(new ExtensionsJob());
     jobtypes.push(new RelaxNGJob());
 
     function run() {
@@ -780,6 +900,27 @@ function Docnosis(element) {
             return readFile(path, encoding, callback);
         };
     }
+
+    /**
+     * Read a document by its address rather than from the one who reads the
+     * page: "index.html?file=document.odt". A page that is given a document
+     * this way is one a link may lead to, and it is how the tests run it.
+     */
+    this.diagnose = function (path) {
+        var div = doc.createElement("div");
+        diagnoses.appendChild(div);
+        runtime.readFile(path, "binary", function (error, data) {
+            if (error) {
+                runtime.log(String(error));
+                return;
+            }
+            jobrunnerdata.push({file: {
+                path: path,
+                data: data
+            }});
+            jobrunner.setData(jobrunnerdata);
+        });
+    };
 
     form = createForm();
     element.appendChild(form);

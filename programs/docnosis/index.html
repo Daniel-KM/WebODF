@@ -1,24 +1,35 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html xml:lang="en" lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta>
+  <meta charset="utf-8">
   <title>docnosis</title>
-  <!-- <script src="../../webodf/webodf.js" type="text/javascript" charset="utf-8"></script> -->
-  <script src="../../webodf/lib/runtime.js" type="text/javascript" charset="utf-8"></script>
-  <script type="text/javascript">//<![CDATA[
-runtime.libraryPaths = function () {
-    return ["../../webodf/lib/"];
-};
-  //]]></script>
-  <script src="docnosis.js" type="text/javascript" charset="utf-8"></script>
-  <script type="text/javascript">//<![CDATA[
-window.addEventListener("load", function () {
-   var docnosis = document.getElementById("docnosis");
-   new Docnosis(docnosis);
-}, false);
-  //]]></script>
- </head>
- <body>
+  <link rel="stylesheet" href="docnosis.css">
+  <!-- The library is read from its sources rather than from "webodf.js": the
+       validator of Relax NG is left out of the file that ships, as no viewer
+       uses it, see "scripts/lib/sources.js". -->
+  <script src="lib/runtime.js"></script>
+  <script>
+    runtime.libraryPaths = function () {
+        return ["lib"];
+    };
+  </script>
+  <script src="docnosis.js"></script>
+  <script>
+    window.addEventListener("load", function () {
+        var docnosis = new Docnosis(document.getElementById("docnosis")),
+            asked = /[?&]file=([^&]+)/.exec(window.location.search);
+        if (asked) {
+            docnosis.diagnose(decodeURIComponent(asked[1]));
+        }
+    }, false);
+  </script>
+</head>
+<body>
+  <h1>docnosis</h1>
+  <p id="lead">Tells whether a document keeps to the OpenDocument standard: it
+    is read against the schema of the version it names, from 1.0 to 1.4, as
+    published by OASIS. The document is read in this page and goes nowhere:
+    nothing is uploaded, and no server sees it.</p>
   <div id="docnosis"></div>
- </body>
+</body>
 </html>
