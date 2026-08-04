@@ -3534,6 +3534,8 @@
             pagesDiv = null,
             /**@type{!boolean}*/
             paginated = false,
+            /**@type{!boolean}*/
+            hyperlinksActive = true,
             /**@type{!Object.<string,!Array.<!Function>>}*/
             eventHandlers = {},
             waitingForDoneTimeoutId,
@@ -4682,7 +4684,103 @@
             webodfcore.Async.destroyAll(cleanup, callback);
         };
 
+        /**
+         * The link a node stands in, if any.
+         * @param {?Node} node
+         * @return {?Element}
+         */
+        function linkOf(node) {
+            var walk = node;
+            while (walk && walk !== element) {
+                if (walk.nodeType === 1
+                        && /**@type{!Element}*/(walk).namespaceURI === textns
+                        && /**@type{!Element}*/(walk).localName === "a") {
+                    return /**@type{!Element}*/(walk);
+                }
+                walk = walk.parentNode;
+            }
+            return null;
+        }
+        /**
+         * The place of the document a name stands for: a bookmark, or the
+         * mark of a reference, as the entries of a table of contents name.
+         * @param {!string} name
+         * @return {?Element}
+         */
+        function markNamed(name) {
+            var wanted = ["bookmark-start", "bookmark", "reference-mark-start",
+                    "reference-mark"],
+                /**@type{!NodeList}*/
+                marks,
+                /**@type{!number}*/
+                i,
+                /**@type{!number}*/
+                k;
+            if (!odfcontainer) {
+                return null;
+            }
+            for (k = 0; k < wanted.length; k += 1) {
+                marks = odfcontainer.rootElement.getElementsByTagNameNS(textns,
+                    wanted[k]);
+                for (i = 0; i < marks.length; i += 1) {
+                    if (/**@type{!Element}*/(marks.item(i)).getAttributeNS(
+                            textns,
+                            "name"
+                        ) === name) {
+                        return /**@type{!Element}*/(marks.item(i));
+                    }
+                }
+            }
+            return null;
+        }
+        /**
+         * Follow a link of the document: a place of the document is shown,
+         * and anything else is opened as a browser opens it.
+         *
+         * A reader of a document follows a link by clicking it, as a reader
+         * of a page does; an editor asks for a key beside the click, and
+         * takes this over, see "SessionController.js".
+         * @param {!Event} e
+         * @return {undefined}
+         */
+        function followLink(e) {
+            var link = hyperlinksActive
+                    ? linkOf(/**@type{?Node}*/(e.target))
+                    : null,
+                /**@type{!string}*/
+                url = link
+                    ? link.getAttributeNS(xlinkns, "href") || ""
+                    : "",
+                /**@type{?Element}*/
+                mark;
+            if (!url) {
+                return;
+            }
+            if (url.charAt(0) === "#") {
+                mark = markNamed(url.substring(1));
+                if (mark) {
+                    mark.scrollIntoView(true);
+                }
+            } else if (/^\s*(javascript|data):/.test(url)) {
+                runtime.log("WARN: potentially malicious URL ignored");
+            } else {
+                runtime.getWindow().open(url);
+            }
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+        }
+        /**
+         * Whether a click follows the links of the document, which a reader
+         * does and an editor does its own way.
+         * @param {!boolean} active
+         * @return {undefined}
+         */
+        this.setHyperlinksActive = function (active) {
+            hyperlinksActive = active;
+        };
         function init() {
+            listenEvent(element, "click", followLink);
             webodfcss = addWebODFStyleSheet(doc);
             pageSwitcher = new PageSwitcher(addStyleSheet(doc));
             fontcss = addStyleSheet(doc);

@@ -1136,6 +1136,11 @@ gui.SessionControllerOptions = function () {
         };
 
         function init() {
+            // The canvas follows a link on a plain click, which is what a
+            // reader of a document asks for; an editor asks for a key beside
+            // the click and answers for it here, so the canvas is told to
+            // leave the links alone.
+            odtDocument.getOdfCanvas().setHyperlinksActive(false);
             drawShadowCursorTask = webodfcore.Task.createRedrawTask(updateShadowCursor);
             redrawRegionSelectionTask = webodfcore.Task.createRedrawTask(redrawRegionSelection);
 
