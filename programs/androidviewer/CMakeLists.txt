@@ -3,16 +3,25 @@
 # built with ant, which google dropped in 2015 for gradle.
 #
 # It is opt-in, as it needs the sdk of android and a jdk, that the build does
-# not download: gradle reads the sdk from $ANDROID_HOME, or from the file
-# "local.properties" that the sdk writes.
+# not download: gradle reads the sdk from $ANDROID_HOME, the directory the sdk
+# is installed in, or from "sdk.dir" of the file "local.properties".
 option(WEBODF_ANDROID "Build the viewer of android, that needs its sdk" OFF)
 
 if (WEBODF_ANDROID)
-    find_program(GRADLE NAMES gradle DOC "Path to the Gradle executable.")
-    if (NOT GRADLE)
-        message(FATAL_ERROR "gradle was not found, so the viewer of android"
-            " cannot be built. On Debian: apt-get install gradle")
-    endif()
+    # Gradle is downloaded, as the closure compiler and Rhino are: the plugin
+    # of android needs 8.9 or later, where Debian 13 packages the 4.4.1 of
+    # 2017, so the one of the distribution is never the right one.
+    set(GRADLE_VERSION 8.14.3)
+    ExternalProject_Add(
+        Gradle
+        DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
+        URL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+        URL_HASH SHA256=bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+    )
+    set(GRADLE ${CMAKE_BINARY_DIR}/Gradle-prefix/src/Gradle/bin/gradle)
 
     set(ANDROIDVIEWER_APK
         ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/release/androidviewer-release-unsigned.apk)
@@ -28,7 +37,7 @@ if (WEBODF_ANDROID)
             -PwebodfVersion=${WEBODF_MANIFEST_VERSION}
             -PbuildDir=${CMAKE_CURRENT_BINARY_DIR}/build
             assembleRelease
-        DEPENDS webodf.js-target
+        DEPENDS webodf.js-target Gradle
             ${CMAKE_CURRENT_SOURCE_DIR}/build.gradle
             ${CMAKE_CURRENT_SOURCE_DIR}/src/main/AndroidManifest.xml
             ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/webodf/viewer/ViewerActivity.java
