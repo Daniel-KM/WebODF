@@ -552,9 +552,15 @@ function BrowserRuntime() {
      */
     function handleXHRResult(path, encoding, xhr) {
         var r, d, a,
+            // Reading the text of an answer asked as an array buffer throws,
+            // so the answer itself tells whether the file was empty.
+            isEmpty = xhr.responseType === "arraybuffer"
+                ? !xhr.response
+                    || /**@type{!ArrayBuffer}*/(xhr.response).byteLength === 0
+                : !xhr.responseText,
             /**@type{!Uint8Array|!string}*/
             data;
-        if (xhr.status === 0 && !xhr.responseText) {
+        if (xhr.status === 0 && isEmpty) {
             // for local files there is no difference between missing
             // and empty files, so empty files are considered as errors
             r = {err: "File " + path + " is empty.", data: null};
@@ -584,7 +590,9 @@ function BrowserRuntime() {
             r = {err: null, data: data};
         } else {
             // report error
-            r = {err: xhr.responseText || xhr.statusText, data: null};
+            r = {err: (xhr.responseType === "arraybuffer"
+                ? xhr.statusText
+                : xhr.responseText || xhr.statusText), data: null};
         }
         return r;
     }
@@ -597,7 +605,13 @@ function BrowserRuntime() {
     function createXHR(path, encoding, async) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', path, async);
-        if (xhr.overrideMimeType) {
+        // An array buffer is the reliable way to read the raw bytes: with the
+        // trick of the mime type below, a recent browser decodes the answer as
+        // utf-8 and removes a byte order mark first, which shifts every byte.
+        // It is not allowed on a synchronous request, that keeps the trick.
+        if (encoding === "binary" && async) {
+            xhr.responseType = "arraybuffer";
+        } else if (xhr.overrideMimeType) {
             if (encoding !== "binary") {
                 xhr.overrideMimeType("text/plain; charset=" + encoding);
             } else {
