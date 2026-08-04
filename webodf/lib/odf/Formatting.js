@@ -629,12 +629,43 @@ odf.Formatting = function Formatting() {
     }
 
     /**
-     * Gets the width and height of content area in pixels.
+     * The page layout of the first master page, that a document follows when
+     * no style names one: a text has one master page in all but the rarest
+     * cases.
+     * @return {?Element}
+     */
+    function firstPageLayoutElement() {
+        var masterPages = odfContainer.rootElement.masterStyles
+                .getElementsByTagNameNS(stylens, "master-page"),
+            layouts = odfContainer.rootElement.automaticStyles
+                .getElementsByTagNameNS(stylens, "page-layout"),
+            layoutName = "",
+            /**@type{!Element}*/
+            layout,
+            i;
+        if (masterPages.length > 0) {
+            layoutName = /**@type{!Element}*/(masterPages.item(0))
+                .getAttributeNS(stylens, "page-layout-name") || "";
+        }
+        for (i = 0; i < layouts.length; i += 1) {
+            layout = /**@type{!Element}*/(layouts.item(i));
+            if (layoutName === ""
+                    || layout.getAttributeNS(stylens, "name") === layoutName) {
+                return layout;
+            }
+        }
+        return null;
+    }
+    /**
+     * The geometry of a page, in pixels: the area a text is written in, and
+     * the distance from the left and the top edge of the sheet to it. What the
+     * standard calls the page is the sheet, margins included, and
+     * "page-content" is that area, see the values of "style:horizontal-rel".
      * @param {string} styleName
      * @param {string} styleFamily
-     * @return {!{width: number, height: number}} Available content size in pixels
+     * @return {!odf.Formatting.PageGeometry}
      */
-    this.getContentSize = function(styleName, styleFamily) {
+    function readPageGeometry(styleName, styleFamily) {
         var pageLayoutElement,
             props,
             defaultOrientedPageWidth,
@@ -652,7 +683,11 @@ odf.Formatting = function Formatting() {
             paddingTop,
             paddingBottom;
 
-        pageLayoutElement = getPageLayoutStyleElement(styleName, styleFamily);
+        // Without a style to follow, the page is the one of the first master
+        // page, which is the only one a text has in all but the rarest cases.
+        pageLayoutElement = styleName
+            ? getPageLayoutStyleElement(styleName, styleFamily)
+            : firstPageLayoutElement();
         if (!pageLayoutElement) {
             pageLayoutElement = domUtils.getDirectChild(odfContainer.rootElement.styles, stylens, "default-page-layout");
         }
@@ -700,10 +735,41 @@ odf.Formatting = function Formatting() {
         }
         return {
             width: pageWidth - marginLeft - marginRight - paddingLeft - paddingRight,
-            height: pageHeight - marginTop - marginBottom - paddingTop - paddingBottom
+            height: pageHeight - marginTop - marginBottom - paddingTop - paddingBottom,
+            left: marginLeft + paddingLeft,
+            top: marginTop + paddingTop
         };
+    }
+    /**
+     * The width and the height of the area a text is written in, in pixels.
+     * @param {string} styleName
+     * @param {string} styleFamily
+     * @return {!{width: number, height: number}} Available content size in pixels
+     */
+    this.getContentSize = function (styleName, styleFamily) {
+        var geometry = readPageGeometry(styleName, styleFamily);
+        return {width: geometry.width, height: geometry.height};
+    };
+    /**
+     * The distance from the left and the top edge of the sheet to the area a
+     * text is written in, in pixels, that a frame placed against the sheet is
+     * written from.
+     * @param {string} styleName
+     * @param {string} styleFamily
+     * @return {!odf.Formatting.PageGeometry}
+     */
+    this.getPageMargins = function (styleName, styleFamily) {
+        return readPageGeometry(styleName, styleFamily);
     };
 };
+
+/**@typedef{{
+    width:!number,
+    height:!number,
+    left:!number,
+    top:!number
+}}*/
+odf.Formatting.PageGeometry;
 
 /**@typedef{{
     name:!string,

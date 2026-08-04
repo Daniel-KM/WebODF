@@ -1106,8 +1106,11 @@ odf.OdfUtilsImpl = function OdfUtilsImpl() {
      */
     this.getPageRect = function (node) {
         var p = node;
+        // The page is the sheet, "office:body", and not the area a text is
+        // written in: the standard tells one from the other, "page" and
+        // "page-content" of "style:horizontal-rel".
         while (p && !((p.namespaceURI === odf.Namespaces.officens
-                          && (p.localName === "text"
+                          && (p.localName === "body"
                               || p.localName === "spreadsheet"))
                        || (p.namespaceURI === odf.Namespaces.drawns
                            && p.localName === "page"))) {

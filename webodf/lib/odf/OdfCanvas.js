@@ -332,25 +332,23 @@
      * @param {!string} x svg:x
      * @param {?string} horizontalPos style:horizontal-pos
      * @param {?string} horizontalRel style:horizontal-rel
-     * @param {!Element} frame
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {!number}
      */
-    function getHorizontalOffset(x, horizontalPos, horizontalRel, frame) {
-        var parentRect = frame.parentElement.getBoundingClientRect(),
-            pageRect,
-            nx = 0;
+    function getHorizontalOffset(x, horizontalPos, horizontalRel, margins) {
+        var nx = 0;
         if (horizontalPos === null || horizontalPos === "from-left"
                 || horizontalPos === "from-inside") {
             nx = odfUtils.convertToPx(x || 0);
         }
+        // What the standard calls the page is the sheet, margins included,
+        // where "page-content" is the area a text is written in. A frame is
+        // laid out inside that area, so a distance from the edge of the sheet
+        // is written as the distance from the area, less the margin, and it is
+        // read from the page layout rather than from the rectangles of the
+        // moment: nothing is drawn yet when this is written.
         if (horizontalRel === "page") {
-            pageRect = odfUtils.getPageRect(frame);
-            if (parentRect) {
-                nx -= parentRect.left;
-            }
-            if (pageRect) {
-                nx += pageRect.left;
-            }
+            nx -= margins.left;
         }
         return nx;
     }
@@ -360,24 +358,16 @@
      * @param {!string} y svg:y
      * @param {?string} verticalPos style:vertical-pos
      * @param {?string} verticalRel style:vertical-rel
-     * @param {!Element} frame
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {!number}
      */
-    function getVerticalOffset(y, verticalPos, verticalRel, frame) {
-        var parentRect = frame.parentElement.getBoundingClientRect(),
-            pageRect,
-            ny = 0;
+    function getVerticalOffset(y, verticalPos, verticalRel, margins) {
+        var ny = 0;
         if (verticalPos === null || verticalPos === "from-top") {
             ny = odfUtils.convertToPx(y || 0);
         }
         if (verticalRel === "page") {
-            pageRect = odfUtils.getPageRect(frame);
-            if (parentRect) {
-                ny -= parentRect.top;
-            }
-            if (pageRect) {
-                ny += pageRect.top;
-            }
+            ny -= margins.top;
         }
         return ny;
     }
@@ -387,9 +377,10 @@
      * @param {string} styleid
      * @param {!Element} frame
      * @param {!CSSStyleSheet} stylesheet
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {undefined}
      **/
-    function setDrawElementPosition(odfnode, styleid, frame, stylesheet) {
+    function setDrawElementPosition(odfnode, styleid, frame, stylesheet, margins) {
         frame.setAttributeNS(webodfhelperns, 'styleid', styleid);
         var rule,
             anchor = frame.getAttributeNS(textns, 'anchor-type') || "paragraph",
@@ -435,26 +426,30 @@
             }
         }
 
+        properties = styleInfo.getStyleProperties(odfnode.styles,
+                odfnode.automaticStyles, styleName, "graphic",
+                {
+            style: {
+                "vertical-pos": null,
+                "vertical-rel": null,
+                "horizontal-pos": null,
+                "horizontal-rel": null
+            }
+        })["style"];
         if (anchor === "as-char") {
             rule = 'display: inline-block;';
-        } else if (x || y || frame.hasAttributeNS(textns, 'anchor-type')) {
+        } else if (x || y || frame.hasAttributeNS(textns, 'anchor-type')
+                || properties["horizontal-rel"] || properties["vertical-rel"]) {
             // Where the frame says where it goes, it goes there: the offset is
             // read from the style, that tells what the position is relative to,
-            // the page or the paragraph, see "getHorizontalOffset".
-            properties = styleInfo.getStyleProperties(odfnode.styles,
-                    odfnode.automaticStyles, styleName, "graphic",
-                    {
-                style: {
-                    "vertical-pos": null,
-                    "vertical-rel": null,
-                    "horizontal-pos": null,
-                    "horizontal-rel": null
-                }
-            })["style"];
+            // the page or the paragraph, see "getHorizontalOffset". A frame
+            // that names no place of its own but says what it is placed
+            // against, "style:horizontal-rel", is placed all the same: it is
+            // how a frame is written flush to a corner of the sheet.
             x = getHorizontalOffset(x, properties["horizontal-pos"],
-                     properties["horizontal-rel"], frame);
+                     properties["horizontal-rel"], margins);
             y = getVerticalOffset(y, properties["vertical-pos"],
-                     properties["vertical-rel"], frame);
+                     properties["vertical-rel"], margins);
             rule = 'position: absolute;';
             rule += 'left: ' + x + 'px;';
             rule += 'top: ' + y + 'px;';
@@ -3123,9 +3118,10 @@
     /**
      * @param {!odf.ODFDocumentElement} odfnode
      * @param {!CSSStyleSheet} stylesheet
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {undefined}
      **/
-    function modifyDrawElements(odfnode, stylesheet) {
+    function modifyDrawElements(odfnode, stylesheet, margins) {
         var node,
             odfbody = odfnode.body,
             /**@type{!Array.<!Element>}*/
@@ -3151,7 +3147,8 @@
         // adjust all the frame positions
         for (i = 0; i < drawElements.length; i += 1) {
             node = drawElements[i];
-            setDrawElementPosition(odfnode, 'frame' + String(i), node, stylesheet);
+            setDrawElementPosition(odfnode, 'frame' + String(i), node, stylesheet,
+                margins);
         }
         formatParagraphAnchors(odfbody);
     }
@@ -3162,9 +3159,10 @@
      * @param {!Element} shadowContent
      * @param {!odf.ODFDocumentElement} odfnode
      * @param {!CSSStyleSheet} stylesheet
+     * @param {!odf.Formatting.PageGeometry} margins
      * @return {undefined}
      **/
-    function cloneMasterPages(formatting, odfContainer, shadowContent, odfnode, stylesheet) {
+    function cloneMasterPages(formatting, odfContainer, shadowContent, odfnode, stylesheet, margins) {
         var masterPageName,
             masterPageElement,
             styleId,
@@ -3204,7 +3202,8 @@
                             /**@type{!Element}*/(elementToClone))) {
                         clonedElement = /**@type{!Element}*/(elementToClone.cloneNode(true));
                         clonedPageElement.appendChild(clonedElement);
-                        setDrawElementPosition(odfnode, styleId + '_' + i, clonedElement, stylesheet);
+                        setDrawElementPosition(odfnode, styleId + '_' + i, clonedElement,
+                            stylesheet, margins);
                     }
                     elementToClone = elementToClone.nextElementSibling;
                     i += 1;
@@ -3215,7 +3214,8 @@
                 // Position all elements
                 clonedDrawElements = domUtils.getElementsByTagNameNS(clonedPageElement, drawns, '*');
                 for (i = 0; i < clonedDrawElements.length; i += 1) {
-                    setDrawElementPosition(odfnode, styleId + '_' + i, clonedDrawElements[i], stylesheet);
+                    setDrawElementPosition(odfnode, styleId + '_' + i, clonedDrawElements[i],
+                        stylesheet, margins);
                 }
 
                 // Append the cloned master page to the "Shadow Content" element outside the main ODF dom
@@ -3232,7 +3232,8 @@
                 setContainerValue(clonedPageElement, presentationns, 'footer', getHeaderFooter(odfContainer, /**@type{!Element}*/(element), 'footer'));
 
                 // Now call setDrawElementPosition on this new page to set the proper dimensions
-                setDrawElementPosition(odfnode, styleId, clonedPageElement, stylesheet);
+                setDrawElementPosition(odfnode, styleId, clonedPageElement, stylesheet,
+                    margins);
                 // Add a custom attribute with the style name of the normal page, so the CSS rules created for the styles of the normal page
                 // to display/hide frames of certain classes from the master page can address the cloned master page belonging to that normal page
                 // Cmp. addDrawPageFrameDisplayRules in Style2CSS
@@ -3899,7 +3900,9 @@
          * @return {undefined}
          **/
         function handleContent(container, odfnode) {
-            var css = /**@type{!CSSStyleSheet}*/(positioncss.sheet);
+            var css = /**@type{!CSSStyleSheet}*/(positioncss.sheet),
+                /**@type{!odf.Formatting.PageGeometry}*/
+                margins;
             // only append the content at the end
             domUtils.removeAllChildNodes(element);
 
@@ -3947,9 +3950,13 @@
             shadowContent.style.left = 0;
             container.getContentElement().appendChild(shadowContent);
 
-            modifyDrawElements(odfnode, css);
+            // The margins of the page, that a frame placed against the sheet is
+            // written from, see "getHorizontalOffset".
+            margins = formatting.getPageMargins("", "paragraph");
+            modifyDrawElements(odfnode, css, margins);
             drawPages(container, odfnode);
-            cloneMasterPages(formatting, container, shadowContent, odfnode, css);
+            cloneMasterPages(formatting, container, shadowContent, odfnode, css,
+                margins);
             modifyTables(odfnode.body, element.namespaceURI);
             modifyLineBreakElements(odfnode.body);
             hideEmptyListItems(odfnode.body, css);
@@ -4355,7 +4362,8 @@
             var frameName = frame.getAttributeNS(drawns, 'name'),
                 fc = frame.firstElementChild;
             setDrawElementPosition(odfcontainer.rootElement, frameName, frame,
-                    /**@type{!CSSStyleSheet}*/(positioncss.sheet));
+                    /**@type{!CSSStyleSheet}*/(positioncss.sheet),
+                    formatting.getPageMargins("", "paragraph"));
             if (fc) {
                 setImage(frameName + 'img', odfcontainer, fc,
                    /**@type{!CSSStyleSheet}*/( positioncss.sheet));
