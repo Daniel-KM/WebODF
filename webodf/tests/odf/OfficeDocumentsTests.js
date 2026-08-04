@@ -68,7 +68,7 @@ odf.OfficeDocumentsTests = function OfficeDocumentsTests(runner) {
         });
     }
     function readTheLetterOfAnOffice(callback) {
-        readOne("odf/libreoffice-business-letter.ott", "text", function () {
+        readOne("documents/libreoffice-business-letter.ott", "text", function () {
             // The letter is written of frames, that hold the sender and the
             // logo, and of paragraphs.
             t.paragraphs = t.odf.rootElement.body.getElementsByTagNameNS(
@@ -80,10 +80,10 @@ odf.OfficeDocumentsTests = function OfficeDocumentsTests(runner) {
         });
     }
     function readTheCurriculumOfAnOffice(callback) {
-        readOne("odf/libreoffice-cv.ott", "text", callback);
+        readOne("documents/libreoffice-cv.ott", "text", callback);
     }
     function readThePresentationOfAnOffice(callback) {
-        readOne("odf/libreoffice-beehive.otp", "presentation", function () {
+        readOne("documents/libreoffice-beehive.otp", "presentation", function () {
             t.pages = t.odf.rootElement.body.getElementsByTagNameNS(
                 drawns,
                 "page"
@@ -96,7 +96,7 @@ odf.OfficeDocumentsTests = function OfficeDocumentsTests(runner) {
         // A drawing holds its pages in "office:drawing", which was read as
         // nothing at all before: the document was refused for want of a body
         // it was taken to have none of.
-        readOne("odf/libreoffice-bpmn.otg", "drawing", function () {
+        readOne("documents/libreoffice-bpmn.otg", "drawing", function () {
             t.pages = t.odf.rootElement.body.getElementsByTagNameNS(
                 drawns,
                 "page"

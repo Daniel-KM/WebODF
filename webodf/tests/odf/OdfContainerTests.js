@@ -363,8 +363,8 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         compareZipEntryList(odf1path, odf2path, callback);
     }
     function loadAndSave(callback) {
-        var path = "odf/loadsave.odt",
-            newpath = "odf/newloadsave.odt";
+        var path = "documents/loadsave.odt",
+            newpath = "documents/newloadsave.odt";
         t.odf = new odf.OdfContainer(path, function (o1) {
             t.odf = o1;
             r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
@@ -398,7 +398,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
     // It answers the question the small documents of a test never do, which is
     // whether the library still reads what an office writes.
     function loadTheStandard(callback) {
-        t.odf = new odf.OdfContainer("odf/opendocument-v1.3-part3.odt",
+        t.odf = new odf.OdfContainer("documents/opendocument-v1.3-part3.odt",
             function (container) {
                 t.odf = container;
                 r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");

@@ -1,3 +1,7 @@
+# The documents the tests read are gathered in "documents/", beside the
+# tests that read them and not among them: what is code is told from what
+# is read, and the licence each document is under is written in one place,
+# see "documents/README".
 
 FILE( GLOB_RECURSE TESTS_TESTFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/manifest.json
@@ -7,11 +11,7 @@ FILE( GLOB_RECURSE TESTS_TESTFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/*/*.js
 	${CMAKE_CURRENT_SOURCE_DIR}/*/*.xml
 	${CMAKE_CURRENT_SOURCE_DIR}/*/*.zip
-	${CMAKE_CURRENT_SOURCE_DIR}/*/*.odt
-	${CMAKE_CURRENT_SOURCE_DIR}/*/*.fodt
-	${CMAKE_CURRENT_SOURCE_DIR}/*/*.ott
-	${CMAKE_CURRENT_SOURCE_DIR}/*/*.otp
-	${CMAKE_CURRENT_SOURCE_DIR}/*/*.otg
+	${CMAKE_CURRENT_SOURCE_DIR}/documents/*
    	)
 
 COPY_FILES(tests_nodetests ${CMAKE_CURRENT_SOURCE_DIR}

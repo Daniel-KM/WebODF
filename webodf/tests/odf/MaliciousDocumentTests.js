@@ -93,7 +93,7 @@ odf.MaliciousDocumentTests = function MaliciousDocumentTests(runner) {
     }
 
     function loadInjectionDocument(callback) {
-        t.odf = new odf.OdfContainer("odf/malicious-js.fodt", function(odf) {
+        t.odf = new odf.OdfContainer("documents/malicious-js.fodt", function(odf) {
             t.doc.importNode(odf.rootElement, true);
             t.root.appendChild(odf.rootElement);
 

@@ -1,4 +1,6 @@
-The documents of this directory are read by the tests beside them.
+The documents of this directory are the ones the tests read: they are
+kept apart from the tests themselves, that stand in "odf/", "gui/" and
+"ops/" beside the parts of the library they try.
 
 Four of them are the templates LibreOffice ships, taken from the sources
 of it as they are, under the Mozilla Public License, version 2.0:
@@ -20,4 +22,4 @@ test of a document written here never asks: whether the library still
 reads what an office writes.
 
 "opendocument-v1.3-part3.odt" is the standard itself, as OASIS publishes
-it, and is read by "OdfContainerTests.js" and "LayoutTests.js".
+it, and is read by "OdfContainerTests.js".

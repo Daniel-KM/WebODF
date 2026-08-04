@@ -115,7 +115,7 @@ odf.OdfContainerSafetyTests = function OdfContainerSafetyTests(runner) {
      * Tests that an odt file loads without executing embedded code.
      */
     function loadSafely(callback) {
-        var path = r.resourcePrefix() + "odf/unsafe.fodt";
+        var path = r.resourcePrefix() + "documents/unsafe.fodt";
         t.odf = new odf.OdfContainer(path, function (container) {
             t.odf = container;
             r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");

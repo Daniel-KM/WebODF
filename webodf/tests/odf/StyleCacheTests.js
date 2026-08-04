@@ -33,7 +33,7 @@ odf.StyleCacheTests = function StyleTests(runner) {
     "use strict";
     var r = runner, t;
     function simple(callback) {
-        var path = r.resourcePrefix() + "odf/stylefodt/simple.fodt";
+        var path = r.resourcePrefix() + "documents/simple.fodt";
         t.doc = new odf.OdfContainer(path, function (o) {
             t.doc = o;
             var styles = new odf.StyleCache(o.rootElement),
