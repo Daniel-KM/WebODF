@@ -59,6 +59,14 @@ else (OVERRULED_WEBODF_VERSION)
 endif (OVERRULED_WEBODF_VERSION)
 message(STATUS "WebODF version " ${WEBODF_VERSION})
 
+# The manifest of an add-on only takes up to four numbers separated by dots,
+# where git describe adds the number of commits and the hash of the last one:
+# "0.5.10-161-gc2572a4a" is written "0.5.10.161", so that the builds between
+# two tags still follow each other. A tagged build is left as it is.
+string(REGEX REPLACE "^([0-9]+(\\.[0-9]+)*)-([0-9]+)-g[0-9a-f]+.*$" "\\1.\\3"
+    WEBODF_MANIFEST_VERSION "${WEBODF_VERSION}")
+string(REGEX REPLACE "-dirty$" "" WEBODF_MANIFEST_VERSION "${WEBODF_MANIFEST_VERSION}")
+
 
 #########################################################
 ## Find installed dependencies
