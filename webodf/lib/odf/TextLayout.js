@@ -2489,6 +2489,19 @@ odf.TextLayout = function TextLayout() {
             : Math.max(1, low));
     }
     /**
+     * Whether a node is a row of a table, of the kind that is written whole
+     * on one page.
+     * @param {!Node} node
+     * @return {!boolean}
+     */
+    function isTableRow(node) {
+        return node.nodeType === Node.ELEMENT_NODE
+            && node.namespaceURI === tablens
+            && (node.localName === "table-row"
+                || node.localName === "table-rows"
+                || node.localName === "table-header-rows");
+    }
+    /**
      * Cut an element where the page ends, and answer what is left of it: a
      * copy of the element that holds what did not fit.
      *
@@ -2512,6 +2525,8 @@ odf.TextLayout = function TextLayout() {
             inner = null,
             /**@type{!Element}*/
             tail,
+            /**@type{?Element}*/
+            head,
             /**@type{?Node}*/
             next,
             /**@type{!ClientRect}*/
@@ -2528,6 +2543,13 @@ odf.TextLayout = function TextLayout() {
                 if (node.nodeType === Node.TEXT_NODE) {
                     from = cutText(box, /**@type{!Text}*/(node), alone)
                         || node;
+                } else if (isTableRow(node)
+                        && !(alone && node === element.firstElementChild)) {
+                    // A row of a table is written whole on one page or on
+                    // the next, and never cut across, which would part the
+                    // cells of one row from one another. A row taller than
+                    // a page is cut all the same, as it is that or nothing.
+                    from = node;
                 } else if (depth > 0) {
                     inner = cutElement(box, /**@type{!Element}*/(node),
                         depth - 1, alone);
@@ -2549,6 +2571,12 @@ odf.TextLayout = function TextLayout() {
         // of the child that crossed the end of the page, and everything that
         // follows that child.
         tail = /**@type{!Element}*/(element.cloneNode(false));
+        // A table that is cut in two writes the rows of its head again at
+        // the top of what follows, as an office does.
+        head = domUtils.getDirectChild(element, tablens, "table-header-rows");
+        if (head && element.namespaceURI === tablens) {
+            tail.appendChild(head.cloneNode(true));
+        }
         if (inner) {
             tail.appendChild(inner);
             from = node
