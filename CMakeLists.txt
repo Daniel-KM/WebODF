@@ -191,8 +191,22 @@ FIND_PROGRAM(NODEJS_EXECUTABLE
 IF(NODEJS_EXECUTABLE)
     execute_process(COMMAND ${NODEJS_EXECUTABLE} --version
         OUTPUT_VARIABLE NODEJS_VERSION
+        ERROR_VARIABLE NODEJS_SAID
+        RESULT_VARIABLE NODEJS_ANSWERED
         OUTPUT_STRIP_TRAILING_WHITESPACE)
-    string(SUBSTRING ${NODEJS_VERSION} 1 -1 NODEJS_VERSION)
+    # A node that is there and answers nothing is a node that cannot be used,
+    # and it is said as much: the version was read as it stood, so an answer
+    # of nothing ended the build on "string sub-command SUBSTRING requires
+    # four arguments", which tells a reader nothing of node.
+    if (NOT NODEJS_ANSWERED EQUAL 0 OR NODEJS_VERSION STREQUAL "")
+        message(FATAL_ERROR "Node.js was found at " ${NODEJS_EXECUTABLE}
+            " but it answered nothing when asked for its version"
+            " (\"${NODEJS_EXECUTABLE} --version\" said \"${NODEJS_SAID}\")."
+            "\nThe path may be one that cmake kept from a build that went"
+            " before, of a node that is no longer installed: run it again"
+            " with -U NODEJS_EXECUTABLE -U NPM.")
+    endif ()
+    string(SUBSTRING "${NODEJS_VERSION}" 1 -1 NODEJS_VERSION)
     MESSAGE (STATUS "Installed Node.js found: ${NODEJS_EXECUTABLE} - ${NODEJS_VERSION}")
 ELSE(NODEJS_EXECUTABLE)
     MESSAGE (STATUS "No installed Node.js found. Node.js is not downloaded, but expected to be installed.")
@@ -202,7 +216,7 @@ ENDIF(NODEJS_EXECUTABLE)
 # what it finds, so a node that was installed later, by nvm for instance, is
 # only seen once the entry is dropped: the path is named here, as it is often
 # an older one that is still in the cache.
-if (${NODEJS_VERSION} VERSION_LESS ${REQUIRED_NODEJS_VERSION})
+if (NODEJS_VERSION VERSION_LESS REQUIRED_NODEJS_VERSION)
     message(FATAL_ERROR "Node.js is required in version "
         ${REQUIRED_NODEJS_VERSION} " or later, but "
         ${NODEJS_EXECUTABLE} " is " ${NODEJS_VERSION}
