@@ -167,6 +167,16 @@ install(TARGETS opendocumentviewer-desktop
 if (NOT APPLE)
     install(FILES data/org.webodf.OpenDocumentViewer.desktop
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+    # What a store of software reads of the program, that the tools of the
+    # AppImage and of the flatpak ask for. The version is the one of the
+    # build, in the three numbers a release carries.
+    set(OPENDOCUMENTVIEWER_METAINFO_VERSION ${WEBODF_MANIFEST_VERSION})
+    configure_file(data/org.webodf.OpenDocumentViewer.metainfo.xml.in
+        ${CMAKE_CURRENT_BINARY_DIR}/org.webodf.OpenDocumentViewer.metainfo.xml
+        @ONLY)
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/org.webodf.OpenDocumentViewer.metainfo.xml
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
 endif ()
 if (NOT APPLE)
     install(FILES ${ICON}

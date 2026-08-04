@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What a store of software reads to offer the viewer: the entry of the
+     desktop says how it is launched, this says what it is. The tools of the
+     AppImage and of the flatpak ask for it, see "README-Products.md". -->
+<component type="desktop-application">
+  <id>org.webodf.OpenDocumentViewer</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>OpenDocument Viewer</name>
+  <name xml:lang="fr">Lecteur OpenDocument</name>
+  <summary>A reader for OpenDocument files</summary>
+  <summary xml:lang="fr">Un lecteur de fichiers OpenDocument</summary>
+  <description>
+    <p>
+      OpenDocument Viewer opens the files of the open standard OpenDocument
+      and shows them, with no office suite to hand.
+    </p>
+    <p>It opens:</p>
+    <ul>
+      <li>texts (.odt, .fodt)</li>
+      <li>spreadsheets (.ods, .fods)</li>
+      <li>presentations (.odp, .fodp)</li>
+      <li>drawings (.odg) and formulas (.odf)</li>
+    </ul>
+    <p>
+      OpenDocument Format is the one standard of the office published by the
+      ISO and free to use: the viewer reads a file whatever wrote it. It is
+      light, and spares opening a suite of the office or sending the document
+      who knows where.
+    </p>
+  </description>
+  <description xml:lang="fr">
+    <p>
+      Le Lecteur OpenDocument ouvre les fichiers au standard ouvert OpenDocument
+      et les affiche sans avoir besoin d’une suite bureautique.
+    </p>
+    <p>Il ouvre :</p>
+    <ul>
+      <li>les textes (.odt, .fodt)</li>
+      <li>les tableurs (.ods, .fods)</li>
+      <li>les présentations (.odp, .fodp)</li>
+      <li>les dessins (.odg) et les formules (.odf)</li>
+    </ul>
+    <p>
+      OpenDocument Format est la seule norme bureautique ISO publiée et libre :
+      le lecteur peut lire le fichier quel que soit le logiciel qui l’a écrit.
+      Le lecteur est léger et évite d’ouvrir une suite bureautique ou d’envoyer
+      les données on ne sait où.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.webodf.OpenDocumentViewer.desktop</launchable>
+  <url type="homepage">https://webodf.org/</url>
+  <url type="bugtracker">https://github.com/webodf/WebODF/issues</url>
+  <provides>
+    <binary>opendocumentviewer-desktop</binary>
+  </provides>
+  <categories>
+    <category>Office</category>
+    <category>Viewer</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@OPENDOCUMENTVIEWER_METAINFO_VERSION@"/>
+  </releases>
+</component>

@@ -188,10 +188,18 @@ if (UNIX AND NOT APPLE)
             COMMAND ${CMAKE_COMMAND} -E make_directory ${VIEWER_PRODUCTS}
             COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}
                 --prefix ${VIEWER_APPDIR}/usr
+            # LDAI_OUTPUT is the name the plugin of the AppImage reads
+            # today, OUTPUT the one it read before and warns against. The
+            # desktop file is named rather than left to be found: the tool
+            # takes the first one of the directory otherwise, which is this
+            # one alone today and would be another the day a second is
+            # installed.
             COMMAND ${CMAKE_COMMAND} -E env
-                OUTPUT=${VIEWER_APPIMAGE}
+                LDAI_OUTPUT=${VIEWER_APPIMAGE}
                 ${VIEWER_QMAKE}
                 ${LINUXDEPLOY} --appdir ${VIEWER_APPDIR}
+                    --desktop-file
+                        ${VIEWER_APPDIR}/usr/share/applications/org.webodf.OpenDocumentViewer.desktop
                     --plugin qt --output appimage
             COMMAND ${CMAKE_COMMAND} -E echo "Wrote ${VIEWER_APPIMAGE}"
             DEPENDS opendocumentviewer-desktop
