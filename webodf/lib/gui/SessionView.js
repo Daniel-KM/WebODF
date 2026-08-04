@@ -508,6 +508,13 @@ gui.SessionViewOptions = function () {
             odtDocument = session.getOdtDocument();
             odfCanvas = odtDocument.getOdfCanvas();
 
+            // The tasks are made before anything is subscribed to them: the
+            // trigger of a task that is not there yet is undefined, and the
+            // subscription would throw.
+            highlightRefreshTask = webodfcore.Task.createRedrawTask(refreshHighlights);
+            numberingRefreshTask =
+                webodfcore.Task.createRedrawTask(refreshNumbering);
+
             odtDocument.subscribe(ops.OdtDocument.signalAnnotationAdded, onAnnotationAdded);
             odtDocument.subscribe(ops.Document.signalMemberAdded, renderMemberData);
             odtDocument.subscribe(ops.Document.signalMemberUpdated, renderMemberData);
@@ -536,9 +543,6 @@ gui.SessionViewOptions = function () {
             annotationConstraintStyles = newStyleSheet();
             processConstraints();
 
-            highlightRefreshTask = webodfcore.Task.createRedrawTask(refreshHighlights);
-            numberingRefreshTask =
-                webodfcore.Task.createRedrawTask(refreshNumbering);
         }
         init();
     };
