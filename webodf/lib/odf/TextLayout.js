@@ -1564,26 +1564,57 @@ odf.TextLayout = function TextLayout() {
         spreadLines(drawn);
     }
     /**
+     * The paragraph a node stands in, if any.
+     * @param {!Node} node
+     * @return {?Element}
+     */
+    function paragraphOf(node) {
+        var walk = node.parentNode;
+        while (walk && walk.nodeType === Node.ELEMENT_NODE) {
+            if (walk.namespaceURI === textns
+                    && (walk.localName === "p" || walk.localName === "h")) {
+                return /**@type{!Element}*/(walk);
+            }
+            walk = walk.parentNode;
+        }
+        return null;
+    }
+    /**
      * Write the number of pages the text was broken into in every header and
      * every foot that asks for it.
      *
      * The pages are broken one slice at a time, so the count is not known
      * until the last slice: the field carries the number the writer of the
      * document recorded until then, and the true one once the text is broken
-     * whole. Nothing is laid out again for it: the fields stand in the
-     * furniture of the pages, beside the text and not in it, and only their
-     * text is written anew.
+     * whole. The line the field stands in is laid out again: a foot that
+     * writes "page 3 of 785" holds the count against a tab stop at the right
+     * margin, and a number of another width leaves the line askew where the
+     * stops are not measured anew.
+     * @param {!odf.ODFDocumentElement} odfroot
      * @param {!HTMLDivElement} pagesDiv
      * @param {!number} pages
      * @return {undefined}
      */
-    function tellPageCount(pagesDiv, pages) {
+    function tellPageCount(odfroot, pagesDiv, pages) {
         var fields = pagesDiv.getElementsByTagNameNS(textns, "page-count"),
+            /**@type{!Array.<!Element>}*/
+            lines = [],
+            /**@type{?Element}*/
+            paragraph,
             /**@type{!number}*/
             i;
         for (i = 0; i < fields.length; i += 1) {
             fields.item(i).textContent = String(pages);
         }
+        for (i = 0; i < fields.length; i += 1) {
+            paragraph = paragraphOf(/**@type{!Node}*/(fields.item(i)));
+            if (paragraph && lines.indexOf(paragraph) === -1) {
+                lines.push(paragraph);
+            }
+        }
+        lines.forEach(function (paragraph) {
+            layOutTabStops(odfroot, paragraph);
+        });
     }
     /**
      * Whether a paragraph or a table asks to be written on a new page.
@@ -2928,7 +2959,9 @@ odf.TextLayout = function TextLayout() {
                 round2 += 1;
             }
             if (round === fillingRound && fillingDiv) {
-                tellPageCount(fillingDiv, countPages(fillingDiv));
+                tellPageCount(
+                    /**@type{!odf.ODFDocumentElement}*/(fillingRoot),
+                    fillingDiv, countPages(fillingDiv));
             }
         }, 0);
     }
