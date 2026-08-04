@@ -635,14 +635,26 @@ odf.Formatting = function Formatting() {
      * @return {?Element}
      */
     function firstPageLayoutElement() {
-        var masterPages = odfContainer.rootElement.masterStyles
-                .getElementsByTagNameNS(stylens, "master-page"),
-            layouts = odfContainer.rootElement.automaticStyles
-                .getElementsByTagNameNS(stylens, "page-layout"),
+        var masterStyles = odfContainer.rootElement.masterStyles,
+            automaticStyles = odfContainer.rootElement.automaticStyles,
+            /**@type{!NodeList}*/
+            masterPages,
+            /**@type{!NodeList}*/
+            layouts,
             layoutName = "",
             /**@type{!Element}*/
             layout,
             i;
+        // A document holds no master styles and no automatic styles of its
+        // own where it was written by hand or by a program that wrote none:
+        // the page is then the one of the defaults.
+        if (!masterStyles || !automaticStyles) {
+            return null;
+        }
+        masterPages = masterStyles.getElementsByTagNameNS(stylens,
+            "master-page");
+        layouts = automaticStyles.getElementsByTagNameNS(stylens,
+            "page-layout");
         if (masterPages.length > 0) {
             layoutName = /**@type{!Element}*/(masterPages.item(0))
                 .getAttributeNS(stylens, "page-layout-name") || "";
@@ -688,10 +700,12 @@ odf.Formatting = function Formatting() {
         pageLayoutElement = styleName
             ? getPageLayoutStyleElement(styleName, styleFamily)
             : firstPageLayoutElement();
-        if (!pageLayoutElement) {
+        if (!pageLayoutElement && odfContainer.rootElement.styles) {
             pageLayoutElement = domUtils.getDirectChild(odfContainer.rootElement.styles, stylens, "default-page-layout");
         }
-        props = domUtils.getDirectChild(pageLayoutElement, stylens, "page-layout-properties");
+        props = pageLayoutElement
+            ? domUtils.getDirectChild(pageLayoutElement, stylens, "page-layout-properties")
+            : null;
         if (props) {
             // set page's default width and height based on print orientation
             if (props.getAttributeNS(stylens, "print-orientation") === "landscape") {
