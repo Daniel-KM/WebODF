@@ -3175,19 +3175,16 @@ odf.TextLayout = function TextLayout() {
         // is drawn after it stands under them.
         plan = /**@type{!PagePlan}*/(filling.plan);
         // The text is as tall as the pages it holds so far, so that what is
-        // drawn after it stands under them. The rule is written anew at each
-        // turn and not added to: a sheet of a thousand rules is read again
-        // for each of them.
-        if (filling.heightRule >= 0
-                && filling.heightRule < filling.sheet.cssRules.length) {
-            filling.sheet.deleteRule(filling.heightRule);
-        }
-        filling.heightRule = filling.sheet.cssRules.length;
-        filling.sheet.insertRule("office|text {height:" + Math.max(0,
+        // drawn after it stands under them. It is written on the element
+        // itself and not in the sheet of the layout: a rule that is taken
+        // away and written anew at every turn tells the browser that every
+        // style of the document is to be worked out again, and a document of
+        // eight hundred pages is worked out anew eight hundred times.
+        filling.text.setAttribute("style", "height:" + Math.max(0,
             filling.top - plan.at(Math.max(0, filling.page - 1))
                 .pageSeparation) + "px;width:" + (pagesPerRow
             * (plan.at(0).pageWidth + plan.at(0).pageSeparation)
-            - plan.at(0).pageSeparation) + "px;}", filling.heightRule);
+            - plan.at(0).pageSeparation) + "px;");
         drawPageFurniture(fillingRoot, plan, fillingDiv,
             readMeta(fillingRoot), from);
         if (filling.waiting.length > 0 && filling.page < maxPages) {
