@@ -945,6 +945,12 @@ odf.TextLayout = function TextLayout() {
         line = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "div"));
         line.style.position = "relative";
         paragraph.appendChild(line);
+        // The line of the paragraph holds its own height from here on: the
+        // zero width space that keeps an empty paragraph from collapsing
+        // would add a line of the size of the style of the paragraph, and a
+        // footer of eight points would stand ten points apart.
+        paragraph.setAttributeNS(webodfhelperns, "webodfhelper:laidout",
+            "true");
         parts.forEach(function (piece, index) {
             var /**@type{?odf.TextLayout.TabStop}*/
                 stop = index === 0 ? null : stops[index - 1];
@@ -966,11 +972,7 @@ odf.TextLayout = function TextLayout() {
             }
             line.appendChild(piece);
         });
-        // The parts are laid over one another, so the line keeps the height of
-        // one of them: a part of its own holds the line open.
-        part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "span"));
-        part.textContent = "\u00a0";
-        line.appendChild(part);
+
     }
     /**
      * Push the parts of the lines apart where they would be written over.
@@ -1019,6 +1021,18 @@ odf.TextLayout = function TextLayout() {
             rects.push(pieces.map(function (piece) {
                 return piece.getBoundingClientRect();
             }));
+        });
+        // Every part of a line is laid at a place of its own and none of them
+        // holds the line open, so the line is given the height of the tallest
+        // one: a line of a footer written in eight points is eight points
+        // tall, and not the ten points of the style of its paragraph.
+        rects.forEach(function (found, l) {
+            var /**@type{!number}*/
+                tall = 0;
+            found.forEach(function (rect) {
+                tall = Math.max(tall, rect.height);
+            });
+            boxOf[l].style.height = tall + "px";
         });
         lines.forEach(function (pieces, l) {
             var /**@type{!number}*/

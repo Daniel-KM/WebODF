@@ -87,6 +87,13 @@ text|p::after, text|h::after {
     white-space: pre;
 }
 
+/* A line of a header or of a footer laid against its tab stops holds its
+   own height, see "TextLayout.js": the space above would add a line of the
+   size of the style of the paragraph to it. */
+text|p[webodfhelper|laidout]::after, text|h[webodfhelper|laidout]::after {
+    content: none;
+}
+
 *[webodfhelper|containsparagraphanchor] {
   position: relative;
 }
