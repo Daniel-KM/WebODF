@@ -1238,31 +1238,6 @@
             function next() { pos += 1; return tokens[pos - 1]; }
 
             /**
-             * @return {!number}
-             */
-            function parsePrimary() {
-                var /**@type{(!string|undefined)}*/token = next(),
-                    /**@type{!number}*/value;
-                if (token === "(") {
-                    value = parseAddition();
-                    next(); // ")"
-                    return value;
-                }
-                if (token === "-") {
-                    return -parsePrimary();
-                }
-                if (token === "+") {
-                    return parsePrimary();
-                }
-                // function call: identifier followed by "("
-                if (token !== undefined && /^[a-z]+$/.test(token) && peek() === "(") {
-                    next(); // "("
-                    return callFunction(token, parseArguments());
-                }
-                return resolve(token);
-            }
-
-            /**
              * Read the arguments of a function call, until the parenthesis.
              * @return {!Array.<!number>}
              */
@@ -1296,6 +1271,31 @@
                 case "if": return args[0] > 0 ? args[1] : args[2];
                 default: return 0;
                 }
+            }
+
+            /**
+             * @return {!number}
+             */
+            function parsePrimary() {
+                var /**@type{(!string|undefined)}*/token = next(),
+                    /**@type{!number}*/value;
+                if (token === "(") {
+                    value = parseAddition();
+                    next(); // ")"
+                    return value;
+                }
+                if (token === "-") {
+                    return -parsePrimary();
+                }
+                if (token === "+") {
+                    return parsePrimary();
+                }
+                // function call: identifier followed by "("
+                if (token !== undefined && /^[a-z]+$/.test(token) && peek() === "(") {
+                    next(); // "("
+                    return callFunction(token, parseArguments());
+                }
+                return resolve(token);
             }
 
             /**

@@ -26,7 +26,8 @@
 /*global window, XMLHttpRequest, require, console, DOMParser, document,
   process, __dirname, setTimeout, Packages, print,
   readFile, quit, Buffer, ArrayBuffer, Uint8Array,
-  navigator, VBArray, alert, now, clearTimeout, webodf_version */
+  navigator, VBArray, alert, now, clearTimeout, webodf_version,
+  globalThis */
 
 /**
  * Three implementations of a runtime for browser, node.js and rhino.
@@ -917,8 +918,8 @@ function BrowserRuntime() {
 function NodeJSRuntime() {
     "use strict";
     var /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/
-        globalScope = /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/(globalThis);
-    var self = this,
+        globalScope = /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/(globalThis),
+        self = this,
         fs = require('fs'),
         pathmod = require('path'),
         /**@type{!string}*/
