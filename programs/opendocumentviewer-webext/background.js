@@ -45,13 +45,19 @@
             "application/vnd.oasis.opendocument.presentation-template",
             "application/vnd.oasis.opendocument.spreadsheet",
             "application/vnd.oasis.opendocument.spreadsheet-flat-xml",
-            "application/vnd.oasis.opendocument.spreadsheet-template"
+            "application/vnd.oasis.opendocument.spreadsheet-template",
+            "application/vnd.oasis.opendocument.graphics",
+            "application/vnd.oasis.opendocument.graphics-flat-xml",
+            "application/vnd.oasis.opendocument.graphics-template",
+            "application/vnd.oasis.opendocument.formula"
         ],
         /**@const@type{!Array.<!string>}*/
         extensions = [
             ".odt", ".fodt", ".ott",
             ".odp", ".fodp", ".otp",
-            ".ods", ".fods", ".ots"
+            ".ods", ".fods", ".ots",
+            ".odg", ".fodg", ".otg",
+            ".odf"
         ];
 
     /**
