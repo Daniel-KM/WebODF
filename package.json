@@ -38,6 +38,7 @@
     "@xmldom/xmldom": "^0.9.10"
   },
   "devDependencies": {
+    "c8": "^10.1.3",
     "jsdoc": "^4.0.5",
     "jsdom": "^30.0.1",
     "playwright-core": "^1.62.1",
@@ -50,6 +51,7 @@
     "test": "node scripts/test.js",
     "test:node": "node scripts/test.js",
     "test:rhino": "node scripts/test-rhino.js",
+    "coverage": "node scripts/coverage.js",
     "all": "npm run check && npm test && npm run build && npm run doc",
     "test:browser": "node scripts/test-browser.js"
   },

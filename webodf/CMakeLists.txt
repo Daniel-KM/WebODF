@@ -313,18 +313,6 @@ add_custom_command(
 )
 add_custom_target(simplenodetest ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp)
 
-if (NOT APPLE)
-    add_custom_command(
-        OUTPUT instrumented/index.html
-        COMMAND ${JSCOVERAGE}
-        ARGS --exclude=node_modules
-             ${CMAKE_CURRENT_SOURCE_DIR}
-             ${CMAKE_CURRENT_BINARY_DIR}/instrumented
-        DEPENDS ${LIBJSFILES} JSCoverage
-    )
-    add_custom_target(instrumented DEPENDS instrumented/index.html)
-endif(NOT APPLE)
-
 add_custom_target(webodf.js-tests DEPENDS syntaxcheck simplenodetest)
 
 add_custom_command(

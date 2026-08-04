@@ -213,35 +213,20 @@ else()
   message(STATUS "Android was not found: APK will not be built.")
 endif()
 
-# JSCoverage
-if(WIN32)
-    # JSCoverage only builds with Cygwin/MiniGW
-    # Rather than force a dependency on a specific compiler, download binaries
-    ExternalProject_Add(
-        JSCoverage
-        DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-        URL "http://siliconforks.com/jscoverage/download/jscoverage-0.5.1-windows.zip"
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        INSTALL_COMMAND ""
-        TEST_COMMAND ""
-    )
-    set(JSCOVERAGE ${CMAKE_BINARY_DIR}/JSCoverage-prefix/src/JSCoverage/jscoverage)
-elseif(APPLE)
-else()
-    ExternalProject_Add(
-        JSCoverage
-        DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-        URL "http://siliconforks.com/jscoverage/download/jscoverage-0.5.1.tar.bz2"
-        URL_MD5 a70d79a6759367fbcc0bcc18d6866ff3
-        PATCH_COMMAND  cat ${CMAKE_CURRENT_SOURCE_DIR}/JSCoverage.patch | patch -p1
-        CONFIGURE_COMMAND "./configure"
-        BUILD_COMMAND make -j${NProcessors}
-        BUILD_IN_SOURCE 1
-        INSTALL_COMMAND ""
-    )
-    set(JSCOVERAGE ${CMAKE_BINARY_DIR}/JSCoverage-prefix/src/JSCoverage/jscoverage)
-endif()
+# The coverage is measured by c8, that reads the one V8 records while it runs
+# the tests: it neither parses nor rewrites the sources, so it does not
+# constrain the version of ECMAScript the library is written in. It replaces
+# JSCoverage, whose last release, 0.5.1 of 2010, bundles SpiderMonkey 1.7 and
+# does not build any more with gcc 14 or clang 16.
+#
+# It is a target of its own, never built by "all", as it is only useful to
+# measure the coverage and it runs the whole suite of the tests again.
+add_custom_target(coverage
+    COMMAND ${NPM} run coverage
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Measuring the coverage of the tests with c8"
+    USES_TERMINAL
+)
 
 # The programs, the editors and the extensions, need Dojo 1.8.1, that is not
 # published any more: neither dojotoolkit.org nor npm has it. They are built
