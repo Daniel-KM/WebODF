@@ -97,25 +97,27 @@ MESSAGE ( STATUS "external downloads will be stored/expected in: ${EXTERNALS_DOW
 ExternalProject_Add(
     ClosureCompiler
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-    URL "http://dl.google.com/closure-compiler/compiler-20160911.tar.gz"
-    URL_MD5 7e85253436e492aa580ce3c3b8f585e7
+    URL "https://repo1.maven.org/maven2/com/google/javascript/closure-compiler/v20260804/closure-compiler-v20260804.jar"
+    DOWNLOAD_NO_EXTRACT TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
-set(CLOSURE_JAR ${CMAKE_BINARY_DIR}/ClosureCompiler-prefix/src/ClosureCompiler/closure-compiler-v20160911.jar)
+# Same version as the build with node, see scripts/lib/closure.js.
+set(CLOSURE_JAR ${EXTERNALS_DOWNLOAD_DIR}/closure-compiler-v20260804.jar)
 
 # Rhino
 ExternalProject_Add(
     Rhino
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-    URL "http://ftp.mozilla.org/pub/js/rhino1_7R3.zip"
-    URL_MD5 99d94103662a8d0b571e247a77432ac5
+    URL "https://repo1.maven.org/maven2/org/mozilla/rhino-all/1.9.1/rhino-all-1.9.1.jar"
+    DOWNLOAD_NO_EXTRACT TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
-set(RHINO ${CMAKE_BINARY_DIR}/Rhino-prefix/src/Rhino/js.jar)
+# Same version as the build with node, see scripts/lib/rhino.js.
+set(RHINO ${EXTERNALS_DOWNLOAD_DIR}/rhino-all-1.9.1.jar)
 
 # JSDoc
 ExternalProject_Add(
@@ -241,7 +243,13 @@ else()
     set(JSCOVERAGE ${CMAKE_BINARY_DIR}/JSCoverage-prefix/src/JSCoverage/jscoverage)
 endif()
 
+# The programs, the editors and the extensions, need Dojo 1.8.1, that is not
+# published any more: neither dojotoolkit.org nor npm has it. They are built
+# only when they are asked for, so that the library builds without them.
+option(WEBODF_PROGRAMS "Build the editors and the extensions of programs/" OFF)
+
 # Dojo
+if (WEBODF_PROGRAMS)
 ExternalProject_Add(
     Dojo
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
@@ -252,9 +260,10 @@ ExternalProject_Add(
     INSTALL_COMMAND ""
 )
 set(DOJO ${CMAKE_BINARY_DIR}/Dojo-prefix/src/Dojo)
+endif (WEBODF_PROGRAMS)
 
 # Dojo requires a patch on windows
-if(WIN32)
+if(WIN32 AND WEBODF_PROGRAMS)
     set(DOJOPATCH_URL "http://bugs.dojotoolkit.org/raw-attachment/ticket/15413/node-win-1.8.patch")
     set(DOJOPATCH_MD5 "51eae664ddbe919c28c4e3082748cd19")
     set(DOJOPATCH ${EXTERNALS_DOWNLOAD_DIR}/dojo-node.patch)
@@ -269,7 +278,7 @@ if(WIN32)
         COMMAND cat ${DOJOPATCH} | patch -p0 -d ${CMAKE_BINARY_DIR}/Dojo-prefix/src/Dojo/util/
         DEPENDEES build
     )
-endif(WIN32)
+endif(WIN32 AND WEBODF_PROGRAMS)
 
 ##############################
 ## Define custom macros
@@ -354,6 +363,8 @@ endif()
 add_subdirectory(webodf)
 
 # the programs/components
-add_subdirectory(programs)
+if (WEBODF_PROGRAMS)
+    add_subdirectory(programs)
+endif (WEBODF_PROGRAMS)
 
 # vim:expandtab
