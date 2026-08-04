@@ -229,7 +229,6 @@
         "odf.FontLoader",
         "odf.Formatting",
         "odf.ListStylesToCss",
-        "odf.Style2CSS",
         "odf.TextLayout",
         "ops.Canvas",
         "webodfcore.Async",
@@ -286,8 +285,7 @@
         "odf.Namespaces"
     ],
     "odf.TextLayout": [
-        "odf.OdfContainer",
-        "odf.OdfUtils"
+        "odf.Style2CSS"
     ],
     "odf.TextProperties": [
         "odf.StyleParseUtils"
