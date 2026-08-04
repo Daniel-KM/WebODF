@@ -777,6 +777,85 @@ odf.TextLayout = function TextLayout() {
         return stops;
     }
     /**
+     * Write the runs of spaces of a header as the spaces they stand for.
+     *
+     * The canvas does that for the text of the document alone, and a header
+     * is written in the styles of the document, so a "text:s" is still an
+     * element here and nothing of it is seen: "Page 1 of 809" was read
+     * "Page 1of 809".
+     * @param {!Element} box a header or a footer, drawn for a page
+     * @return {undefined}
+     */
+    function expandSpaces(box) {
+        var doc = box.ownerDocument,
+            spaces = box.getElementsByTagNameNS(textns, "s"),
+            /**@type{!Array.<!Element>}*/
+            found = [],
+            i;
+        for (i = 0; i < spaces.length; i += 1) {
+            found.push(/**@type{!Element}*/(spaces.item(i)));
+        }
+        found.forEach(function (space) {
+            var count = parseInt(space.getAttributeNS(textns, "c"), 10),
+                run = "";
+            if (!(count > 1)) {
+                count = 1;
+            }
+            while (count > 0) {
+                run += "\u00a0";
+                count -= 1;
+            }
+            if (space.parentNode) {
+                space.parentNode.replaceChild(doc.createTextNode(run), space);
+            }
+        });
+    }
+    /**
+     * Bring the tabs of a paragraph up to be children of the paragraph.
+     *
+     * A document may write a tab deep in the spans that carry the styles of
+     * a line, and the parts of the line are told apart at the paragraph: the
+     * spans around a tab are cut in two, so the tab stands between them and
+     * each part keeps the styles it was written with.
+     * @param {!Element} paragraph
+     * @return {undefined}
+     */
+    function raiseTabs(paragraph) {
+        var tabs = paragraph.getElementsByTagNameNS(textns, "tab"),
+            /**@type{!Array.<!Element>}*/
+            found = [],
+            i;
+        for (i = 0; i < tabs.length; i += 1) {
+            found.push(/**@type{!Element}*/(tabs.item(i)));
+        }
+        found.forEach(function (tab) {
+            var /**@type{?Node}*/
+                parent = tab.parentNode,
+                /**@type{!Element}*/
+                tail,
+                /**@type{?Node}*/
+                node;
+            while (parent && parent !== paragraph) {
+                tail = /**@type{!Element}*/(
+                    /**@type{!Element}*/(parent).cloneNode(false)
+                );
+                node = tab.nextSibling;
+                while (node) {
+                    tail.appendChild(node);
+                    node = tab.nextSibling;
+                }
+                if (parent.parentNode) {
+                    parent.parentNode.insertBefore(tab, parent.nextSibling);
+                    if (tail.firstChild) {
+                        parent.parentNode.insertBefore(tail,
+                            tab.nextSibling);
+                    }
+                }
+                parent = tab.parentNode;
+            }
+        });
+    }
+    /**
      * Set the parts of a paragraph against the tab stops it is written with.
      *
      * A tab is drawn as a tab of a terminal otherwise, that walks to the next
@@ -807,6 +886,13 @@ odf.TextLayout = function TextLayout() {
             /**@type{!number}*/
             i;
         if (stops.length === 0) {
+            return;
+        }
+        raiseTabs(paragraph);
+        if (!paragraph.getElementsByTagNameNS(textns, "tab").length
+                && String(paragraph.textContent).indexOf("\t") === -1) {
+            // A line without a tab is written as it stands: nothing of it is
+            // moved, and nothing of it can be lost.
             return;
         }
         // The parts are the nodes between the tabs, the first one before the
@@ -846,6 +932,11 @@ odf.TextLayout = function TextLayout() {
             node = next;
         }
         if (parts.length < 2) {
+            // Nothing was told apart, so what was taken from the paragraph
+            // is put back where it was.
+            while (parts[0].firstChild) {
+                paragraph.appendChild(parts[0].firstChild);
+            }
             return;
         }
         // The parts are laid in a box of the page rather than in the
@@ -1026,6 +1117,7 @@ odf.TextLayout = function TextLayout() {
         }
         box.appendChild(doc.importNode(source, true));
         unstampStyleNames(odfroot, box);
+        expandSpaces(box);
         fill("page-number", String(page));
         fill("page-count", String(pages));
         Object.keys(meta).forEach(function (name) {
