@@ -94,6 +94,12 @@ add_custom_command(
     # by their own way, that no cache of the layer answers.
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo-deps/dist/dojo/nls/ dojo/nls/
 
+    # The way dojo looks an element up, "dojo/selector/lite", that it asks a
+    # server for the first time a query is made: it is not in the layer, and
+    # without it the widgets that are made from a query are never made, the
+    # picker of the style of a paragraph among them.
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo-deps/dist/dojo/selector/ dojo/selector/
+
     COMMAND ${CMAKE_COMMAND} -E make_directory app/resources/
     COMMAND ${CMAKE_COMMAND} -E copy dojo-deps/dist/app/resources/app.css app/resources/
 
@@ -163,6 +169,7 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo/resources
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/nls ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo/nls
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/selector ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo/selector
     COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/app/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dijit/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojox/
@@ -267,6 +274,7 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo/resources
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/nls ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo/nls
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/selector ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo/selector
     COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/app/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dijit/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojox/
