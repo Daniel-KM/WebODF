@@ -8,6 +8,21 @@
 option(WEBODF_ANDROID "Build the viewer of android, that needs its sdk" OFF)
 
 if (WEBODF_ANDROID)
+    # The sdk is looked for here rather than left to gradle, that only says so
+    # once it has resolved the plugin and started the tasks of android.
+    if (NOT DEFINED ENV{ANDROID_HOME}
+            AND NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/local.properties)
+        message(FATAL_ERROR
+            "The sdk of android was not found, so the viewer cannot be built."
+            " Export ANDROID_HOME with the directory it is installed in, or write"
+            " \"sdk.dir=/path/to/sdk\" in"
+            " ${CMAKE_CURRENT_SOURCE_DIR}/local.properties."
+            " The command line tools that install it are at"
+            " https://developer.android.com/studio#command-tools, and the"
+            " packages the build needs are \"platforms;android-36\" and"
+            " \"build-tools;36.0.0\".")
+    endif()
+
     # Gradle is downloaded, as the closure compiler and Rhino are: Debian 13
     # packages the 4.4.1 of 2017, where the plugin of android asks for a 9,
     # so the one of the distribution is never the right one. The version is
