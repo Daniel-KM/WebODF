@@ -5,11 +5,39 @@ body, html, div {
 }
 body, html {
     height: 100%;
-    background: #333;
-}
-div#message {
-    padding: 1em;
+    /* A grey ground sets the page apart, as a reader of pdf does. The page
+       itself is white, from the style sheet of the library. */
+    background: #666;
+    color: black;
     font-family: sans-serif;
-    color: white;
+    /* The library turns the element it draws in into an inline block, so the
+       page is put in the middle by this alignment. */
     text-align: center;
+}
+/* Fills the screen as long as no document is shown, so a touch anywhere asks
+   for one. */
+a#empty > span > strong {
+    display: block;
+    padding-bottom: 0.8em;
+    font-size: 1.2em;
+}
+a#empty > span > small {
+    display: block;
+    max-width: 24em;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+a#empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    height: 100%;
+    padding: 2em;
+    color: white;
+    text-decoration: none;
+}
+div#odf {
+    /* Keeps the page off the edges of a phone. */
+    padding: 0.6em;
 }

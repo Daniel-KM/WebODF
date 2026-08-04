@@ -8,6 +8,6 @@
     if (!url) {
         return;
     }
-    document.getElementById("message").style.display = "none";
+    document.getElementById("empty").style.display = "none";
     new odf.OdfCanvas(document.getElementById("odf")).load(url);
 }());

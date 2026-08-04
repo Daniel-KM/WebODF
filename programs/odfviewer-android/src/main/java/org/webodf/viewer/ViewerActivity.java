@@ -25,6 +25,7 @@
 package org.webodf.viewer;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -33,6 +34,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -63,6 +65,22 @@ public class ViewerActivity extends Activity {
     private static final String[] FILES = {
         "index.html", "index.css", "index.js", "webodf.js"
     };
+    /** The nine types of the format, as the picker only offers those. */
+    private static final String[] TYPES = {
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.text-flat-xml",
+        "application/vnd.oasis.opendocument.text-template",
+        "application/vnd.oasis.opendocument.presentation",
+        "application/vnd.oasis.opendocument.presentation-flat-xml",
+        "application/vnd.oasis.opendocument.presentation-template",
+        "application/vnd.oasis.opendocument.spreadsheet",
+        "application/vnd.oasis.opendocument.spreadsheet-flat-xml",
+        "application/vnd.oasis.opendocument.spreadsheet-template"
+    };
+    private static final int PICK = 1;
+    private static final String OPEN = "/open";
+
+    private WebView view;
 
     /**
      * The type of a file of the viewer, as the web view only reads a script
@@ -150,7 +168,7 @@ public class ViewerActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
 
-        WebView view = new WebView(this);
+        view = new WebView(this);
         WebSettings settings = view.getSettings();
         // The library runs in the page, so scripts are needed. Everything
         // else a web view may reach is closed: the page reads no file and no
@@ -169,17 +187,84 @@ public class ViewerActivity extends Activity {
                     WebView webView, WebResourceRequest request) {
                 return answer(request.getUrl());
             }
+
+            // The page asks for a document by going to "/open", which is
+            // never loaded: the picker is opened instead. That spares the
+            // page a bridge to the code around it.
+            //
+            // Nothing else is loaded either: a link a document holds leads
+            // nowhere, as the viewer only ever shows the one page it carries.
+            @Override
+            public boolean shouldOverrideUrlLoading(
+                    WebView webView, WebResourceRequest request) {
+                if (OPEN.equals(request.getUrl().getPath())) {
+                    pick();
+                    return true;
+                }
+                return true;
+            }
         });
         setContentView(view);
 
-        String page = PAGE;
         Intent intent = getIntent();
         Uri uri = (intent == null)
                 ? null
                 : intent.getData();
         if (uri != null && cache(uri)) {
-            page += "?file=/" + CACHED;
+            view.loadUrl(PAGE + "?file=/" + CACHED);
+            return;
         }
-        view.loadUrl(page);
+        // Started on its own rather than on a document: the page says how to
+        // open one, and asks for it when it is touched. The picker is not
+        // opened here, as an application that opens one before it is even
+        // seen gives no way back.
+        view.loadUrl(PAGE);
+    }
+
+    /**
+     * @param action ACTION_OPEN_DOCUMENT or ACTION_GET_CONTENT
+     */
+    private Intent asking(String action) {
+        Intent intent = new Intent(action);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, TYPES);
+        return intent;
+    }
+
+    /**
+     * Ask the system for a document, so that the viewer opens one when it is
+     * started from the list of the applications, and not only when a document
+     * is handed to it. The system reads the file, so the viewer needs no
+     * permission to reach the storage.
+     *
+     * Two ways of asking are tried, as a system may carry neither: the picker
+     * of the documents, that a system without it answers nothing to, then the
+     * older way, that a file manager usually answers. The viewer says so
+     * rather than stopping when no application answers either.
+     */
+    private void pick() {
+        try {
+            startActivityForResult(asking(Intent.ACTION_OPEN_DOCUMENT), PICK);
+            return;
+        } catch (ActivityNotFoundException e) {
+            // The picker of the documents is not there: ask any application.
+        }
+        try {
+            startActivityForResult(asking(Intent.ACTION_GET_CONTENT), PICK);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.no_picker, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
+        Uri uri = (data == null)
+                ? null
+                : data.getData();
+        if (request == PICK && result == RESULT_OK && uri != null && cache(uri)) {
+            view.loadUrl(PAGE + "?file=/" + CACHED);
+        }
     }
 }
