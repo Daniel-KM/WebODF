@@ -5,10 +5,11 @@ body, html, div {
 }
 body, html {
     height: 100%;
-    /* A grey ground sets the page apart, as a reader of pdf does. The page
-       itself is white, from the style sheet of the library. */
-    background: #666;
-    color: black;
+    /* The ground sets the page apart, as a reader of pdf does, and follows the
+       theme of the system. The page itself is white, from the style sheet of
+       the library. */
+    background: #d4d4d7;
+    color: #15141a;
     font-family: sans-serif;
     /* The library turns the element it draws in into an inline block, so the
        page is put in the middle by this alignment. */
@@ -34,10 +35,29 @@ a#empty {
     box-sizing: border-box;
     height: 100%;
     padding: 2em;
-    color: white;
+    /* The words of the empty screen are read on the ground of the theme, so
+       they take the colour of the theme and not one of their own. */
+    color: inherit;
     text-decoration: none;
 }
 div#odf {
     /* Keeps the page off the edges of a phone. */
     padding: 0.6em;
+}
+/* A way to the page that tells what the viewer is, kept out of the way of the
+   touch that asks for a document. */
+a#about {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 1.2em;
+    color: inherit;
+    font-size: 0.9em;
+    opacity: 0.75;
+}
+@media (prefers-color-scheme: dark) {
+    body, html {
+        background: #2a2a2e;
+        color: #fbfbfe;
+    }
 }

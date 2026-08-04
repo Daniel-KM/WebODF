@@ -49,6 +49,10 @@ node_modules/*
 
 # The library is copied into the assets of the viewer of android.
 programs/opendocumentviewer-android/src/main/assets/webodf.js
+# The pages of the format are written by cmake from the text of "programs/text",
+# among the assets, as the library is: gradle reads them from there.
+programs/opendocumentviewer-android/src/main/assets/about.en.html
+programs/opendocumentviewer-android/src/main/assets/about.fr.html
 programs/opendocumentviewer-android/.gradle
 programs/opendocumentviewer-android/build
 programs/opendocumentviewer-android/local.properties
