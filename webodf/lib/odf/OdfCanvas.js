@@ -4027,6 +4027,36 @@
                 });
                 return;
             }
+            // A engine may say its fonts are ready before it draws with
+            // them: the first pages are then broken with the letters of
+            // another font and hold a line too many, which is only seen when
+            // the pages are all broken. The pages are set right as soon as
+            // the fonts have truly landed, and not at the end of the whole.
+            if (fonts && fonts.ready) {
+                fonts.ready.then(function () {
+                    var tries = 20;
+                    /**
+                     * @return {undefined}
+                     */
+                    function whenBroken() {
+                        if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
+                            return;
+                        }
+                        if (textLayout.isBreaking()) {
+                            tries -= 1;
+                            if (tries > 0) {
+                                runtime.setTimeout(whenBroken, 250);
+                            }
+                            return;
+                        }
+                        if (!textLayout.pagesFit(odfnode)) {
+                            textLayout.repair(odfnode,
+                                /**@type{!HTMLDivElement}*/(pagesDiv));
+                        }
+                    }
+                    whenBroken();
+                });
+            }
             loadingQueue.whenDrained(function () {
                 if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
                     return;
