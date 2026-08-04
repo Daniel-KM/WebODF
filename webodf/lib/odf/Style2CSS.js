@@ -294,19 +294,30 @@ odf.Style2CSS = function Style2CSS() {
             return null;
         }
 
-        // If there is no name, it is a default style, in which case style-name shall be used without a value
+        // The style a name stands for is read from an attribute of its own
+        // and not from the value of the attribute that names it: a browser
+        // sorts the rules by the attribute they read, and tries on an
+        // element only those that read an attribute it carries, where every
+        // rule reading the same attribute is tried on every element that
+        // carries it. A document of twenty thousand paragraphs and two
+        // thousand styles is read forty million times over that way, which
+        // is some seconds; by the name of the attribute it is read once by
+        // element, some tens of milliseconds. The attributes are written on
+        // the elements by "odf.Style2CSS.stampStyleClasses".
+        //
+        // A class would do the same and is not read at all here: the
+        // attribute of a class answers to css for the elements of html and
+        // of svg alone, and never for those of OpenDocument.
+        //
+        // Where there is no name it is a default style, that answers for
+        // every element of the family.
         if (name) {
-            namepart = '[' + prefix + '|style-name="' + name + '"]';
+            namepart = '[' + odf.Style2CSS.classOfStyle(prefix, name) + ']';
         } else {
             namepart = '';
         }
         if (prefix === 'presentation') {
             prefix = 'draw';
-            if (name) {
-                namepart = '[presentation|style-name="' + name + '"]';
-            } else {
-                namepart = '';
-            }
         }
         selector = prefix + '|' + familytagnames[family].join(
             namepart + ',' + prefix + '|'
@@ -1395,6 +1406,9 @@ odf.Style2CSS = function Style2CSS() {
         }
 
         odfRoot = rootNode;
+        // Every element is given the class of the style it names, that the
+        // rules written below are read against.
+        odf.Style2CSS.stampStyleClasses(rootNode);
 
         // make stylesheet empty
         while (stylesheet.cssRules.length) {
@@ -1421,4 +1435,95 @@ odf.Style2CSS = function Style2CSS() {
             }
         }
     };
+};
+
+/**
+ * The attribute an element carries for the style of a name.
+ *
+ * A name of the OpenDocument standard holds letters, digits, dots and
+ * dashes, and a name of an attribute holds no dot: what is not a letter, a
+ * digit, a dash or an underscore is written as its number between
+ * underscores, and a letter of the upper case is written under an
+ * underscore, as an attribute of a document of html knows no case. Two
+ * names never come to one attribute that way.
+ * @param {!string} prefix the prefix of the family, "text" and its kin
+ * @param {!string} name
+ * @return {!string}
+ */
+odf.Style2CSS.classOfStyle = function (prefix, name) {
+    "use strict";
+    var written = "",
+        /**@type{!string}*/
+        letter,
+        /**@type{!number}*/
+        i;
+    for (i = 0; i < name.length; i += 1) {
+        letter = name.charAt(i);
+        if (/[A-Z]/.test(letter)) {
+            written += "_" + letter.toLowerCase();
+        } else if (/[a-z0-9\-]/.test(letter)) {
+            written += letter;
+        } else {
+            written += "_" + name.charCodeAt(i).toString(16) + "_";
+        }
+    }
+    return "odf-" + prefix + "-" + written;
+};
+
+/**
+ * The attributes that name a style, by the prefix of the family they belong
+ * to.
+ * @const
+ * @type{!Array.<!{ns:!string,prefix:!string}>}
+ */
+odf.Style2CSS.styleNameAttributes = [
+    {ns: odf.Namespaces.textns, prefix: "text"},
+    {ns: odf.Namespaces.drawns, prefix: "draw"},
+    {ns: odf.Namespaces.tablens, prefix: "table"},
+    {ns: odf.Namespaces.presentationns, prefix: "presentation"},
+    {ns: odf.Namespaces.officens, prefix: "office"}
+];
+/**
+ * Write on one element the attribute of each style it names.
+ * @param {!Element} element
+ * @return {undefined}
+ */
+odf.Style2CSS.stampOne = function (element) {
+    "use strict";
+    var /**@type{!Array.<!string>}*/
+        written = [],
+        named = odf.Style2CSS.styleNameAttributes,
+        /**@type{!number}*/
+        i,
+        /**@type{!string}*/
+        name;
+    for (i = 0; i < named.length; i += 1) {
+        name = element.getAttributeNS(named[i].ns, "style-name") || "";
+        if (name) {
+            written.push(odf.Style2CSS.classOfStyle(named[i].prefix, name));
+        }
+    }
+    written.forEach(function (attribute) {
+        if (!element.hasAttribute(attribute)) {
+            element.setAttribute(attribute, "");
+        }
+    });
+};
+/**
+ * Write on every element of a tree the attribute of the style it names.
+ *
+ * A rule is written against an attribute of its own, see "createSelector":
+ * this writes those attributes on the elements that name the styles.
+ * @param {!Element} root
+ * @return {undefined}
+ */
+odf.Style2CSS.stampStyleClasses = function (root) {
+    "use strict";
+    var elements = root.getElementsByTagName("*"),
+        /**@type{!number}*/
+        i;
+    odf.Style2CSS.stampOne(root);
+    for (i = 0; i < elements.length; i += 1) {
+        odf.Style2CSS.stampOne(/**@type{!Element}*/(elements.item(i)));
+    }
 };

@@ -35,6 +35,18 @@ odf.TextLayout = function TextLayout() {
         styleCache = {},
         /**@type{!Object.<!string,!boolean>}*/
         breakCache = {},
+        /**
+         * The heads and the feet that were drawn, to be copied from page to
+         * page: dropped whenever a text is laid out anew.
+         * @type{!Array.<!odf.TextLayout.Furniture>}
+         */
+        furnitureDrawn = [],
+        /**
+         * The master page a style of a paragraph begins, by the name of the
+         * style: read once, and dropped with the styles themselves.
+         * @type{!Object.<string,?Element>}
+         */
+        masterCache = {},
         domUtils = webodfcore.DomUtils,
         odfUtils = odf.OdfUtils,
         fons = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
@@ -280,6 +292,7 @@ odf.TextLayout = function TextLayout() {
             styleCacheRoot = odfroot;
             styleCache = {};
             breakCache = {};
+            masterCache = {};
         }
         if (styleCache.hasOwnProperty(key)) {
             return styleCache[key];
@@ -820,27 +833,21 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
-     * Set the parts of a paragraph against the tab stops it is written with.
+     * The parts of a paragraph, that is what stands between its tabs.
      *
-     * A tab is drawn as a tab of a terminal otherwise, that walks to the next
-     * stop of eight letters, so a title, a date and a number of a page ran
-     * into one another. Each part is laid where its stop says instead, and
-     * against it as its stop asks: the standard calls that "style:type" of a
-     * "style:tab-stop".
-     * @param {!odf.ODFDocumentElement} odfroot
+     * The nodes of the paragraph are taken out of it and put in a span for
+     * each part, the first of them holding what stands before the first tab.
      * @param {!Element} paragraph
-     * @return {undefined}
+     * @param {!Document} doc
+     * @param {!string} htmlns
+     * @return {!Array.<!HTMLElement>}
      */
-    function layOutTabStops(odfroot, paragraph) {
-        var doc = paragraph.ownerDocument,
-            htmlns = "http://www.w3.org/1999/xhtml",
-            stops = tabStopsOf(odfroot, paragraph),
-            /**@type{!Array.<!HTMLElement>}*/
+    function partsOfParagraph(paragraph, doc, htmlns) {
+        var /**@type{!Array.<!HTMLElement>}*/
             parts = [],
             /**@type{!HTMLElement}*/
-            part,
-            /**@type{!HTMLElement}*/
-            line,
+            part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns,
+                "span")),
             /**@type{?Node}*/
             node = paragraph.firstChild,
             /**@type{?Node}*/
@@ -849,19 +856,6 @@ odf.TextLayout = function TextLayout() {
             pieces,
             /**@type{!number}*/
             i;
-        if (stops.length === 0) {
-            return;
-        }
-        raiseTabs(paragraph);
-        if (!paragraph.getElementsByTagNameNS(textns, "tab").length
-                && String(paragraph.textContent).indexOf("\t") === -1) {
-            // A line without a tab is written as it stands: nothing of it is
-            // moved, and nothing of it can be lost.
-            return;
-        }
-        // The parts are the nodes between the tabs, the first one before the
-        // first tab.
-        part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "span"));
         parts.push(part);
         while (node) {
             next = node.nextSibling;
@@ -875,7 +869,7 @@ odf.TextLayout = function TextLayout() {
             } else if (node.nodeType === Node.TEXT_NODE
                     && String(node.textContent).indexOf("\t") !== -1) {
                 // The canvas writes a "text:tab" as a tab of a terminal
-                // before a header is drawn, so a tab is a letter here.
+                // before a text is drawn, so a tab is a letter here.
                 pieces = String(node.textContent).split("\t");
                 paragraph.removeChild(node);
                 for (i = 0; i < pieces.length; i += 1) {
@@ -886,7 +880,7 @@ odf.TextLayout = function TextLayout() {
                         ));
                         parts.push(part);
                     }
-                    if (pieces[i].length > 0) {
+                    if (pieces[i] !== "") {
                         part.appendChild(doc.createTextNode(pieces[i]));
                     }
                 }
@@ -895,6 +889,39 @@ odf.TextLayout = function TextLayout() {
             }
             node = next;
         }
+        return parts;
+    }
+    /**
+     * Set the parts of a paragraph against the tab stops it is written with.
+     *
+     * A tab is drawn as a tab of a terminal otherwise, that walks to the next
+     * stop of eight letters, so a title, a date and a number of a page ran
+     * into one another. Each part is laid where its stop says instead, and
+     * against it as its stop asks: the standard calls that "style:type" of a
+     * "style:tab-stop".
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} paragraph
+     * @return {undefined}
+     */
+    function layOutTabStops(odfroot, paragraph) {
+        var doc = /**@type{!Document}*/(paragraph.ownerDocument),
+            htmlns = "http://www.w3.org/1999/xhtml",
+            stops = tabStopsOf(odfroot, paragraph),
+            /**@type{!Array.<!HTMLElement>}*/
+            parts,
+            /**@type{!HTMLElement}*/
+            line;
+        if (stops.length === 0) {
+            return;
+        }
+        raiseTabs(paragraph);
+        if (!paragraph.getElementsByTagNameNS(textns, "tab").length
+                && String(paragraph.textContent).indexOf("\t") === -1) {
+            // A line without a tab is written as it stands: nothing of it is
+            // moved, and nothing of it can be lost.
+            return;
+        }
+        parts = partsOfParagraph(paragraph, doc, htmlns);
         if (parts.length < 2) {
             // Nothing was told apart, so what was taken from the paragraph
             // is put back where it was.
@@ -937,6 +964,74 @@ odf.TextLayout = function TextLayout() {
             line.appendChild(piece);
         });
 
+    }
+    /**
+     * Lay the tabs of a paragraph of the text at their stops.
+     *
+     * A header is drawn in a box of its own and every part of it is laid at
+     * its stop; a paragraph of the text keeps the first of its parts in the
+     * flow of the text, so that the line holds its height and its words wrap
+     * as they would: an entry of a table of contents is written from the
+     * left, and the number of the page it names is laid against the stop on
+     * the right.
+     *
+     * Nothing is measured here: the stops are written where the document
+     * says, and the parts are laid there by the browser.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} paragraph
+     * @return {undefined}
+     */
+    function layOutTabsInText(odfroot, paragraph) {
+        var doc = /**@type{!Document}*/(paragraph.ownerDocument),
+            htmlns = "http://www.w3.org/1999/xhtml",
+            stops = tabStopsOf(odfroot, paragraph),
+            /**@type{!Array.<!HTMLElement>}*/
+            parts,
+            /**@type{!HTMLElement}*/
+            line;
+        if (stops.length === 0
+                || paragraph.hasAttributeNS(webodfhelperns, "laidout")) {
+            return;
+        }
+        raiseTabs(paragraph);
+        if (!paragraph.getElementsByTagNameNS(textns, "tab").length
+                && String(paragraph.textContent).indexOf("\t") === -1) {
+            return;
+        }
+        parts = partsOfParagraph(paragraph, doc, htmlns);
+        if (parts.length < 2) {
+            while (parts[0].firstChild) {
+                paragraph.appendChild(parts[0].firstChild);
+            }
+            return;
+        }
+        line = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "div"));
+        line.style.position = "relative";
+        paragraph.appendChild(line);
+        paragraph.setAttributeNS(webodfhelperns, "webodfhelper:laidout",
+            "true");
+        parts.forEach(function (piece, index) {
+            var /**@type{?odf.TextLayout.TabStop}*/
+                stop = index === 0
+                    ? null
+                    : stops[Math.min(index, stops.length) - 1];
+            if (!stop) {
+                // The first part is written as the text is: it holds the
+                // height of the line and wraps where the page ends.
+                line.appendChild(piece);
+                return;
+            }
+            piece.style.position = "absolute";
+            piece.style.whiteSpace = "pre";
+            piece.style.top = "0";
+            piece.style.left = "min(" + stop.at + "px, 100%)";
+            if (stop.type === "center") {
+                piece.style.transform = "translateX(-50%)";
+            } else if (stop.type === "right") {
+                piece.style.transform = "translateX(-100%)";
+            }
+            line.appendChild(piece);
+        });
     }
     /**
      * Push the parts of the lines apart where they would be written over.
@@ -1068,6 +1163,75 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
+     * Whether a line holds a field, that is written anew on every page.
+     * @param {!Element} paragraph
+     * @param {!Object.<string,string>} meta
+     * @return {!boolean}
+     */
+    function holdsAField(paragraph, meta) {
+        var names = ["page-number", "page-count"].concat(Object.keys(meta)),
+            /**@type{!number}*/
+            i;
+        for (i = 0; i < names.length; i += 1) {
+            if (paragraph.getElementsByTagNameNS(textns, names[i]).length > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * The head or the foot of a page as it is drawn, ready to be copied.
+     *
+     * It is drawn once for a source and a width — the tabs of every line
+     * taken to their stops, the runs of spaces written out — and kept: the
+     * pages of a master page are all written the same but for their fields,
+     * see "fillPageArea". The lines that hold a field are named with it, as
+     * those are measured again once the field is written.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} source
+     * @param {!Element} box
+     * @param {!Object.<string,string>} meta
+     * @return {!odf.TextLayout.Furniture}
+     */
+    function furnitureOf(odfroot, source, box, meta) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            width = box.getBoundingClientRect().width,
+            /**@type{!number}*/
+            i,
+            /**@type{!DocumentFragment}*/
+            drawn,
+            /**@type{!Array.<!number>}*/
+            fields = [];
+        for (i = 0; i < furnitureDrawn.length; i += 1) {
+            if (furnitureDrawn[i].source === source
+                    && Math.abs(furnitureDrawn[i].width - width) < 1) {
+                return furnitureDrawn[i];
+            }
+        }
+        box.appendChild(doc.importNode(source, true));
+        unstampStyleNames(odfroot, box);
+        expandSpaces(box);
+        paragraphsOf(box).forEach(function (paragraph, index) {
+            layOutTabStops(odfroot, paragraph);
+            if (holdsAField(paragraph, meta)) {
+                fields.push(index);
+            }
+        });
+        // What was drawn is taken out of the box and kept whole: the box is
+        // filled from a copy of it, here as on every page that follows.
+        drawn = doc.createDocumentFragment();
+        while (box.firstChild) {
+            drawn.appendChild(box.firstChild);
+        }
+        furnitureDrawn.push({
+            source: source,
+            width: width,
+            drawn: drawn,
+            fields: fields
+        });
+        return furnitureDrawn[furnitureDrawn.length - 1];
+    }
+    /**
      * Copy what a master page writes in a header or in a footer, and put the
      * number of the page where the document asks for it. The nodes are of the
      * document, so the styles of the document draw them as they draw the text.
@@ -1080,7 +1244,10 @@ odf.TextLayout = function TextLayout() {
      * @return {undefined}
      */
     function fillPageArea(odfroot, source, box, page, pages, meta) {
-        var doc = box.ownerDocument;
+        var /**@type{!odf.TextLayout.Furniture}*/
+            ready = furnitureOf(odfroot, source, box, meta),
+            /**@type{!Array.<!Element>}*/
+            lines;
         /**
          * @param {!string} name
          * @param {!string} value
@@ -1093,20 +1260,23 @@ odf.TextLayout = function TextLayout() {
                 fields[i].textContent = value;
             }
         }
-        box.appendChild(doc.importNode(source, true));
-        unstampStyleNames(odfroot, box);
-        expandSpaces(box);
+        // The head and the foot of a page are written the same on every
+        // page of a master page, but for the fields they hold: what was
+        // drawn once is copied, and the lines that hold a field alone are
+        // measured again for their tab stops. A foot of three lines where
+        // one gives the number of the page is measured once on each page and
+        // not three times.
+        box.appendChild(ready.drawn.cloneNode(true));
         fill("page-number", String(page));
         fill("page-count", String(pages));
         Object.keys(meta).forEach(function (name) {
             fill(name, meta[name]);
         });
-        // A line of a header is written as a line of the document is, so what
-        // the canvas does to a line of the document is done here as well: a
-        // break is a break, a run of spaces is a run of spaces, and a tab
-        // takes the part that follows it to its stop.
-        paragraphsOf(box).forEach(function (paragraph) {
-            layOutTabStops(odfroot, paragraph);
+        lines = paragraphsOf(box);
+        ready.fields.forEach(function (index) {
+            if (lines[index]) {
+                layOutTabStops(odfroot, lines[index]);
+            }
         });
     }
     /**
@@ -1191,39 +1361,32 @@ odf.TextLayout = function TextLayout() {
     function masterPageOfParagraph(odfroot, paragraph) {
         var /**@type{!string}*/
             name = paragraph.getAttributeNS(textns, "style-name") || "",
-            /**@type{!Array.<!Element>}*/
-            roots = [odfroot.automaticStyles, odfroot.styles],
-            /**@type{!NodeList}*/
-            styles,
-            /**@type{!Element}*/
-            candidate,
             /**@type{?Element}*/
-            style = null,
+            style,
             /**@type{!string}*/
-            master = "",
-            /**@type{!number}*/
-            i,
-            /**@type{!number}*/
-            r;
+            master = "";
         if (name === "") {
             return null;
         }
-        for (r = 0; r < roots.length && style === null; r += 1) {
-            styles = roots[r].getElementsByTagNameNS(stylens, "style");
-            for (i = 0; i < styles.length && style === null; i += 1) {
-                candidate = /**@type{!Element}*/(styles.item(i));
-                if (candidate.getAttributeNS(stylens, "name") === name
-                        && candidate.getAttributeNS(stylens, "family")
-                            === "paragraph") {
-                    style = candidate;
-                }
-            }
+        // A document holds a handful of styles for thousands of paragraphs,
+        // and each paragraph is read: the style of a name is read once and
+        // kept beside the styles themselves, as the breaks are, rather than
+        // read again out of all the styles of the document for every
+        // paragraph that names it.
+        if (styleCacheRoot === odfroot && masterCache.hasOwnProperty(name)) {
+            return masterCache[name];
         }
-        if (style === null) {
-            return null;
+        style = styleOf(odfroot, name, "paragraph");
+        if (!style && plainStyleName(name) !== name) {
+            style = styleOf(odfroot, plainStyleName(name), "paragraph");
         }
-        master = style.getAttributeNS(stylens, "master-page-name") || "";
-        return master === "" ? null : masterPageNamed(odfroot, master);
+        if (style) {
+            master = style.getAttributeNS(stylens, "master-page-name") || "";
+        }
+        masterCache[name] = master === ""
+            ? null
+            : masterPageNamed(odfroot, master);
+        return masterCache[name];
     }
     /**
      * The master pages a text goes through, in the order it goes through them,
@@ -2084,6 +2247,49 @@ odf.TextLayout = function TextLayout() {
      * @param {!odf.ODFDocumentElement} odfroot
      * @return {undefined}
      */
+    /**
+     * The first paragraph a node writes, or the node itself.
+     *
+     * A document holds its appendixes in a list, one to a list, so what asks
+     * for a page of its own is the paragraph inside it and not the list: the
+     * style of a list says nothing of the pages, and a break would be looked
+     * for where none is ever written.
+     * @param {!Element} element
+     * @return {!Element}
+     */
+    function firstWritten(element) {
+        var walk = element;
+        while (walk.namespaceURI === textns
+                && (walk.localName === "list"
+                    || walk.localName === "list-item"
+                    || walk.localName === "section")
+                && walk.firstElementChild) {
+            walk = walk.firstElementChild;
+        }
+        return walk;
+    }
+    /**
+     * The last paragraph a node writes, or the node itself, see
+     * "firstWritten".
+     * @param {!Element} element
+     * @return {!Element}
+     */
+    function lastWritten(element) {
+        var walk = element;
+        while (walk.namespaceURI === textns
+                && (walk.localName === "list"
+                    || walk.localName === "list-item"
+                    || walk.localName === "section")
+                && walk.lastElementChild) {
+            walk = walk.lastElementChild;
+        }
+        return walk;
+    }
+    /**
+     * Tell the browser which paragraphs are written on a new page.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {undefined}
+     */
     function markPageBreaks(odfroot) {
         var text = /**@type{!Element}*/(odfroot.body.lastElementChild),
             /**@type{!Array.<!Element>}*/
@@ -2095,9 +2301,9 @@ odf.TextLayout = function TextLayout() {
             node = node.nextElementSibling;
         }
         nodes.forEach(function (element, index) {
-            if (asksForABreak(odfroot, element, "break-before")
-                    || (index > 0 && asksForABreak(odfroot, nodes[index - 1],
-                        "break-after"))) {
+            if (asksForABreak(odfroot, firstWritten(element), "break-before")
+                    || (index > 0 && asksForABreak(odfroot,
+                        lastWritten(nodes[index - 1]), "break-after"))) {
                 element.setAttributeNS(webodfhelperns,
                     "webodfhelper:breakbefore", "true");
             } else {
@@ -2191,6 +2397,44 @@ odf.TextLayout = function TextLayout() {
         return style
             ? style.getPropertyValue("break-after") === "avoid"
             : false;
+    }
+    /**
+     * Whether anything that is seen is written on a page before a node.
+     * @param {!Element} box
+     * @param {!Node} node
+     * @return {!boolean}
+     */
+    function anythingBefore(box, node) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            range;
+        if (!box.firstChild || box.firstChild === node) {
+            return false;
+        }
+        range = doc.createRange();
+        range.setStartBefore(/**@type{!Node}*/(box.firstChild));
+        range.setEndBefore(node);
+        return range.getBoundingClientRect().height > 1;
+    }
+    /**
+     * Whether a page holds anything that is seen.
+     *
+     * A page may hold the leftover of what was cut at the end of the page
+     * before it and draw nothing of it — an empty table of contents, a
+     * section that holds no more text: what asks to be written on a new page
+     * is written on this one all the same, as the page is empty to a reader.
+     * @param {!Element} box
+     * @return {!boolean}
+     */
+    function holdsSomething(box) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            range;
+        if (!box.firstChild) {
+            return false;
+        }
+        range = doc.createRange();
+        range.setStartBefore(/**@type{!Node}*/(box.firstChild));
+        range.setEndAfter(/**@type{!Node}*/(box.lastChild));
+        return range.getBoundingClientRect().height > 1;
     }
     /**
      * Whether a node was marked as beginning a page of its own.
@@ -2384,6 +2628,35 @@ odf.TextLayout = function TextLayout() {
             : false;
     }
     /**
+     * How many of the nodes a page was given stand within it.
+     *
+     * The nodes are read where they stand and none of them is moved, so the
+     * page is laid out once for the whole of the reading: what is read after
+     * something is written is laid out anew, and taking the nodes back one
+     * at a time lays the page out once for each of them.
+     * @param {!Element} box
+     * @param {!Array.<!Node>} added the nodes that were written on the page
+     * @return {!number} how many of them the page holds
+     */
+    function firstOver(box, added) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            edge = box.getBoundingClientRect().bottom,
+            range = doc.createRange(),
+            /**@type{!ClientRect}*/
+            rect,
+            /**@type{!number}*/
+            i;
+        for (i = 0; i < added.length; i += 1) {
+            range.setStartBefore(added[i]);
+            range.setEndAfter(added[i]);
+            rect = range.getBoundingClientRect();
+            if ((rect.height > 0 || rect.width > 0) && rect.bottom > edge + 1) {
+                return i;
+            }
+        }
+        return added.length;
+    }
+    /**
      * Whether what a box holds is taller than the box.
      * @param {!Element} box
      * @param {?Node=} from the first node to read, the head of the box by
@@ -2478,11 +2751,23 @@ odf.TextLayout = function TextLayout() {
             return node.splitText(0);
         }
         // The cut is made at the last blank before the letter, so that a
-        // word is not written half on one page and half on the next.
+        // word is not written half on one page and half on the next. Where
+        // there is no blank to cut at, the whole of it is written on the
+        // page that follows: a page that ended with the "A" of "Appendix"
+        // and gave "ppendix" to the next is no page of a document. A page
+        // that holds nothing else cuts all the same, or the text would be
+        // sent from page to page for ever.
         middle = String(node.data).lastIndexOf(" ", low);
-        return node.splitText(middle > 0
-            ? middle + 1
-            : Math.max(1, low));
+        if (middle <= 0) {
+            // Nothing of the word fits: the whole of it is written on the
+            // page that follows, unless the page holds nothing that is seen
+            // before it, where a page would else be left empty and the word
+            // sent on for ever.
+            return anythingBefore(box, node)
+                ? node.splitText(0)
+                : node.splitText(Math.max(1, low));
+        }
+        return node.splitText(middle + 1);
     }
     /**
      * Whether a node is the rows of the head of a table.
@@ -2589,6 +2874,7 @@ odf.TextLayout = function TextLayout() {
             inner,
             /**@type{?Node}*/
             next;
+        tail.setAttributeNS(webodfhelperns, "webodfhelper:continued", "true");
         while (node && count < bound) {
             count += nodesIn(node, bound - count);
             if (count >= bound && node.firstChild
@@ -2697,6 +2983,11 @@ odf.TextLayout = function TextLayout() {
         // of the child that crossed the end of the page, and everything that
         // follows that child.
         tail = /**@type{!Element}*/(element.cloneNode(false));
+        // What is left of an element that was cut is no new element of the
+        // document: a list that goes on over a page holds no first item of
+        // its own, and its numbers go on where the page before them left,
+        // see "ListStylesToCss.js".
+        tail.setAttributeNS(webodfhelperns, "webodfhelper:continued", "true");
         // A table that is cut in two writes the rows of its head again at
         // the top of what follows, as an office does.
         if (element.namespaceURI === tablens) {
@@ -2816,7 +3107,7 @@ odf.TextLayout = function TextLayout() {
                 // thing on it: a break before the first node would leave an
                 // empty page behind, and the browser is asked for the same
                 // where the pages are broken into columns.
-                if (asksForANewPage(node) && box.firstChild) {
+                if (asksForANewPage(node) && holdsSomething(box)) {
                     break;
                 }
                 // An element of thousands of nodes — a table of contents,
@@ -2838,15 +3129,21 @@ odf.TextLayout = function TextLayout() {
             if (added.length === 0) {
                 break;
             }
-            while (added.length > 1 && overflows(box, added[0])) {
-                // The chunk is more than the page holds: what is over is
-                // taken back one node at a time, from the end, and the rest
-                // is left where it is. Taking the whole chunk back and
-                // writing it again one node at a time reads the page once
-                // for every node of it.
-                taken = /**@type{!Node}*/(added.pop());
-                box.removeChild(taken);
-                state.waiting.unshift(taken);
+            if (added.length > 1 && overflows(box, added[0])) {
+                // The chunk is more than the page holds: the first node of
+                // it that crosses the end of the page is looked for, and
+                // everything from there is taken back at once.
+                //
+                // The nodes are read where they stand, one reading of the
+                // page answering for all of them: taking them back one at a
+                // time reads the page again for each, as the browser lays
+                // out anew whatever is read after something is written.
+                held = firstOver(box, added);
+                while (added.length > held) {
+                    taken = /**@type{!Node}*/(added.pop());
+                    box.removeChild(taken);
+                    state.waiting.unshift(taken);
+                }
                 state.chunk = Math.max(1, added.length);
             }
             if (added.length === 0
@@ -2982,6 +3279,17 @@ odf.TextLayout = function TextLayout() {
         // every measure of the page being filled lays out the whole of the
         // document again, and a document of eight hundred pages is laid out
         // eight hundred times over.
+        // A page holds what it holds and is of the size the plan gives it:
+        // the browser is told so, so that a page that is filled is laid out
+        // on its own and not with the pages that went before it. Without it
+        // every measure of the page being filled lays out the whole of the
+        // document again, and a document of eight hundred pages is laid out
+        // eight hundred times over.
+        //
+        // The styles of a page are its own as well, which holds the counters
+        // of css to the page: the labels of the lists are worked out once
+        // and written on the elements, so nothing of the document is counted
+        // by them any more, see "numberLists" in "ListStylesToCss.js".
         sheet.insertRule(".webodf-pageBox {overflow:hidden;contain:strict;}",
             sheet.cssRules.length);
         while (text.firstChild) {
@@ -3074,6 +3382,33 @@ odf.TextLayout = function TextLayout() {
         drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
     }
     /**
+     * Set every page from one of them onwards at the place of its number.
+     *
+     * A page that is made between two others moves the ones that follow it
+     * down by one: each is drawn where its number says, and the number of
+     * each of them has changed.
+     * @param {!PagePlan} plan
+     * @param {!Array.<!Element>} boxes
+     * @param {!number} from the first page to set, from zero
+     * @return {undefined}
+     */
+    function placePages(plan, boxes, from) {
+        var /**@type{!number}*/
+            i,
+            /**@type{!odf.TextLayout.PageDimensions}*/
+            dims,
+            /**@type{!{left:!number,top:!number}}*/
+            place;
+        for (i = from; i < boxes.length; i += 1) {
+            dims = plan.at(i);
+            place = pagePlace(plan, i);
+            /**@type{!HTMLElement}*/(boxes[i]).style.left = (place.left
+                + dims.marginLeft) + "px";
+            /**@type{!HTMLElement}*/(boxes[i]).style.top = (place.top
+                + dims.marginTop) + "px";
+        }
+    }
+    /**
      * Move to the next page what crosses the end of a page.
      *
      * The pages are filled by measuring them, and what is drawn after them —
@@ -3110,6 +3445,8 @@ odf.TextLayout = function TextLayout() {
         function trimOne(box, index) {
             var /**@type{!number}*/
                 guard = 4,
+                /**@type{!boolean}*/
+                fresh,
                 /**@type{?Element}*/
                 over = firstOverflowing(box),
                 /**@type{?Element}*/
@@ -3169,8 +3506,19 @@ odf.TextLayout = function TextLayout() {
                 if (sent.length === 0) {
                     guard = 0;
                 } else {
-                    if (index + 1 >= boxes.length) {
-                        dims = plan.at(boxes.length);
+                    // What is sent on goes to the page that follows, unless
+                    // that page begins with what asks for a page of its own:
+                    // a page of its own it stays, and a page is made between
+                    // the two.
+                    fresh = index + 1 >= boxes.length
+                        || Boolean(boxes[index + 1].firstElementChild
+                            && asksForANewPage(
+                                /**@type{!Node}*/(
+                                    boxes[index + 1].firstElementChild
+                                )
+                            ));
+                    if (fresh) {
+                        dims = plan.at(index + 1);
                         target = /**@type{!Element}*/(
                             doc.createElementNS(htmlns, "div")
                         );
@@ -3186,11 +3534,17 @@ odf.TextLayout = function TextLayout() {
                         /**@type{!HTMLElement}*/(target).style.left =
                             dims.marginLeft + "px";
                         /**@type{!HTMLElement}*/(target).style.top =
-                            (boxes.length * (dims.pageHeight
+                            ((index + 1) * (dims.pageHeight
                                 + dims.pageSeparation)
                                 + dims.marginTop) + "px";
-                        text.appendChild(target);
-                        boxes.push(target);
+                        if (index + 1 >= boxes.length) {
+                            text.appendChild(target);
+                            boxes.push(target);
+                        } else {
+                            text.insertBefore(target, boxes[index + 1]);
+                            boxes.splice(index + 1, 0, target);
+                            placePages(plan, boxes, index + 2);
+                        }
                     } else {
                         target = boxes[index + 1];
                     }
@@ -3368,6 +3722,25 @@ odf.TextLayout = function TextLayout() {
     }
     this.layout = layout;
     /**
+     * Lay the tabs of every paragraph of a text at their stops.
+     *
+     * A tab of the text was drawn as a tab of a terminal, that walks to the
+     * next stop of eight letters: an entry of a table of contents and the
+     * number of the page it names ran into one another. It is done once, as
+     * the text is drawn, and nothing is measured for it.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {undefined}
+     */
+    this.layOutTabs = function (odfroot) {
+        var text = getOfficeText(odfroot);
+        if (!text) {
+            return;
+        }
+        paragraphsOf(text).forEach(function (paragraph) {
+            layOutTabsInText(odfroot, paragraph);
+        });
+    };
+    /**
      * The way a text is drawn over pages.
      *
      * "pages" lays them one under another, each page a box of its own that
@@ -3531,4 +3904,8 @@ odf.TextLayout.PageArea;
     otherPages:!odf.TextLayout.PageFurniture
 }}*/
 odf.TextLayout.PageDimensions;
-
+/**
+ * A head or a foot of a page as it was drawn, to be copied from page to page.
+ * @typedef {!{source:!Element,width:!number,drawn:!DocumentFragment,fields:!Array.<!number>}}
+ */
+odf.TextLayout.Furniture;

@@ -220,6 +220,8 @@
         /**@const@type {!string}*/xlinkns = odf.Namespaces.xlinkns,
         /**@const@type {!string}*/presentationns = odf.Namespaces.presentationns,
         /**@const@type {!string}*/webodfhelperns = "urn:webodf:names:helper",
+        /**@type{?MutationObserver}*/
+        styleNameWatcher = null,
         xpath = xmldom.XPath,
         domUtils = webodfcore.DomUtils,
         odfUtils = odf.OdfUtils,
@@ -2721,12 +2723,13 @@
      * @param {!string} lineId
      * @param {!odf.ODFDocumentElement} rootElement
      * @param {!CSSStyleSheet} stylesheet
+     * @param {?{borderTopStyle:!string,borderTopColor:!string,borderTopWidth:!string,color:!string}} computed
+     *                  what the line is drawn with, read before any rule was
+     *                  written, see "loadLines"
      * @return {undefined}
      */
-    function renderLine(line, lineId, rootElement, stylesheet) {
-        var window = runtime.getWindow(),
-            computed = window && window.getComputedStyle(line, null),
-            x1 = parseLength(line.getAttributeNS(svgns, "x1")),
+    function renderLine(line, lineId, rootElement, stylesheet, computed) {
+        var x1 = parseLength(line.getAttributeNS(svgns, "x1")),
             y1 = parseLength(line.getAttributeNS(svgns, "y1")),
             x2 = parseLength(line.getAttributeNS(svgns, "x2")),
             y2 = parseLength(line.getAttributeNS(svgns, "y2")),
@@ -2822,14 +2825,82 @@
      */
     function loadLines(odfbody, rootElement, stylesheet) {
         var lines = domUtils.getElementsByTagNameNS(odfbody, drawns, "line"),
+            /**@type{!Array.<?{borderTopStyle:!string,borderTopColor:!string,borderTopWidth:!string,color:!string}>}*/
+            styles = [],
+            /**@type{?CSSStyleDeclaration}*/
+            computed,
+            window = runtime.getWindow(),
             i;
+        // The style each line is drawn with is read for all of them before
+        // any rule is written: a rule that is written tells the browser to
+        // work out the style of every element of the document again, and
+        // reading the style of the next line makes it do so at once. Seven
+        // lines in a document of twenty thousand nodes cost seven seconds
+        // that way, and one reading answers for all of them.
+        for (i = 0; i < lines.length; i += 1) {
+            computed = window
+                ? window.getComputedStyle(lines[i], null)
+                : null;
+            styles.push(computed
+                ? {
+                    borderTopStyle: String(computed.borderTopStyle),
+                    borderTopColor: String(computed.borderTopColor),
+                    borderTopWidth: String(computed.borderTopWidth),
+                    color: String(computed.color)
+                }
+                : null);
+        }
         for (i = 0; i < lines.length; i += 1) {
             try {
-                renderLine(lines[i], "line" + i, rootElement, stylesheet);
+                renderLine(lines[i], "line" + i, rootElement, stylesheet,
+                    styles[i]);
             } catch (/**@type{*}*/e) {
                 runtime.log("could not render line: " + String(e));
             }
         }
+    }
+    /**
+     * Keep the classes of the styles right while a document is written in.
+     *
+     * An editor writes the name of another style on a paragraph, and the
+     * class it carries is written anew: what is drawn answers to the class
+     * and no longer to the name.
+     * @param {!Element} root
+     * @return {undefined}
+     */
+    function watchStyleNames(root) {
+        var window = runtime.getWindow(),
+            /**@type{!Array.<!string>}*/
+            watched = [],
+            /**@type{!number}*/
+            i;
+        if (!window || !window.MutationObserver) {
+            return;
+        }
+        if (styleNameWatcher) {
+            styleNameWatcher.disconnect();
+        }
+        for (i = 0; i < odf.Style2CSS.styleNameAttributes.length; i += 1) {
+            watched.push(odf.Style2CSS.styleNameAttributes[i].prefix
+                + ":style-name");
+        }
+        styleNameWatcher = new window.MutationObserver(function (records) {
+            records.forEach(function (record) {
+                // An element alone carries an attribute, so what answers
+                // here is one; the number is written rather than "Node",
+                // that the sources of this file do not name.
+                if (record.target.nodeType === 1) {
+                    odf.Style2CSS.stampOne(
+                        /**@type{!Element}*/(record.target)
+                    );
+                }
+            });
+        });
+        styleNameWatcher.observe(root, {
+            attributes: true,
+            subtree: true,
+            attributeFilter: watched
+        });
     }
     /**
      * @param {!Element} odfbody
@@ -4086,6 +4157,11 @@
             shadowContent.style.left = 0;
             container.getContentElement().appendChild(shadowContent);
 
+            // The classes of the styles are written by "Style2CSS.js", that
+            // the rules are read against; they are kept right here while a
+            // document is written in.
+            watchStyleNames(odfnode);
+
             // The margins of the page, that a frame placed against the sheet is
             // written from, see "getHorizontalOffset".
             margins = formatting.getPageMargins("", "paragraph");
@@ -4098,6 +4174,10 @@
             hideEmptyListItems(odfnode.body, css);
             expandSpaceElements(odfnode.body);
             expandTabElements(odfnode.body);
+            // A tab of the text is laid at the stop the document writes,
+            // see "TextLayout.js": a table of contents is written from the
+            // left and the numbers of its pages against a stop on the right.
+            textLayout.layOutTabs(odfnode);
             loadImages(container, odfnode.body, css);
             loadCharts(container, odfnode.body, css);
             loadVideos(container, odfnode.body);

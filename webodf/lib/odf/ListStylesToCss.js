@@ -47,13 +47,6 @@
         listCounterIdSuffix = "webodf-listLevel",
         /**@const
            @type{!Object.<string,string>}*/
-        stylemap = {
-            '1': 'decimal',
-            'a': 'lower-latin',
-            'A': 'upper-latin',
-            'i': 'lower-roman',
-            'I': 'upper-roman'
-        },
         /**@const
            @type{!RegExp}*/
         // Symbol/dingbat fonts whose glyphs are encoded as plain ASCII letters.
@@ -255,7 +248,13 @@
                 // lists that actually have list items will all start with the counter value of 2 which is not desirable.
                 // To fix this we apply another CSS rule here that overrides the counter increment rule above and
                 // prevents incrementing the counter on the FIRST list item that has content (AKA a visible list label).
-                newRule = 'text|list[webodfhelper|counter-id="' + newListSelectorId + '"]';
+                // A list that was cut where a page ends is written again on
+                // the page that follows, and what follows the cut is no
+                // first item of a list: the counter is held back on the
+                // first item of a list, and never on the first item of what
+                // is left of one, see "webodfhelper:continued" in
+                // "TextLayout.js".
+                newRule = 'text|list[webodfhelper|counter-id="' + newListSelectorId + '"]:not([webodfhelper|continued])';
                 newRule += ' > text|list-item:first-child > :not(text|list):first-child:before';
                 newRule += '{';
                 // Due to https://bugs.webkit.org/show_bug.cgi?id=84985 a value of "none" is ignored by some version of WebKit
@@ -283,8 +282,12 @@
             }
 
             // Apply the counter increment to EVERY list item in this list that has content (AKA a visible list label)
+            // An item that was cut where a page ends is written again on the
+            // page that follows, and what is left of it is no new item of
+            // the list: it carries the number of the item it is the end of,
+            // and never one of its own.
             newRule = 'text|list[webodfhelper|counter-id="' + newListSelectorId + '"]';
-            newRule += ' > text|list-item > :not(text|list):first-child:before';
+            newRule += ' > text|list-item:not([webodfhelper|continued]) > :not(text|list):first-child:before';
             newRule += '{';
             newRule += contentRule;
             newRule += 'counter-increment: ' + newListCounterId + ';';
@@ -367,6 +370,49 @@
     }
 
     /**
+     * A number written as the format of a level asks: "1" for the numbers,
+     * "a" and "A" for the letters, "i" and "I" for the numbers of Rome.
+     * @param {!number} value
+     * @param {!string} format
+     * @return {!string}
+     */
+    function writtenAs(value, format) {
+        var letters = "abcdefghijklmnopqrstuvwxyz",
+            romans = [[1000, "m"], [900, "cm"], [500, "d"], [400, "cd"],
+                [100, "c"], [90, "xc"], [50, "l"], [40, "xl"], [10, "x"],
+                [9, "ix"], [5, "v"], [4, "iv"], [1, "i"]],
+            /**@type{!string}*/
+            written = "",
+            /**@type{!number}*/
+            left = value,
+            /**@type{!number}*/
+            i;
+        if (format === "a" || format === "A") {
+            // A number past the letters is written with as many letters as
+            // it takes, "aa" after "z", which is how an office writes it.
+            while (left > 0) {
+                left -= 1;
+                written = letters.charAt(left % 26) + written;
+                left = Math.floor(left / 26);
+            }
+            return format === "A"
+                ? written.toUpperCase()
+                : written;
+        }
+        if (format === "i" || format === "I") {
+            for (i = 0; i < romans.length; i += 1) {
+                while (left >= romans[i][0]) {
+                    written += romans[i][1];
+                    left -= romans[i][0];
+                }
+            }
+            return format === "I"
+                ? written.toUpperCase()
+                : written;
+        }
+        return String(value);
+    }
+    /**
      * @constructor
      */
     odf.ListStyleToCss = function ListStyleToCss() {
@@ -413,48 +459,17 @@
         }
 
         /**
-         * Gets the CSS content for a numbered list
-         * @param {!Element} node
+         * The content of the label of a numbered list.
+         *
+         * The label itself is worked out once and written on the element,
+         * see "numberLists": the counters of css are of the page and not of
+         * the document wherever a page holds its own styles, and a page that
+         * holds its own styles is laid out for much less.
          * @return {!string}
          */
-        function getNumberRule(node) {
-            var style = node.getAttributeNS(stylens, "num-format"),
-                /**@type{!string}*/
-                suffix = node.getAttributeNS(stylens, "num-suffix") || "",
-                /**@type{!string}*/
-                prefix = node.getAttributeNS(stylens, "num-prefix") || "",
-                /**@type{!string}*/
-                content = "",
-                textLevel = node.getAttributeNS(textns, "level"),
-                displayLevels = node.getAttributeNS(textns, "display-levels");
-            if (prefix) {
-                // Content needs to be on a new line if it contains slashes due to a bug in older versions of webkit
-                // E.g., the one used in the qt runtime tests - https://bugs.webkit.org/show_bug.cgi?id=35010
-                content += '"' + escapeCSSString(prefix) + '"\n';
-            }
-            if (stylemap.hasOwnProperty(style)) {
-                textLevel = textLevel ? parseInt(textLevel, 10) : 1;
-                displayLevels = displayLevels ? parseInt(displayLevels, 10) : 1;
-
-                // as we might want to display a subset of the counters
-                // we assume a different counter for each list level
-                // and concatenate them for multi level lists
-                // https://wiki.openoffice.org/wiki/Number_labels
-                while (displayLevels > 0) {
-                    content += " counter(" + (textLevel - displayLevels + 1) + listCounterIdSuffix + "," + stylemap[style] + ")";
-                    if (displayLevels > 1) {
-                        content += '"."';
-                    }
-                    displayLevels -= 1;
-                }
-            } else if (style) {
-                content += ' "' + style + '"';
-            } else {
-                content += ' ""';
-            }
-            return 'content:' + content + ' "' + escapeCSSString(suffix) + '"';
+        function getNumberRule() {
+            return "content: attr(odf-list-label);";
         }
-
         /**
          * Gets the CSS content for a image bullet list
          * @return {!string}
@@ -512,7 +527,7 @@
                 followedBy;
 
             if (node.localName === "list-level-style-number") {
-                contentRule = getNumberRule(node);
+                contentRule = getNumberRule();
             } else if (node.localName === "list-level-style-image") {
                 contentRule = getImageRule();
             } else if (node.localName === "list-level-style-bullet") {
@@ -730,7 +745,16 @@
             var lists = odfBody.getElementsByTagNameNS(textns, "list"),
                 listCounter = new UniqueListCounter(styleSheet),
                 list,
-                previousList,
+                /**
+                 * The last list of each style, that a list which continues
+                 * the numbering carries on from: the standard says the list
+                 * that goes before it, and what goes before it is the last
+                 * list written in the same style and not whatever list was
+                 * written last, which is another list of another style as
+                 * often as not.
+                 * @type{!Object.<string,!Element>}
+                 */
+                previousOfStyle = {},
                 continueNumbering,
                 continueListXmlId,
                 xmlId,
@@ -773,20 +797,286 @@
 
                     // lists with different styles cannot be continued
                     // https://tools.oasis-open.org/issues/browse/OFFICE-3558
-                    if (continueNumbering && !continueListXmlId && isMatchingListStyle(previousList, styleName)) {
-                        listCounter.createCounterRules(contentRules, list, previousList);
+                    if (continueNumbering && !continueListXmlId
+                            && previousOfStyle.hasOwnProperty(styleName)) {
+                        listCounter.createCounterRules(contentRules, list,
+                            previousOfStyle[styleName]);
                     } else if (continueListXmlId && isMatchingListStyle(listsWithXmlId[continueListXmlId], styleName)) {
                         listCounter.createCounterRules(contentRules, list, listsWithXmlId[continueListXmlId]);
                     } else {
                         listCounter.createCounterRules(contentRules, list);
                     }
-                    previousList = list;
+                    previousOfStyle[styleName] = list;
                 }
             }
 
             listCounter.initialiseCreatedCounters();
         }
 
+        /**
+         * The level of a list style that answers for a level of a list.
+         * @param {!Element} style the "text:list-style"
+         * @param {!number} level from one
+         * @return {?Element}
+         */
+        function levelOfStyle(style, level) {
+            var node = style.firstElementChild;
+            while (node) {
+                if (node.namespaceURI === textns
+                        && String(node.getAttributeNS(textns, "level"))
+                            === String(level)) {
+                    return node;
+                }
+                node = node.nextElementSibling;
+            }
+            return null;
+        }
+        /**
+         * Write on one item of a list the label it carries.
+         * @param {!Element} item
+         * @param {!Element} style the "text:list-style"
+         * @param {!number} level from one
+         * @param {!Array.<!number>} held the number each level stands at
+         * @param {!Element=} where what carries the label, the first child
+         *                  of the item by default
+         * @return {undefined}
+         */
+        function labelOne(item, style, level, held, where) {
+            var rule = levelOfStyle(style, level),
+                /**@type{!string}*/
+                written = "",
+                /**@type{!number}*/
+                shows,
+                /**@type{!number}*/
+                start,
+                /**@type{?Element}*/
+                own,
+                /**@type{!string}*/
+                format,
+                /**@type{!number}*/
+                l;
+            if (!rule || (rule.localName !== "list-level-style-number"
+                    && rule.localName !== "outline-level-style")) {
+                return;
+            }
+            start = parseInt(item.getAttributeNS(textns, "start-value")
+                || rule.getAttributeNS(textns, "start-value") || "", 10);
+            if (isNaN(start)) {
+                held[level - 1] = (held[level - 1] || 0) + 1;
+            } else {
+                held[level - 1] = start;
+            }
+            held.length = level;
+            shows = parseInt(rule.getAttributeNS(textns, "display-levels")
+                || "1", 10);
+            if (isNaN(shows) || shows < 1) {
+                shows = 1;
+            }
+            written += rule.getAttributeNS(stylens, "num-prefix") || "";
+            for (l = level - shows + 1; l <= level; l += 1) {
+                own = levelOfStyle(style, l);
+                format = own
+                    ? own.getAttributeNS(stylens, "num-format") || "1"
+                    : "1";
+                written += writtenAs(held[l - 1] || 1, format);
+                if (l < level) {
+                    written += ".";
+                }
+            }
+            written += rule.getAttributeNS(stylens, "num-suffix") || "";
+            (where || /**@type{!Element}*/(item.firstElementChild)).setAttribute(
+                "odf-list-label",
+                written
+            );
+        }
+        /**
+         * Write on every item of every list the label it carries.
+         *
+         * The numbers of the lists were counted by the counters of css,
+         * which are of the page and not of the document wherever a page
+         * holds its own styles: they are counted here instead, once, in the
+         * order the document is written, and written on the elements as
+         * "odf-list-label", which the rules of the labels read.
+         *
+         * What the standard says of the numbering is answered for: the
+         * format of each level and the levels a label shows, the prefix and
+         * the suffix of a level, the number a level starts at, and a list
+         * that carries on the numbering of the last list of its style.
+         * @param {!Element} odfBody
+         * @param {(!Object.<string,!odf.StyleTreeNode>|undefined)} listStyles
+         * @return {undefined}
+         */
+        function numberLists(odfBody, listStyles) {
+            var lists = odfBody.getElementsByTagNameNS(textns, "list"),
+                /**@type{!Object.<string,!Array.<!number>>}*/
+                counts = {},
+                /**@type{!number}*/
+                i;
+            /**
+             * Whether a list stands inside another list.
+             * @param {!Element} list
+             * @return {!boolean}
+             */
+            function standsInAList(list) {
+                var walk = /**@type{?Element}*/(list.parentElement);
+                while (walk) {
+                    if (walk.namespaceURI === textns
+                            && walk.localName === "list") {
+                        return true;
+                    }
+                    walk = /**@type{?Element}*/(walk.parentElement);
+                }
+                return false;
+            }
+            /**
+             * The style a list is written in, its own or the one of the list
+             * it stands in.
+             * @param {!Element} list
+             * @return {!string}
+             */
+            function styleOfList(list) {
+                var walk = /**@type{?Element}*/(list),
+                    /**@type{!string}*/
+                    name = "";
+                while (walk && !name) {
+                    if (walk.namespaceURI === textns
+                            && walk.localName === "list") {
+                        name = walk.getAttributeNS(textns, "style-name") || "";
+                    }
+                    walk = /**@type{?Element}*/(walk.parentElement);
+                }
+                return listStyles && listStyles.hasOwnProperty(name)
+                    ? name
+                    : "";
+            }
+            /**
+             * Write the labels of one list and of the lists it holds, in the
+             * order the document is written: a list that stands under an
+             * item is numbered where that item stands and not once the whole
+             * of the list it stands in is numbered, or it would carry the
+             * number of the last item of it.
+             * @param {!Element} list
+             * @param {!Element} style the "text:list-style"
+             * @param {!number} level from one
+             * @param {!Array.<!number>} held the number each level stands at
+             * @return {undefined}
+             */
+            function numberOne(list, style, level, held) {
+                var /**@type{?Element}*/
+                    item = list.firstElementChild,
+                    /**@type{?Element}*/
+                    under;
+                while (item) {
+                    if (item.namespaceURI === textns
+                            && item.localName === "list-item") {
+                        if (item.firstElementChild
+                                && item.firstElementChild.localName
+                                    !== "list") {
+                            labelOne(item, style, level, held);
+                        }
+                        under = item.firstElementChild;
+                        while (under) {
+                            if (under.namespaceURI === textns
+                                    && under.localName === "list") {
+                                numberOne(under, style, level + 1, held);
+                            }
+                            under = under.nextElementSibling;
+                        }
+                    }
+                    item = item.nextElementSibling;
+                }
+            }
+            if (!listStyles) {
+                return;
+            }
+            /**
+             * Write the labels of a list that stands in no other list, and
+             * of everything it holds.
+             * @param {!Element} list
+             * @return {undefined}
+             */
+            function numberWhole(list) {
+                var name = styleOfList(list),
+                    /**@type{!Array.<!number>}*/
+                    held;
+                if (!name || standsInAList(list) || !listStyles) {
+                    return;
+                }
+                held = counts.hasOwnProperty(name)
+                    ? counts[name]
+                    : [];
+                counts[name] = held;
+                // A list that does not carry on the numbering of the last
+                // list of its style begins where its style says.
+                if (!list.getAttributeNS(textns, "continue-numbering")
+                        && !list.getAttributeNS(textns, "continue-list")) {
+                    held.length = 0;
+                }
+                numberOne(list, listStyles[name].element, 1, held);
+            }
+            for (i = 0; i < lists.length; i += 1) {
+                numberWhole(/**@type{!Element}*/(lists.item(i)));
+            }
+        }
+        /**
+         * Write on every heading the number of its chapter.
+         *
+         * A document numbers its chapters with an outline style, that names
+         * a way of writing the number of each level: it is not a list, and
+         * the headings that carry those numbers stand in no list. A heading
+         * that stands in a list is numbered by the list and left alone here.
+         * @param {!Element} odfBody
+         * @param {(!Object.<string,!odf.StyleTreeNode>|undefined)} listStyles
+         * @return {undefined}
+         */
+        function numberHeadings(odfBody, listStyles) {
+            var headings = odfBody.getElementsByTagNameNS(textns, "h"),
+                /**@type{?Element}*/
+                outline = null,
+                /**@type{!Array.<!number>}*/
+                held = [],
+                /**@type{!number}*/
+                level,
+                /**@type{?Element}*/
+                parent,
+                /**@type{!Element}*/
+                heading,
+                /**@type{!number}*/
+                i;
+            if (!listStyles) {
+                return;
+            }
+            Object.keys(listStyles).forEach(function (name) {
+                if (!outline
+                        && listStyles[name].element.localName
+                            === "outline-style") {
+                    outline = listStyles[name].element;
+                }
+            });
+            if (!outline) {
+                return;
+            }
+            for (i = 0; i < headings.length; i += 1) {
+                heading = /**@type{!Element}*/(headings.item(i));
+                parent = heading.parentElement;
+                level = parseInt(heading.getAttributeNS(textns,
+                    "outline-level") || "1", 10);
+                if (isNaN(level) || level < 1) {
+                    level = 1;
+                }
+                // A heading of a list is numbered by its list, and one that
+                // the document writes as the head of a list carries no
+                // number at all.
+                if (parent && parent.namespaceURI === textns
+                        && parent.localName === "list-item") {
+                    parent = null;
+                } else if (heading.getAttributeNS(textns, "is-list-header")
+                        !== "true") {
+                    labelOne(heading, /**@type{!Element}*/(outline), level,
+                        held, heading);
+                }
+            }
+        }
         /**
          * Creates CSS styles from the given ODF list styles and applies them to the stylesheet
          * @param {!CSSStyleSheet} styleSheet
@@ -810,6 +1100,10 @@
             }
 
             applyContentBasedStyles(styleSheet, odfBody, styleFamilyTree);
+            numberLists(odfBody, styleFamilyTree);
+            numberHeadings(odfBody, styleFamilyTree);
+            appendRule(styleSheet, 'text|h[odf-list-label]:before'
+                + '{content: attr(odf-list-label); white-space: pre;}');
         };
     };
 }());
