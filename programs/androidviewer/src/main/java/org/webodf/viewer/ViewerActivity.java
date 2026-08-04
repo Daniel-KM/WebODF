@@ -28,11 +28,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import androidx.webkit.WebViewAssetLoader;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,14 +47,37 @@ import java.io.OutputStream;
  * system hands over is copied into the directory of the cache, as it comes as
  * a "content://" uri that the web view may not read by itself.
  *
- * Everything is served over "https://webodf.invalid/", by the asset loader:
- * a page loaded from "file://" may not read another file with XMLHttpRequest,
- * which is how the library reads a document.
+ * Everything is served over "https://webodf.invalid/", from the requests the
+ * web view is intercepted on: a page loaded from "file://" may not read
+ * another file with XMLHttpRequest, which is how the library reads a
+ * document. Only the four files of the viewer and the one document are
+ * served, so no name from a document may reach anything else.
  */
 public class ViewerActivity extends Activity {
 
     private static final String DOMAIN = "webodf.invalid";
+    private static final String PAGE = "https://" + DOMAIN + "/index.html";
     private static final String CACHED = "document.odf";
+    private static final String[] FILES = {
+        "index.html", "index.css", "index.js", "webodf.js"
+    };
+
+    /**
+     * The type of a file of the viewer, as the web view only reads a script
+     * and a style sheet when they are served as such.
+     */
+    private static String typeOf(String name) {
+        if (name.endsWith(".html")) {
+            return "text/html";
+        }
+        if (name.endsWith(".js")) {
+            return "application/javascript";
+        }
+        if (name.endsWith(".css")) {
+            return "text/css";
+        }
+        return "application/octet-stream";
+    }
 
     /**
      * Copy the document into the cache, so that it is served as a file of its
@@ -77,37 +102,57 @@ public class ViewerActivity extends Activity {
         }
     }
 
+    /**
+     * Answer a request of the page, and nothing else: the name is compared to
+     * the files that are served, never used to build a path.
+     */
+    private WebResourceResponse answer(Uri uri) {
+        if (!DOMAIN.equals(uri.getHost())) {
+            return null;
+        }
+        String name = uri.getLastPathSegment();
+        if (name == null) {
+            return null;
+        }
+        try {
+            if (("/" + CACHED).equals(uri.getPath())) {
+                return new WebResourceResponse(typeOf(name), null,
+                        new FileInputStream(new File(getCacheDir(), CACHED)));
+            }
+            for (String served : FILES) {
+                if (served.equals(name) && ("/" + served).equals(uri.getPath())) {
+                    return new WebResourceResponse(typeOf(name), "utf-8",
+                            getAssets().open(served));
+                }
+            }
+        } catch (IOException e) {
+            return null;
+        }
+        return null;
+    }
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-
-        WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
-                .setDomain(DOMAIN)
-                .addPathHandler("/assets/",
-                        new WebViewAssetLoader.AssetsPathHandler(this))
-                .addPathHandler("/cache/",
-                        new WebViewAssetLoader.InternalStoragePathHandler(
-                                this, getCacheDir()))
-                .build();
 
         WebView view = new WebView(this);
         view.getSettings().setJavaScriptEnabled(true);
         view.setWebViewClient(new WebViewClient() {
             @Override
-            public android.webkit.WebResourceResponse shouldInterceptRequest(
-                    WebView webView, android.webkit.WebResourceRequest request) {
-                return loader.shouldInterceptRequest(request.getUrl());
+            public WebResourceResponse shouldInterceptRequest(
+                    WebView webView, WebResourceRequest request) {
+                return answer(request.getUrl());
             }
         });
         setContentView(view);
 
-        String page = "https://" + DOMAIN + "/assets/index.html";
+        String page = PAGE;
         Intent intent = getIntent();
         Uri uri = (intent == null)
                 ? null
                 : intent.getData();
         if (uri != null && cache(uri)) {
-            page += "?file=/cache/" + CACHED;
+            page += "?file=/" + CACHED;
         }
         view.loadUrl(page);
     }
