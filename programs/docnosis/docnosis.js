@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 /*global runtime, Node, window, DOMParser, webodfcore, xmldom, NodeFilter, alert,
    FileReader*/

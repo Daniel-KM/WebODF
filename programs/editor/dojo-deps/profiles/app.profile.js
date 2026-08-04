@@ -31,14 +31,16 @@ var profile = {
 	// Excludes tests, demos, and original template files from being included in the built version.
 	mini: true,
 
-	// Uses Closure Compiler as the JavaScript minifier. This can also be set to "shrinksafe" to use ShrinkSafe,
-	// though ShrinkSafe is deprecated and not recommended.
-	// This option defaults to "" (no compression) if not provided.
-	optimize: 'closure',
+	// Nothing is minified here: the closure compiler of today writes the
+	// modules of dojo wrong, as "define("a b c", f)" where the names of the
+	// dependencies belong in a list, and half of the modules of a build came
+	// out that way. The layer is minified by terser once it is whole, see
+	// "CMakeLists.txt" beside this file.
+	optimize: '',
 
 	// We're building layers, so we need to set the minifier to use for those, too.
 	// This defaults to "shrinksafe" if not provided.
-	layerOptimize: 'closure',
+	layerOptimize: '',
 
 	// Strips all calls to console functions within the code. You can also set this to "warn" to strip everything
 	// but console.error, and any other truthy value to strip everything but console.warn and console.error.

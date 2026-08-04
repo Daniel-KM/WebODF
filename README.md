@@ -30,7 +30,7 @@ and compacts all JavaScript files, so that they are smaller and execute faster.
 CMake is used to setup the buildsystem, so webodf.js can be created:
 
 ```sh
-git clone https://github.com/kogmbh/WebODF.git webodf
+git clone https://github.com/webodf/WebODF.git webodf
 mkdir build
 cd build
 cmake -S ../webodf

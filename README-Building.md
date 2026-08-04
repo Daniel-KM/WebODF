@@ -103,11 +103,11 @@ also a connection to the internet will be needed. Downloaded requirements will
 be cached in the build directory.
 [Closure Compiler]: https://developers.google.com/closure/compiler/
 
-With the requirements installed, either download the zip file from https://github.com/kogmbh/WebODF/archive/master.zip
+With the requirements installed, either download the zip file from https://github.com/webodf/WebODF/archive/master.zip
 and unzip it:
 
 ```sh
-wget https://github.com/kogmbh/WebODF/archive/master.zip
+wget https://github.com/webodf/WebODF/archive/master.zip
 unzip master.zip
 mv WebODF-master webodf
 ```
@@ -115,7 +115,7 @@ mv WebODF-master webodf
 or get the complete repo with git:
 
 ```sh
-git clone https://github.com/kogmbh/WebODF.git webodf
+git clone https://github.com/webodf/WebODF.git webodf
 ```
 
 For building now in the same directory where either of above commands were done
@@ -198,7 +198,7 @@ These commands should be entered from the Visual Studio 2010 command prompt so
 that msbuild will be added to the PATH
 
 ```sh
-git clone https://github.com/kogmbh/WebODF.git webodf
+git clone https://github.com/webodf/WebODF.git webodf
 md build
 cd build
 cmake -G "Visual Studio 10" ..\webodf

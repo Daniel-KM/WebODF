@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global runtime, odf, xmldom, webodf_css, webodfcore, gui, atob, Uint8Array */

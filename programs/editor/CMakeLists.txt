@@ -106,7 +106,14 @@ add_custom_command(
 
     COMMAND ${NODE} ${CMAKE_SOURCE_DIR}/webodf/tools/dojoNlsCompile.js dojo-deps/dist de fr nl it eu > dojobundle.js
 
-    COMMAND ${NODE} ${CMAKE_CURRENT_SOURCE_DIR}/libexec/mergeIntoDojo.js dojobuild=${DOJO_DEPS}/dist/dojo/dojo.js dojobundle.js > dojo-amalgamation.js
+    COMMAND ${NODE} ${CMAKE_CURRENT_SOURCE_DIR}/libexec/mergeIntoDojo.js dojobuild=${DOJO_DEPS}/dist/dojo/dojo.js dojobundle.js > dojo-amalgamation-full.js
+
+    # The layer of dojo is built without a minifier, see the profile beside
+    # this file, and the whole of it is minified here instead, by terser, the
+    # one the library is minified with: it leaves the modules of dojo alone,
+    # where the closure compiler of today writes half of them wrong.
+    COMMAND ${NODE} ${CMAKE_SOURCE_DIR}/node_modules/terser/bin/terser
+        dojo-amalgamation-full.js -c -m -o dojo-amalgamation.js
 
     # cleanup
     # COMMAND ${CMAKE_COMMAND} -E remove_directory dojo-deps/dist

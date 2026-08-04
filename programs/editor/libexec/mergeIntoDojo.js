@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*
@@ -98,8 +98,20 @@
         return 1;
     }
 
-    tail = dojo_build.slice(dojo_build.length-1000).toString();
-    idx = dojo_build.length - 1000 + tail.lastIndexOf("\n");
+    // The modules are put before the line that boots the loader, so that
+    // nothing is asked for on demand once the page runs. That line was looked
+    // for as the last line of the file, which held while dojo was minified
+    // into one line by its own build; it is looked for by what it does
+    // instead, so that a build that is not minified is read as well.
+    tail = dojo_build.toString();
+    idx = tail.lastIndexOf("!require.async");
+    if (idx === -1) {
+        idx = tail.lastIndexOf("\n");
+    }
+    if (idx === -1) {
+        log("the boot of the loader was not found in the build of dojo.");
+        return 1;
+    }
 
     process.stdout.write(dojo_build.slice(0, idx));
 

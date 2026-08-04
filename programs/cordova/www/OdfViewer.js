@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 /*global FileScanner, window, DirectoryEntry, FileScannerEntry, FileScannerFileEntry, Blob, XMLHttpRequest, odf, console, WebKitBlobBuilder, navigator, runtime, FileReader, Uint8Array, endsWith*/
 

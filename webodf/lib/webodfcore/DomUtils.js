@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global Node, webodfcore, ops, runtime, NodeFilter, Range*/
@@ -623,7 +623,7 @@
          *
          * Use this function instead of node.getElementsByTagNameNS when modifications are going to be made
          * to the document content during iteration. For read-only uses, node.getElementsByTagNameNS will perform
-         * faster and use less memory. See https://github.com/kogmbh/WebODF/issues/736 for further discussion.
+         * faster and use less memory. See https://github.com/webodf/WebODF/issues/736 for further discussion.
          *
          * @param {!Element|!Document} node
          * @param {!string} namespace
@@ -646,7 +646,7 @@
          *
          * Use this function instead of node.getElementsByTagName when modifications are going to be made
          * to the document content during iteration. For read-only uses, node.getElementsByTagName will perform
-         * faster and use less memory. See https://github.com/kogmbh/WebODF/issues/736 for further discussion.
+         * faster and use less memory. See https://github.com/webodf/WebODF/issues/736 for further discussion.
          *
          * @param {!Element|!Document} node
          * @param {!string} tagName
