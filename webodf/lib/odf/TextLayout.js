@@ -35,6 +35,12 @@ odf.TextLayout = function TextLayout() {
         styleCache = {},
         /**@type{!Object.<!string,!boolean>}*/
         breakCache = {},
+        /**
+         * The master page a style of a paragraph begins, by the name of the
+         * style: read once, and dropped with the styles themselves.
+         * @type{!Object.<string,?Element>}
+         */
+        masterCache = {},
         domUtils = webodfcore.DomUtils,
         odfUtils = odf.OdfUtils,
         fons = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
@@ -280,6 +286,7 @@ odf.TextLayout = function TextLayout() {
             styleCacheRoot = odfroot;
             styleCache = {};
             breakCache = {};
+            masterCache = {};
         }
         if (styleCache.hasOwnProperty(key)) {
             return styleCache[key];
@@ -1191,39 +1198,32 @@ odf.TextLayout = function TextLayout() {
     function masterPageOfParagraph(odfroot, paragraph) {
         var /**@type{!string}*/
             name = paragraph.getAttributeNS(textns, "style-name") || "",
-            /**@type{!Array.<!Element>}*/
-            roots = [odfroot.automaticStyles, odfroot.styles],
-            /**@type{!NodeList}*/
-            styles,
-            /**@type{!Element}*/
-            candidate,
             /**@type{?Element}*/
-            style = null,
+            style,
             /**@type{!string}*/
-            master = "",
-            /**@type{!number}*/
-            i,
-            /**@type{!number}*/
-            r;
+            master = "";
         if (name === "") {
             return null;
         }
-        for (r = 0; r < roots.length && style === null; r += 1) {
-            styles = roots[r].getElementsByTagNameNS(stylens, "style");
-            for (i = 0; i < styles.length && style === null; i += 1) {
-                candidate = /**@type{!Element}*/(styles.item(i));
-                if (candidate.getAttributeNS(stylens, "name") === name
-                        && candidate.getAttributeNS(stylens, "family")
-                            === "paragraph") {
-                    style = candidate;
-                }
-            }
+        // A document holds a handful of styles for thousands of paragraphs,
+        // and each paragraph is read: the style of a name is read once and
+        // kept beside the styles themselves, as the breaks are, rather than
+        // read again out of all the styles of the document for every
+        // paragraph that names it.
+        if (styleCacheRoot === odfroot && masterCache.hasOwnProperty(name)) {
+            return masterCache[name];
         }
-        if (style === null) {
-            return null;
+        style = styleOf(odfroot, name, "paragraph");
+        if (!style && plainStyleName(name) !== name) {
+            style = styleOf(odfroot, plainStyleName(name), "paragraph");
         }
-        master = style.getAttributeNS(stylens, "master-page-name") || "";
-        return master === "" ? null : masterPageNamed(odfroot, master);
+        if (style) {
+            master = style.getAttributeNS(stylens, "master-page-name") || "";
+        }
+        masterCache[name] = master === ""
+            ? null
+            : masterPageNamed(odfroot, master);
+        return masterCache[name];
     }
     /**
      * The master pages a text goes through, in the order it goes through them,
