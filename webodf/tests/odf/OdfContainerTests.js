@@ -172,7 +172,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
     function createNewSaveAsAndLoad(callback) {
         t.odf = new odf.OdfContainer(odf.OdfContainer.DocumentType.TEXT, null);
         r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
-        var path = "test.odt";
+        var path = "out/test.odt";
         t.odf.saveAs(path, function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
@@ -188,8 +188,8 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         t.odf = new odf.OdfContainer(odf.OdfContainer.DocumentType.TEXT, null);
         r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
         t.odf.rootElement.settings = null;
-        var path = "test.odt";
-        t.odf.saveAs("test.odt", function (err) {
+        var path = "out/test.odt";
+        t.odf.saveAs("out/test.odt", function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
             r.shouldBeNull(t, "t.odf.rootElement.settings");
@@ -206,7 +206,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         t.odf = new odf.OdfContainer(odf.OdfContainer.DocumentType.TEXT, null);
         r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
         t.odf.rootElement.meta = null;
-        var path = "test.odt";
+        var path = "out/test.odt";
         t.odf.saveAs(path, function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
@@ -228,7 +228,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         appendXmlsToNode(t.odf.rootElement.styles,          args.styles);
         appendXmlsToNode(t.odf.rootElement.automaticStyles, args.automaticStyles);
 
-        var path = r.resourcePrefix() + "fontFaceDeclsTest.odt";
+        var path = r.resourcePrefix() + "out/fontFaceDeclsTest.odt";
         t.odf.saveAs(path, function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
@@ -363,8 +363,8 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         compareZipEntryList(odf1path, odf2path, callback);
     }
     function loadAndSave(callback) {
-        var path = "odf/loadsave.odt",
-            newpath = "odf/newloadsave.odt";
+        var path = "documents/loadsave.odt",
+            newpath = "out/newloadsave.odt";
         t.odf = new odf.OdfContainer(path, function (o1) {
             t.odf = o1;
             r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
@@ -394,11 +394,11 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         ]);
     };
     // A document of the real world, the standard itself as OASIS publishes it:
-    // 782 pages, 27 tables, 18 images and 102 objects, written by LibreOffice.
+    // 800 pages, 32 tables, 27 images and 109 objects, written by LibreOffice.
     // It answers the question the small documents of a test never do, which is
     // whether the library still reads what an office writes.
     function loadTheStandard(callback) {
-        t.odf = new odf.OdfContainer("odf/opendocument-v1.3-part3.odt",
+        t.odf = new odf.OdfContainer("documents/opendocument-v1.4-part3.odt",
             function (container) {
                 t.odf = container;
                 r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
@@ -410,7 +410,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
                     "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
                     "p"
                 ).length;
-                r.shouldBe(t, "t.paragraphs > 10000", "true");
+                r.shouldBe(t, "t.paragraphs > 16000", "true");
                 callback();
             });
     }
