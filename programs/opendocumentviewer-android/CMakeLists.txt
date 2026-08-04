@@ -1,27 +1,61 @@
-# The viewer of OpenDocument for android is a web view that shows a document with WebODF. It
-# replaces the one of programs/cordova, that drove cordova 3.5, of 2014, and
-# built with ant, which google dropped in 2015 for gradle.
+# The viewer of OpenDocument for android is a web view that shows a document
+# with WebODF. It replaces the one of programs/cordova, that drove cordova 3.5,
+# of 2014, and built with ant, which google dropped in 2015 for gradle.
 #
 # It is opt-in, as it needs the sdk of android and a jdk, that the build does
-# not download: gradle reads the sdk from $ANDROID_HOME, the directory the sdk
-# is installed in, or from "sdk.dir" of the file "local.properties".
+# not download. The sdk is found from -DANDROID_SDK, from $ANDROID_HOME or
+# $ANDROID_SDK_ROOT, or where a sdk is usually installed, see below.
 option(WEBODF_ANDROID "Build the viewer of OpenDocument for android, that needs its sdk" OFF)
 
 if (WEBODF_ANDROID)
     # The sdk is looked for here rather than left to gradle, that only says so
-    # once it has resolved the plugin and started the tasks of android.
-    if (NOT DEFINED ENV{ANDROID_HOME}
-            AND NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/local.properties)
+    # once it has resolved the plugin and started the tasks of android. It is
+    # read from -DANDROID_SDK, from the environment, from a "local.properties"
+    # that is already there, or from the two places a sdk is usually installed
+    # in, and it is written into the cache: a build is configured once and
+    # made many times, often from another shell, where the environment of the
+    # first one is gone.
+    if (NOT ANDROID_SDK)
+        if (DEFINED ENV{ANDROID_HOME})
+            set(ANDROID_SDK $ENV{ANDROID_HOME})
+        elseif (DEFINED ENV{ANDROID_SDK_ROOT})
+            set(ANDROID_SDK $ENV{ANDROID_SDK_ROOT})
+        elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/local.properties)
+            file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/local.properties SDK_LINE
+                REGEX "^sdk\\.dir=")
+            string(REPLACE "sdk.dir=" "" ANDROID_SDK "${SDK_LINE}")
+        else ()
+            foreach (dir "$ENV{HOME}/Android/Sdk" "/usr/lib/android-sdk")
+                if (IS_DIRECTORY ${dir}/platforms)
+                    set(ANDROID_SDK ${dir})
+                    break()
+                endif()
+            endforeach()
+        endif()
+    endif()
+
+    if (NOT IS_DIRECTORY "${ANDROID_SDK}/platforms")
         message(FATAL_ERROR
             "The sdk of android was not found, so the viewer cannot be built."
-            " Export ANDROID_HOME with the directory it is installed in, or write"
-            " \"sdk.dir=/path/to/sdk\" in"
-            " ${CMAKE_CURRENT_SOURCE_DIR}/local.properties."
-            " The command line tools that install it are at"
+            " Configure with -DANDROID_SDK=/path/to/sdk, or export ANDROID_HOME"
+            " with the directory it is installed in, in the same command as"
+            " cmake: \"ANDROID_HOME=/path/to/sdk cmake ...\", with no semicolon"
+            " between the two, as a variable that is set apart is not passed on."
+            " The command line tools that install the sdk are at"
             " https://developer.android.com/studio#command-tools, and the"
             " packages the build needs are \"platforms;android-36\" and"
             " \"build-tools;36.0.0\".")
     endif()
+
+    set(ANDROID_SDK ${ANDROID_SDK} CACHE PATH "The directory the sdk of android is installed in")
+
+    # Gradle reads the sdk from this file, that is written here rather than by
+    # hand, so that "make" needs no environment of its own.
+    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/local.properties
+        "# Written by cmake, see \"CMakeLists.txt\": configure with\n"
+        "# -DANDROID_SDK=/path/to/sdk to change it.\n"
+        "sdk.dir=${ANDROID_SDK}\n")
+    message(STATUS "Android sdk found: ${ANDROID_SDK}")
 
     # Gradle is downloaded, as the closure compiler and Rhino are: Debian 13
     # packages the 4.4.1 of 2017, where the plugin of android asks for a 9,
