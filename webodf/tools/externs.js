@@ -247,7 +247,7 @@ Packages.java.io.File.prototype['delete'] = function () {"use strict"; };
  * @param {!Packages.java.io.File} other
  * @return {!boolean}
  */
-Packages.java.io.File.prototype.rename = function (other) {"use strict"; };
+Packages.java.io.File.prototype.renameTo = function (other) {"use strict"; };
 
 /**
  * @return {undefined}

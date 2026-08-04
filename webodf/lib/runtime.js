@@ -1270,7 +1270,9 @@ function RhinoRuntime() {
         // Only the constants are used, so the object does not implement the
         // methods of the interface of a browser.
         globalScope.NodeFilter = {
-            SHOW_ALL: 4294967295,
+            // The dom of java takes a signed integer, where the value of the
+            // specification, 0xFFFFFFFF, does not fit.
+            SHOW_ALL: -1,
             SHOW_ELEMENT: 1,
             SHOW_ATTRIBUTE: 2,
             SHOW_TEXT: 4,
@@ -1445,7 +1447,7 @@ function RhinoRuntime() {
             otherPath = path + Math.random(),
             other = new Packages.java.io.File(otherPath);
         // 'delete' cannot be used with closure compiler, so we use a workaround
-        if (file.rename(other)) {
+        if (file.renameTo(other)) {
             other.deleteOnExit();
             callback(null);
         } else {
