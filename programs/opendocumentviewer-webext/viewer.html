@@ -6,17 +6,25 @@
   <link rel="stylesheet" href="viewer.css">
 </head>
 <body>
-  <div id="toolbar">
-    <span class="button" id="download">download this document</span>
-    <span class="spacer"> </span>
-    <label class="button" id="openlabel">open a local document
-      <input type="file" id="open"
+  <!-- The commands sit in a menu rather than in a bar: a document is read far
+       more often than it is saved, and a bar takes a line of every page it is
+       shown above. -->
+  <button id="menubutton" type="button" data-label="menu" title="Menu"
+    aria-haspopup="true" aria-expanded="false" aria-controls="menu"
+    aria-label="Menu"><span aria-hidden="true">&#9776;</span></button>
+  <!-- The block is no role="menu": that role asks for entries of role
+       "menuitem", and one of ours holds the input of a file, that a screen
+       reader has to announce as what it is. A button that says what it opens
+       is enough. -->
+  <div id="menu" aria-labelledby="menubutton" hidden>
+    <label class="entry" id="openlabel" data-message="openLocal">Open a local
+      document<input type="file" id="open"
         accept=".odt,.fodt,.ott,.odp,.fodp,.otp,.ods,.fods,.ots">
     </label>
-    <span class="spacer"> </span>
-    <a class="button" href="http://webodf.org/about/">about WebODF</a>
-    <span class="spacer"> </span>
-    <a class="button" href="https://github.com/kogmbh/WebODF/">get the source code</a>
+    <button class="entry" type="button" id="download"
+      data-message="download">Download this document</button>
+    <a class="entry" id="about" href="welcome.en.html"
+      data-message="about">About this viewer</a>
   </div>
   <div id="odf"></div>
   <script src="webodf.js"></script>

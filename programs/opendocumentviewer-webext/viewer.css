@@ -7,25 +7,112 @@ body, html {
     height: 100%;
     text-align: center;
 }
+/* The ground sets the page apart, as a reader of pdf does, and follows the
+   theme of the browser: the black it used to be is the ground of no theme. */
 html > body {
-    background: black;
-}
-div#toolbar {
-    background: white;
-    padding: 7px;
-    border-bottom: 1px solid black;
-}
-div#toolbar > .button {
-    border: 1px solid black;
-    padding: 2px;
-    cursor: default;
+    background: #d4d4d7;
     color: black;
+}
+@media (prefers-color-scheme: dark) {
+    html > body {
+        background: #2a2a2e;
+        color: white;
+    }
+}
+/* The button of the menu floats over the document, in the corner, so that no
+   room is taken from the page. */
+button#menubutton {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    /* The glyph is centred by the box itself: a line height never puts it in
+       the middle of a square, the ink of a character sitting above its
+       baseline. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.85);
+    color: black;
+    font-size: 18px;
+    line-height: 1;
+    cursor: default;
+}
+button#menubutton:hover {
+    background: white;
+}
+div#menu {
+    position: fixed;
+    top: 44px;
+    right: 8px;
+    z-index: 2;
+    min-width: 12em;
+    padding: 4px 0;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    text-align: left;
+}
+div#menu > .entry {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 12px;
+    border: 0;
+    background: none;
+    color: black;
+    font: inherit;
+    text-align: left;
     text-decoration: none;
+    cursor: default;
 }
-div#toolbar > .button:hover {
-    background: #CCCCCC;
+div#menu > .entry:hover {
+    background: #e0e0e0;
 }
-/* The label opens the picker, so the input itself is not shown. */
-div#toolbar > #openlabel > input {
-    display: none;
+/* The label opens the picker. The input is taken out of sight, but not out of
+   the page: "display: none" would take it from the keyboard as well, and the
+   entry could then only be reached with a mouse. */
+div#menu > #openlabel > input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+/* The entry the keyboard is on is drawn as the one the mouse is on. */
+div#menu > .entry:focus,
+div#menu > #openlabel:focus-within {
+    background: #e0e0e0;
+    outline: 2px solid #0060df;
+    outline-offset: -2px;
+}
+@media (prefers-color-scheme: dark) {
+    button#menubutton {
+        border-color: rgba(255, 255, 255, 0.25);
+        background: rgba(43, 42, 51, 0.85);
+        color: white;
+    }
+    button#menubutton:hover {
+        background: #2b2a33;
+    }
+    div#menu {
+        border-color: rgba(255, 255, 255, 0.25);
+        background: #2b2a33;
+    }
+    div#menu > .entry {
+        color: white;
+    }
+    div#menu > .entry:hover {
+        background: #52525e;
+    }
+    div#menu > .entry:focus,
+    div#menu > #openlabel:focus-within {
+        background: #52525e;
+        outline-color: #00ddff;
+    }
 }
