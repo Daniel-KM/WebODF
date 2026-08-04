@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OpenDocument Viewer</title>
+  <link rel="stylesheet" href="viewer.css">
+  <script defer src="webodf.js"></script>
+  <script defer src="viewer.js"></script>
+</head>
+<body>
+  <!-- The words of every language are written here, in the attribute of the
+       language, so that the script holds no sentence of its own. The window
+       holds the menu and the title, so the page only tells what is missing or
+       what went wrong. -->
+  <p id="message" data-fr="Ouvrez un document avec Ctrl+O, ou déposez-le dans
+    la fenêtre.">Open a document with Ctrl+O, or drop it in the window.</p>
+  <p id="failure" hidden data-fr="Ce document ne peut pas être affiché. Il est
+    peut-être endommagé, ou ce n’est pas un document au format
+    OpenDocument.">This document cannot be drawn. It may be damaged, or it may
+    not be a document of the OpenDocument format.</p>
+  <!-- The way to the page that tells what the format is worth and what the
+       viewer does, kept at the foot of the empty screen, as the menu of the
+       window holds the same entry. -->
+  <p id="ways"><a id="about" href="odf:/about.en.html" data-fr="À propos
+    d’OpenDocument et du lecteur">About OpenDocument and this viewer</a></p>
+  <div id="odf"></div>
+</body>
+</html>

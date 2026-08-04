@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- What macos reads of the bundle of the viewer. Written by cmake, see
+     "CMakeLists.txt". -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>OpenDocument Viewer</string>
+    <key>CFBundleExecutable</key>
+    <string>opendocumentviewer-desktop</string>
+    <key>CFBundleIconFile</key>
+    <string>opendocumentviewer.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.webodf.OpenDocumentViewer</string>
+    <key>CFBundleName</key>
+    <string>OpenDocument Viewer</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>@WEBODF_MANIFEST_VERSION@</string>
+    <key>CFBundleVersion</key>
+    <string>@WEBODF_MANIFEST_VERSION@</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>GNU Affero General Public License 3</string>
+    <!-- The webengine of qt runs on the versions of macos qt is built for, so
+         the floor is the one of the build, see "CMakeLists.txt". -->
+    <key>LSMinimumSystemVersion</key>
+    <string>@OPENDOCUMENTVIEWER_MACOS@</string>
+    <!-- The eleven types of the format, that macos knows already: the viewer is
+         declared as one that reads them, and as an alternate, so that it is
+         offered in "Open with" beside the office suite of the machine and
+         never in its place. A document opened this way is not named on the
+         command line: it comes as an event, see "main.cpp". -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>OpenDocument</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>org.oasis-open.opendocument.text</string>
+                <string>org.oasis-open.opendocument.text-template</string>
+                <string>org.oasis-open.opendocument.text-flat-xml</string>
+                <string>org.oasis-open.opendocument.presentation</string>
+                <string>org.oasis-open.opendocument.presentation-template</string>
+                <string>org.oasis-open.opendocument.presentation-flat-xml</string>
+                <string>org.oasis-open.opendocument.spreadsheet</string>
+                <string>org.oasis-open.opendocument.spreadsheet-template</string>
+                <string>org.oasis-open.opendocument.spreadsheet-flat-xml</string>
+                <string>org.oasis-open.opendocument.graphics</string>
+                <string>org.oasis-open.opendocument.graphics-template</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

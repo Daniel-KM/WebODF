@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>OpenDocument Viewer</title>
+  <link rel="stylesheet" href="about.css">
+</head>
+<body>
+  <main>
+    <h1>Le lecteur OpenDocument</h1>
+    <p id="lead">Il lit les documents au standard OpenDocument créés par
+      LibreOffice et toutes les suites bureautiques : les textes, les tableurs,
+      les présentations et les dessins, sans suite bureautique.</p>
+    <p>Une fois installé, il se déclare pour les neuf types d’OpenDocument : un
+      double-clic sur un document le propose alors parmi les applications qui
+      lisent le format. Il n’accède à aucun réseau et ne lit que le document qui
+      lui est donné.</p>
+
+@FORMAT_TEXT@
+
+    <h2>Ailleurs</h2>
+    <p>Le même lecteur existe en extension pour Firefox, pour Chrome et pour
+      Thunderbird, qui affiche ces documents dans le navigateur ou dans un
+      message au lieu de les télécharger, et en application pour Android.</p>
+    <p>Il repose sur WebODF, une bibliothèque qui lit le format en JavaScript,
+      et c’est un logiciel libre, sous licence AGPL 3.</p>
+  </main>
+</body>
+</html>

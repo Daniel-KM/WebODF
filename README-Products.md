@@ -333,6 +333,175 @@ It replaces the product of "programs/cordova", that drove cordova 3.5, of 2014,
 and built android with ant, which google dropped in 2015 for gradle, through the
 executable "android", that the sdk replaced by "sdkmanager" in 2018.
 
+### OpenDocument Viewer for the desktop
+
+This program shows a document of the OpenDocument format on a desktop, on linux,
+on windows and on macos: a window of qt around the same page the add-ons of the
+browsers and the viewer for android draw a document in. There is one place where
+the reading of the format lives, and one behaviour to keep in step.
+
+It reads the text (.odt), the spreadsheets (.ods), the presentations (.odp) and
+the drawings (.odg), with their templates. A document is opened from the menu,
+by dropping it in the window, or by naming it on the command line, which is how
+a file manager opens one. It is drawn at the size it was written at, and only
+scaled down when it is wider than the window; the menu of the display zooms it,
+sets it back to its own size, or fits it to the width.
+
+A document is printed, and written as a pdf, by the printing of the engine.
+
+The menu of the help, and the foot of the empty screen, lead to a page that
+tells what the viewer does and what the format is worth, in French or in
+English, after the language of the system. The part about the format is the same
+text as the one the add-ons and the viewer for android show, and it is the same
+file: see "One text for every product" below.
+
+With a prepared setup for building, from the build directory:
+
+```sh
+cmake -S ../webodf -DWEBODF_DESKTOP=ON
+make product-opendocumentviewer-desktop
+```
+
+It is behind the option WEBODF_DESKTOP, as it needs the modules of qt, and it
+is built by that option alone: it needs neither Dojo nor the editors, so
+WEBODF_PROGRAMS is not asked for. The modules are the ones qtjsruntime needs,
+see "README-Building.md".
+
+The program is one file: the page, its style, its script, the library and the
+icon are all put in it, so it runs wherever it is copied. It is installed with
+what a desktop needs to offer it for a document:
+
+```sh
+make install
+```
+
+It writes the program in "bin", an entry in "share/applications" that names the
+nine types of the format, and the icon under the name of the entry, as the
+specification of the freedesktop asks. A double click on a document then offers
+the viewer among the applications that read the format.
+
+The page and the document it shows are served by the program itself, under a
+scheme of its own, "odf:", see "programs/opendocumentviewer-desktop/viewerscheme.cpp":
+they are one origin that way, which is what the page needs to read the document,
+and the disk is not opened to it for that, as the one document that was chosen
+is served, at one address, whichever file it is.
+
+#### The viewer on windows
+
+Nothing in the program is of linux, and the build writes what windows asks for:
+the icon in the format of its own, made from the icon of the project at the
+sizes windows draws it at, the version that the properties of the file show, and
+a program that opens no terminal behind its window.
+
+Qt WebEngine does not compile with MinGW, which the documentation of Qt states,
+so the compiler is the one of Microsoft. The program is of 64 bits, and only of
+64 bits: Qt 6 is built for x86_64 and for arm64, and no longer for a windows of
+32 bits. The property WIN32_EXECUTABLE of cmake, that the build sets, is named
+after the interface of windows and not after an architecture: it says that the
+program opens a window rather than a terminal. What is needed, beside the sources:
+
+* Visual Studio Build Tools, for the compiler and the linker;
+* Qt 6 with the modules of the viewer, WebEngine among them, from the installer
+  of Qt;
+* CMake, Ninja, node and a java runtime, as on linux.
+
+```sh
+cmake -S ..\webodf -DWEBODF_DESKTOP=ON -DWEBODF_QTJSRUNTIME=ON
+cmake --build . --target test-qtjsruntime
+cmake --build . --target product-opendocumentviewer-desktop
+cmake --install . --prefix dist
+```
+
+The first target runs the tests of the library in the webengine of qt, the whole
+suite of the browser: it is what tells that the library behaves on windows as it
+does elsewhere, which nobody has known since Qt WebKit died. It costs nothing to
+ask for once the modules of qt are there, see "README-Building.md".
+
+The installation runs "windeployqt", which gathers the libraries of qt,
+"QtWebEngineProcess.exe" and the resources it reads beside the program: the
+directory then runs on a machine where qt is not installed. That is what the
+script of the installer takes:
+
+```sh
+iscc programs\opendocumentviewer-desktop\opendocumentviewer.iss
+```
+
+It is written for [Inno Setup](https://jrsoftware.org/isinfo.php), and it
+declares the nine types of the format under one identifier, in
+"OpenWithProgids": the viewer is then offered beside the office suite of the
+machine, in "Open with", and it never takes the place of what a double click
+opens. Windows warns about a program that is not signed, so a certificate is
+needed for an installer that is handed to others.
+
+##### A machine to build on
+
+The build needs a windows, and there is none to cross build from: the compiler
+of Microsoft does not run elsewhere, and MinGW, that does, is the one WebEngine
+refuses. A virtual machine answers, in VirtualBox as in QEMU. Microsoft offers
+an evaluation of windows, and a machine that is already prepared for
+development, at https://developer.microsoft.com/windows/downloads/. Give it 8 GB
+of memory and 60 GB of disk: Qt with WebEngine and the build tools of Visual
+Studio weigh some 30 GB together, and the build writes as much again.
+
+Everything is then installed by one script, in a terminal opened as an
+administrator:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File programs\opendocumentviewer-desktop\data\setup-windows.ps1
+```
+
+It takes the tools from winget and Qt from its own repository, with
+[aqtinstall](https://github.com/miurahr/aqtinstall), the installer of Qt asking
+for an account that a script cannot answer for. Since Qt 6.8, WebEngine is an
+extension rather than a module, in a repository of its own, so the script checks
+that it was written and says what to do when it was not. It ends by printing the
+commands above.
+
+A machine without a graphics card, which a virtual one often is, draws the
+documents all the same: chromium falls back on the processor. Should a window
+stay empty, the fallback is asked for by hand:
+
+```powershell
+set QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu
+```
+
+#### The viewer on macos
+
+The same program, and the same build: what macos asks for beyond it is a bundle
+rather than a plain executable, an icon in the format of its own, made from the
+same drawing as the one of windows, and a "Info.plist" that names the eleven
+types the viewer reads.
+
+```sh
+cmake -S ../webodf -DWEBODF_DESKTOP=ON -DWEBODF_QTJSRUNTIME=ON \
+    -DCMAKE_PREFIX_PATH=$HOME/Qt/6.8.2/macos
+cmake --build . --target test-qtjsruntime
+cmake --build . --target product-opendocumentviewer-desktop
+cmake --install . --prefix dist
+```
+
+The installation runs "macdeployqt", which gathers the frameworks of qt,
+"QtWebEngineProcess.app" and the resources it reads inside the bundle: "OpenDocument
+Viewer.app" then runs on a machine where qt is not installed.
+
+One thing of macos is in the code rather than in the build: a document opened by
+a double click, or by "Open with", is not named on the command line there. The
+system sends it to the application once it is running, as an event, which
+"main.cpp" listens for. Without it the viewer would open its empty window and
+forget what it was asked for.
+
+The bundle is neither signed nor notarised by the build. Without that, macos
+refuses to open it save through the menu of the context, and says it comes from
+an unidentified developer. Both need an account of the developer program of
+Apple, at a hundred dollars a year:
+
+```sh
+codesign --deep --force --options runtime --sign "Developer ID Application: ..." \
+    "dist/OpenDocument Viewer.app"
+xcrun notarytool submit --wait ...
+xcrun stapler staple "dist/OpenDocument Viewer.app"
+```
+
 ### One text for every product
 
 The pages of the products tell what the OpenDocument format is worth, and they

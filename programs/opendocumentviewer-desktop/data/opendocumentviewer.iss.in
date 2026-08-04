@@ -1,0 +1,90 @@
+; The installer of the viewer for windows, for Inno Setup, that is free and
+; scripted: https://jrsoftware.org/isinfo.php. Cmake writes the version and the
+; directory the files are taken from, see "CMakeLists.txt", so it is compiled
+; with:
+;
+;   iscc build/programs/opendocumentviewer-desktop/opendocumentviewer.iss
+;
+; The nine types of the format are declared under one identifier rather than
+; nine, so a document is offered to the viewer whichever of them it is, and the
+; entry is removed whole when the program is uninstalled. The viewer is offered
+; beside the office suite of the machine, and never in its place: it is written
+; under "OpenWithProgids", which adds it to "Open with", and it never takes the
+; place of what a double click opens.
+
+[Setup]
+AppId={{2E0A3E4C-9E2E-4C1E-9E7D-0B1D0F2A5C61}
+AppName=OpenDocument Viewer
+AppVersion=@WEBODF_MANIFEST_VERSION@
+AppPublisher=webodf.org
+AppPublisherURL=https://webodf.org/
+DefaultDirName={autopf}\OpenDocument Viewer
+DefaultGroupName=OpenDocument Viewer
+UninstallDisplayIcon={app}\opendocumentviewer-desktop.exe
+OutputBaseFilename=opendocumentviewer-@WEBODF_MANIFEST_VERSION@-setup
+Compression=lzma2
+SolidCompression=yes
+; The viewer runs on the same versions of windows as the webengine of qt, and on
+; the same architectures: qt 6 is built for x86_64 and for arm64, and for no
+; 32 bits windows at all, so the installer refuses a machine that could not run
+; what it carries.
+MinVersion=10.0
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+PrivilegesRequiredOverridesAllowed=dialog
+
+[Languages]
+Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+
+[Files]
+; Everything windeployqt gathered beside the program, the libraries of qt,
+; "QtWebEngineProcess.exe" and its resources among them.
+Source: "@OPENDOCUMENTVIEWER_DEPLOYED@\*"; DestDir: "{app}"; \
+    Flags: recursesubdirs createallsubdirs ignoreversion
+
+[Icons]
+Name: "{group}\OpenDocument Viewer"; Filename: "{app}\opendocumentviewer-desktop.exe"
+
+[Registry]
+Root: HKA; Subkey: "Software\Classes\OpenDocumentViewer.Document"; \
+    ValueType: string; ValueName: ""; ValueData: "OpenDocument"; \
+    Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\OpenDocumentViewer.Document\DefaultIcon"; \
+    ValueType: string; ValueName: ""; \
+    ValueData: "{app}\opendocumentviewer-desktop.exe,0"
+Root: HKA; \
+    Subkey: "Software\Classes\OpenDocumentViewer.Document\shell\open\command"; \
+    ValueType: string; ValueName: ""; \
+    ValueData: """{app}\opendocumentviewer-desktop.exe"" ""%1"""
+Root: HKA; Subkey: "Software\Classes\.odt\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.ott\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.ods\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.ots\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.odp\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.otp\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.odg\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.otg\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.odf\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+
+[Run]
+Filename: "{app}\opendocumentviewer-desktop.exe"; \
+    Description: "Open a document"; Flags: nowait postinstall skipifsilent

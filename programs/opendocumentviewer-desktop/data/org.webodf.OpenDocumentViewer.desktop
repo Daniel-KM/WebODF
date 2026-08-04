@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=OpenDocument Viewer
+GenericName=Viewer of OpenDocument
+GenericName[fr]=Lecteur OpenDocument
+Comment=Read the text, spreadsheets and presentations of the OpenDocument format
+Comment[fr]=Lire les textes, tableurs et présentations au format OpenDocument
+Exec=opendocumentviewer-desktop %f
+Icon=org.webodf.OpenDocumentViewer
+Terminal=false
+Categories=Office;Viewer;
+Keywords=OpenDocument;ODF;odt;ods;odp;LibreOffice;
+Keywords[fr]=OpenDocument;ODF;odt;ods;odp;LibreOffice;lecteur;
+MimeType=application/vnd.oasis.opendocument.text;application/vnd.oasis.opendocument.text-template;application/vnd.oasis.opendocument.spreadsheet;application/vnd.oasis.opendocument.spreadsheet-template;application/vnd.oasis.opendocument.presentation;application/vnd.oasis.opendocument.presentation-template;application/vnd.oasis.opendocument.graphics;application/vnd.oasis.opendocument.graphics-template;application/vnd.oasis.opendocument.formula;
