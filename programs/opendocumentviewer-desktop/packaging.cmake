@@ -195,8 +195,18 @@ if (UNIX AND NOT APPLE)
             COMMENT "The AppImage of the viewer of the desktop")
     endif ()
 
-    find_program(FLATPAK_BUILDER flatpak-builder)
-    find_program(FLATPAK flatpak)
+    # A machine where the tool cannot write the flatpak, for want of the
+    # rights its build dir asks for, leaves it out rather than stopping the
+    # build of everything else.
+    option(WEBODF_PACKAGE_FLATPAK "Make the flatpak of the viewer" ON)
+    if (WEBODF_PACKAGE_FLATPAK)
+        find_program(FLATPAK_BUILDER flatpak-builder)
+        find_program(FLATPAK flatpak)
+        find_program(OSTREE ostree)
+    else ()
+        set(FLATPAK_BUILDER "")
+        set(FLATPAK "")
+    endif ()
 
     # The manifest of the flatpak names the runtime of KDE, which carries qt
     # and its webengine, so nothing of qt is built here: the tool reads it and
@@ -214,6 +224,7 @@ if (UNIX AND NOT APPLE)
     # one that will do is the least version of qt the viewer is built with,
     # see "find_package(Qt6 ...)" in the root: a machine that kept only an
     # older branch has nothing to build against, and is told so.
+    set(VIEWER_FLATPAK_REPO ${CMAKE_CURRENT_BINARY_DIR}/flatpak-repo)
     set(VIEWER_FLATPAK_RUNTIME_LEAST "6.4")
     set(WEBODF_FLATPAK_RUNTIME "" CACHE STRING
         "The branch of org.kde.Sdk the flatpak is built against, the newest installed one by default")
@@ -283,15 +294,30 @@ if (UNIX AND NOT APPLE)
     endif ()
 
     if (FLATPAK_BUILDER AND VIEWER_HAS_FLATPAK_SDK)
+        # The repository the flatpak is exported to refuses to write when
+        # less than a part of the disk is free, three hundredths of it by
+        # default, which is a hundred gigabytes on a disk of three terabytes:
+        # a size is asked for instead, as the flatpak of this viewer weighs
+        # some tens of megabytes.
+        if (OSTREE)
+            set(VIEWER_FLATPAK_ROOM
+                COMMAND ${OSTREE} init --repo=${VIEWER_FLATPAK_REPO}
+                    --mode=archive-z2
+                COMMAND ${OSTREE} config --repo=${VIEWER_FLATPAK_REPO}
+                    set core.min-free-space-size 500MB)
+        else ()
+            set(VIEWER_FLATPAK_ROOM "")
+        endif ()
         add_custom_target(package-flatpak
             COMMAND ${CMAKE_COMMAND} -E make_directory ${VIEWER_PRODUCTS}
-            COMMAND ${FLATPAK_BUILDER} --force-clean --repo=${CMAKE_CURRENT_BINARY_DIR}/flatpak-repo
+            ${VIEWER_FLATPAK_ROOM}
+            COMMAND ${FLATPAK_BUILDER} --force-clean --repo=${VIEWER_FLATPAK_REPO}
                 ${CMAKE_CURRENT_BINARY_DIR}/flatpak-build
                 ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml
             COMMAND ${FLATPAK_BUILDER} --run
                 ${CMAKE_CURRENT_BINARY_DIR}/flatpak-build
                 ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml true
-            COMMAND flatpak build-bundle ${CMAKE_CURRENT_BINARY_DIR}/flatpak-repo
+            COMMAND flatpak build-bundle ${VIEWER_FLATPAK_REPO}
                 ${VIEWER_PRODUCTS}/${VIEWER_ID}-${WEBODF_VERSION}.flatpak ${VIEWER_ID}
             DEPENDS opendocumentviewer-desktop
             COMMENT "The flatpak of the viewer of the desktop")
@@ -301,11 +327,16 @@ if (UNIX AND NOT APPLE)
         if (FLATPAK_BUILDER)
             WEBODF_PRODUCT_MISSING("the flatpak" "${VIEWER_FLATPAK_SDK}")
             set(VIEWER_NO_FLATPAK
-                "${VIEWER_FLATPAK_SDK} is not installed: the flatpak is built against the runtime of KDE, which carries qt, and against the base app of qt, which carries its webengine. Install them with: flatpak install flathub org.kde.Platform//${VIEWER_FLATPAK_RUNTIME} org.kde.Sdk//${VIEWER_FLATPAK_RUNTIME} ${VIEWER_FLATPAK_BASE}")
+                "${VIEWER_FLATPAK_SDK} is not installed: the flatpak is built against the runtime of KDE, which carries qt, and against the base app of qt, which carries its webengine. Install them with: flatpak install --user flathub org.kde.Platform//${VIEWER_FLATPAK_RUNTIME} org.kde.Sdk//${VIEWER_FLATPAK_RUNTIME} ${VIEWER_FLATPAK_BASE}")
         else ()
-            WEBODF_PRODUCT_MISSING("the flatpak" "flatpak-builder")
-            set(VIEWER_NO_FLATPAK
-                "flatpak-builder is not installed: the manifest is written in ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml, see https://docs.flatpak.org/")
+            if (WEBODF_PACKAGE_FLATPAK)
+                WEBODF_PRODUCT_MISSING("the flatpak" "flatpak-builder")
+                set(VIEWER_NO_FLATPAK
+                    "flatpak-builder is not installed: the manifest is written in ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml, see https://docs.flatpak.org/")
+            else ()
+                set(VIEWER_NO_FLATPAK
+                    "The flatpak was left out by WEBODF_PACKAGE_FLATPAK=OFF: configure again with -DWEBODF_PACKAGE_FLATPAK=ON to make it.")
+            endif ()
         endif ()
         add_custom_target(package-flatpak
             COMMAND ${CMAKE_COMMAND} -E echo "${VIEWER_NO_FLATPAK}"
