@@ -48,7 +48,7 @@ node_modules/*
 !node_modules/@xmldom
 
 # The library is copied into the assets of the viewer of android.
-programs/androidviewer/src/main/assets/webodf.js
-programs/androidviewer/.gradle
-programs/androidviewer/build
-programs/androidviewer/local.properties
+programs/odfviewer-android/src/main/assets/webodf.js
+programs/odfviewer-android/.gradle
+programs/odfviewer-android/build
+programs/odfviewer-android/local.properties

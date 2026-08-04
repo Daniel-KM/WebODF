@@ -10,7 +10,7 @@
 # below.
 #
 # The apk of android was packed here as well, and is built by
-# programs/androidviewer now.
+# programs/odfviewer-android now.
 
 configure_file(config.xml.in config.xml)
 configure_file(manifest.webapp.in manifest.webapp)

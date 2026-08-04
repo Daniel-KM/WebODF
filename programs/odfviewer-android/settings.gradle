@@ -11,4 +11,4 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = 'androidviewer'
+rootProject.name = 'odfviewer-android'
