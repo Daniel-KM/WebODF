@@ -52,6 +52,7 @@ runtime.loadClass("odf.OdfContainerSafetyTests");
 runtime.loadClass("odf.OdfUtilsTests");
 runtime.loadClass("odf.StyleInfoTests");
 runtime.loadClass("odf.StyleParseUtilsTests");
+runtime.loadClass("odf.StyleTreeTests");
 runtime.loadClass("odf.StyleCacheTests");
 runtime.loadClass("odf.TextStyleApplicatorTests");
 runtime.loadClass("ops.OdtDocumentTests");
@@ -172,6 +173,7 @@ if (hasBrowserLikeDom()) {
     tests.push(odf.OdfContainerSafetyTests);
     tests.push(odf.StyleInfoTests);
     tests.push(odf.StyleParseUtilsTests);
+    tests.push(odf.StyleTreeTests);
     tests.push(odf.TextStyleApplicatorTests);
     tests.push(ops.OdtDocumentTests);
     tests.push(ops.OdtStepsTranslatorTests);

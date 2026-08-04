@@ -30,8 +30,8 @@ add_custom_command(
     WORKING_DIRECTORY _nodetest
     DEPENDS ${NODE} manifest.json-target ${TESTS_LIBJSFILES} ${tests_nodetests}
 )
-add_custom_target(nodetest ALL DEPENDS _nodetest/nodetest.timestamp)
-add_dependencies(webodf.js-tests nodetest)
+add_custom_target(test-node ALL DEPENDS _nodetest/nodetest.timestamp)
+add_dependencies(webodf.js-tests test-node)
 
 if (BUILD_QTJSRUNTIME)
     COPY_FILES(tests_qtjsruntimetest ${CMAKE_CURRENT_SOURCE_DIR}
@@ -51,7 +51,7 @@ if (BUILD_QTJSRUNTIME)
             ${tests_qtjsruntimetest}
             ${tests_qtjsruntimetest2}
     )
-    add_custom_target(qtjsruntimetest ALL DEPENDS _qtjsruntimetest/qtjsruntimetest.timestamp)
-    add_dependencies(webodf.js-tests qtjsruntimetest)
+    add_custom_target(test-qtjsruntime ALL DEPENDS _qtjsruntimetest/qtjsruntimetest.timestamp)
+    add_dependencies(webodf.js-tests test-qtjsruntime)
 endif (BUILD_QTJSRUNTIME)
 

@@ -1152,18 +1152,21 @@
                 style = findDrawingPageStyle(rootElement,
                     style.getAttributeNS(stylens, "parent-style-name"));
             }
-            if (!props) {
-                return;
-            }
-            fill = props.getAttributeNS(drawns, "fill");
+            // A page is white when nothing says otherwise, as a sheet of
+            // paper is: a master that names no fill, or names none, is painted
+            // white rather than left clear. The white used to come from the box
+            // that holds the slides, which is now clear between two of them so
+            // that the ground of the reader is seen there.
+            fill = props && props.getAttributeNS(drawns, "fill");
             if (fill === "solid") {
                 color = props.getAttributeNS(drawns, "fill-color");
                 if (color) {
                     stylesheet.insertRule(selector + " {background-color: " + color
                         + "; background-image: none;}", stylesheet.cssRules.length);
                 }
-            } else if (fill === "none") {
-                stylesheet.insertRule(selector + " {background: none;}", stylesheet.cssRules.length);
+            } else if (!fill || fill === "none") {
+                stylesheet.insertRule(selector + " {background-color: white;}",
+                    stylesheet.cssRules.length);
             }
             // Bitmap master fills are intentionally not painted here: the
             // slide's own draw:page already carries its fill (see
@@ -3746,7 +3749,14 @@
 
             sizer = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
             sizer.style.display = "inline-block";
-            sizer.style.background = "white";
+            // A text is drawn on one page, white and without an end, so the box
+            // that holds it is white. A presentation is drawn as a slide under
+            // another, and the box is left clear between two of them, so that
+            // the ground of the reader is seen there and each slide is read on
+            // its own. A slide paints itself from its page style.
+            if (container.getDocumentType() !== "presentation") {
+                sizer.style.background = "white";
+            }
             // The #shadowContent master-page overlay is position:absolute with
             // top/left:0, so it must be anchored to the sizer (which carries the
             // slide flow and the zoom). Without an explicit position the sizer is

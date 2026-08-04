@@ -164,6 +164,11 @@
         "odf.StyleParseUtils",
         "webodfcore.UnitTester"
     ],
+    "odf.StyleTreeTests": [
+        "odf.Namespaces",
+        "odf.StyleTree",
+        "webodfcore.UnitTester"
+    ],
     "odf.TextStyleApplicatorTests": [
         "odf.Formatting",
         "odf.ObjectNameGenerator",
