@@ -111,6 +111,9 @@ add_custom_target(build-opendocumentviewer-webext
 add_custom_target(test-opendocumentviewer-webext DEPENDS webodf.js-tests)
 
 add_custom_target(product-opendocumentviewer-webext DEPENDS build-opendocumentviewer-webext test-opendocumentviewer-webext)
+WEBODF_PRODUCT(product-opendocumentviewer-webext ${OPENDOCUMENTVIEWER_FIREFOX})
+WEBODF_PRODUCT(product-opendocumentviewer-webext ${OPENDOCUMENTVIEWER_FIREFOX_MV2})
+WEBODF_PRODUCT(product-opendocumentviewer-webext ${OPENDOCUMENTVIEWER_CHROME})
 
 # The add-on of Thunderbird is packed from the same files, and is a product of
 # its own, as it is published on addons.thunderbird.net and not on AMO.
@@ -120,3 +123,5 @@ add_custom_target(build-opendocumentviewer-thunderbird
 add_custom_target(test-opendocumentviewer-thunderbird DEPENDS webodf.js-tests)
 
 add_custom_target(product-opendocumentviewer-thunderbird DEPENDS build-opendocumentviewer-thunderbird test-opendocumentviewer-thunderbird)
+WEBODF_PRODUCT(product-opendocumentviewer-thunderbird ${OPENDOCUMENTVIEWER_THUNDERBIRD})
+WEBODF_PRODUCT(product-opendocumentviewer-thunderbird ${OPENDOCUMENTVIEWER_THUNDERBIRD_MV2})
