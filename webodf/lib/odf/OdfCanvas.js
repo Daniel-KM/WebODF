@@ -38,6 +38,10 @@
         var /**@type{!Array.<!Function>}*/
             queue = [],
             taskRunning = false,
+            /**@type{?Function}*/
+            drained = null,
+            /**@type{?Function}*/
+            waiting = null,
             /**@type{!boolean}*/
             destroyed = false,
             /**@type{!number}*/
@@ -64,6 +68,10 @@
                 taskRunning = false;
                 if (queue.length > 0) {
                     run(queue.pop());
+                } else if (drained) {
+                    waiting = drained;
+                    drained = null;
+                    waiting();
                 }
             }, 10);
         }
@@ -83,6 +91,20 @@
             if (timeoutId !== -1) {
                 runtime.clearTimeout(timeoutId);
                 timeoutId = -1;
+            }
+        };
+        /**
+         * Do something once nothing is left to load: the images of a
+         * document land after it is drawn, and what is drawn from the size
+         * of what it holds is drawn again then.
+         * @param {!Function} task
+         * @return {undefined}
+         */
+        this.whenDrained = function (task) {
+            if (!taskRunning && queue.length === 0) {
+                task();
+            } else {
+                drained = task;
             }
         };
         /**
@@ -3455,6 +3477,12 @@
              * @type{!number}
              */
             noteLaneWidth = 151,
+            /**
+             * Whether the fonts of the reader have landed: the pages are
+             * laid out again when they do, and once only.
+             * @type{!boolean}
+             */
+            fontsWereReady = false,
             /**@type{!gui.ZoomHelper}*/
             zoomHelper = new gui.ZoomHelper(),
             /**@type{!gui.Viewport}*/
@@ -3900,18 +3928,43 @@
             textLayout.setNoteLane(allowAnnotations
                 ? noteLaneWidth
                 : 0);
-            textLayout.layout(odfnode, pagesDiv, 100);
-            // A font of the document may still be on its way: the width of
-            // every line changes when it lands, and the pages are laid out
-            // once more so that a header keeps its parts apart.
             fonts = doc.fonts || null;
-            if (fonts && fonts.ready) {
+            // A text is broken into pages once the fonts and the images of
+            // the document have landed: a line is of another width and a
+            // frame of another height until then, so the pages would be
+            // broken twice, and a document of a thousand pages is not broken
+            // twice for nothing.
+            if (fonts && fonts.ready && String(fonts.status) !== "loaded"
+                    && !fontsWereReady) {
                 fonts.ready.then(function () {
+                    fontsWereReady = true;
                     if (paginated && pagesDiv && pagesDiv.parentNode) {
-                        textLayout.layout(odfnode, pagesDiv, 100);
+                        loadingQueue.whenDrained(function () {
+                            if (pagesDiv) {
+                                textLayout.layout(odfnode, pagesDiv, 100);
+                            }
+                        });
                     }
                 });
+                return;
             }
+            loadingQueue.whenDrained(function () {
+                if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
+                    return;
+                }
+                textLayout.layout(odfnode,
+                    /**@type{!HTMLDivElement}*/(pagesDiv), 100);
+                // The pages are read once they are drawn: what is drawn
+                // after them, and the fonts it asks for, may make a page
+                // hold one line less, and they are broken again then, once.
+                runtime.setTimeout(function () {
+                    if (paginated && pagesDiv && pagesDiv.parentNode
+                            && !textLayout.pagesFit(odfnode)) {
+                        textLayout.repair(odfnode,
+                            /**@type{!HTMLDivElement}*/(pagesDiv));
+                    }
+                }, 0);
+            });
         }
         /**
          * Draw a text over pages, or as one run of text, which is how it is
@@ -3940,6 +3993,22 @@
          */
         this.setPagesInColumns = function (enable) {
             textLayout.setColumns(enable);
+            if (paginated && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * Lay the pages one under another, as a reader scrolls a document,
+         * rather than beside one another, which is how two pages are shown
+         * side by side. The text is broken into a box for each page either
+         * way, so a paragraph or a table that crosses the end of a page is
+         * cut in two.
+         * @param {!boolean} enable
+         * @return {undefined}
+         */
+        this.setPagesStacked = function (enable) {
+            textLayout.setStacked(enable);
             if (paginated && odfcontainer
                     && odfcontainer.state === odf.OdfContainer.DONE) {
                 drawPages(odfcontainer, odfcontainer.rootElement);
