@@ -1201,11 +1201,13 @@ function NodeJSRuntime() {
         Object.defineProperty(proto, "nextElementSibling", {get: nextElementSibling});
     }
     function init() {
+        // The local is not named DOMParser: it would shadow the name of the
+        // type it is declared with, and the compiler would see a cycle.
         var /**@type{!XmlDom}*/
             xmldomPackage = /**@type{!XmlDom}*/(require('@xmldom/xmldom')),
             /**@type{function(new:DOMParser)}*/
-            DOMParser = xmldomPackage.DOMParser;
-        parser = new DOMParser();
+            XmlDomParser = xmldomPackage.DOMParser;
+        parser = new XmlDomParser();
         domImplementation = self.parseXML("<a/>").implementation;
         // A browser exposes the dom interfaces globally and the whole library
         // uses their constants. The package xmldom provides Node, but not
