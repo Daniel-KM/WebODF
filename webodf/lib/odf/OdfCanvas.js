@@ -4035,6 +4035,10 @@
             if (fonts && fonts.ready) {
                 fonts.ready.then(function () {
                     var tries = 20;
+                    // The pages that were broken with the letters of another
+                    // font are set right as the next slice is drawn, and not
+                    // at the end of the whole text.
+                    textLayout.fontsChanged();
                     /**
                      * @return {undefined}
                      */

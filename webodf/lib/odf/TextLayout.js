@@ -103,6 +103,8 @@ odf.TextLayout = function TextLayout() {
          * @type{!number}
          */
         pagesPerRow = 1,
+        /**@type{!boolean}*/
+        fontsLanded = false,
         /**@type{?function():undefined}*/
         drawnHandler = null,
         /**
@@ -4045,9 +4047,12 @@ odf.TextLayout = function TextLayout() {
      * that follows, and a page is added at the end if the last one is full.
      * @param {!odf.ODFDocumentElement} odfroot
      * @param {!PagePlan} plan
+     * @param {!number=} from the first page to set right, from zero
+     * @param {!boolean=} keepLast whether the page being filled is left
+     *                  alone, as more of the text is still to be written
      * @return {undefined}
      */
-    function trimPages(odfroot, plan) {
+    function trimPages(odfroot, plan, from, keepLast) {
         var text = /**@type{!Element}*/(odfroot.body.lastElementChild),
             doc = /**@type{!Document}*/(text.ownerDocument),
             htmlns = doc.documentElement.namespaceURI,
@@ -4212,9 +4217,11 @@ odf.TextLayout = function TextLayout() {
         // the first of them were filled.
         resizePages(plan, boxes);
         placePages(plan, boxes, 0);
-        i = 0;
+        i = from || 0;
         while (i < boxes.length && boxes.length < maxPages) {
-            trimOne(boxes[i], i);
+            if (!keepLast || i < boxes.length - 1) {
+                trimOne(boxes[i], i);
+            }
             i += 1;
         }
         columnPages = boxes.length;
@@ -4324,6 +4331,14 @@ odf.TextLayout = function TextLayout() {
         // shrunk to the width of the document, and a row that is wider than
         // it would hang out of the reader instead of standing in the middle.
         widen(fillingDiv, rowWidth);
+        // The fonts landed after the first pages were broken: they were
+        // broken with the letters of another font and hold a line too many.
+        // They are set right at once, and not at the end of the whole, so
+        // that the page a reader looks at is the one it will stay.
+        if (fontsLanded) {
+            fontsLanded = false;
+            trimPages(fillingRoot, plan, 0, true);
+        }
         drawPageFurniture(fillingRoot, plan, fillingDiv,
             readMeta(fillingRoot), from);
         if (filling.waiting.length > 0 && filling.page < maxPages) {
@@ -4491,6 +4506,16 @@ odf.TextLayout = function TextLayout() {
      */
     this.isBreaking = function () {
         return filling !== null;
+    };
+    /**
+     * Say that the fonts of the document have landed.
+     *
+     * The pages that were broken before that were broken with the letters of
+     * another font: they are set right as the next slice is drawn.
+     * @return {undefined}
+     */
+    this.fontsChanged = function () {
+        fontsLanded = true;
     };
     /**
      * Set the pages right without breaking the whole text again: what
