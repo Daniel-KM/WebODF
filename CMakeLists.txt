@@ -163,9 +163,16 @@ ELSE(NODEJS_EXECUTABLE)
     MESSAGE (STATUS "No installed Node.js found. Node.js is not downloaded, but expected to be installed.")
 ENDIF(NODEJS_EXECUTABLE)
 
-# fail if NodeJS version requirement is not satisfied
+# fail if NodeJS version requirement is not satisfied. find_program() caches
+# what it finds, so a node that was installed later, by nvm for instance, is
+# only seen once the entry is dropped: the path is named here, as it is often
+# an older one that is still in the cache.
 if (${NODEJS_VERSION} VERSION_LESS ${REQUIRED_NODEJS_VERSION})
-    message(FATAL_ERROR "Node.js is required in version " ${REQUIRED_NODEJS_VERSION}  " or later")
+    message(FATAL_ERROR "Node.js is required in version "
+        ${REQUIRED_NODEJS_VERSION} " or later, but "
+        ${NODEJS_EXECUTABLE} " is " ${NODEJS_VERSION}
+        ".\nIf a newer node is installed, cmake kept the path it found before:"
+        " run it again with -U NODEJS_EXECUTABLE -U NPM.")
 else()
     message(STATUS "good Node.js found: " ${NODEJS_VERSION} " (" ${REQUIRED_NODEJS_VERSION} " required.)")
 endif()
