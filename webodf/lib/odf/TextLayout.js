@@ -1182,6 +1182,11 @@ odf.TextLayout = function TextLayout() {
                         } else if (stop.type === "center") {
                             at -= rect.width / 2;
                         }
+                        // A stop written for a page of another size stands
+                        // past the edge of this one: what it holds is drawn
+                        // against the edge instead, as an office draws it,
+                        // rather than in the margin or off the page.
+                        at = Math.min(at, right - rect.width);
                         push = at - rect.left;
                     }
                 }
