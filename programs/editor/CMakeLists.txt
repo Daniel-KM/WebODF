@@ -192,13 +192,12 @@ add_custom_target(wodotexteditorbuilddir-target DEPENDS ${WODOTEXTEDITORBUILDDIR
 
 add_custom_command(
     OUTPUT ${WODOTEXTEDITORDOC_BUILDDIR}/index.html
-    COMMAND ${Java_JAVA_EXECUTABLE} ARGS -jar ${JSDOCDIR}/jsrun.jar
-        ${JSDOCDIR}/app/run.js
-        -d=${WODOTEXTEDITORDOC_BUILDDIR}
-        -t=${JSDOCDIR}/templates/jsdoc
-        wodotexteditor.js
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS wodotexteditorbuilddir-target JsDoc
+    COMMAND ${NODE} ARGS ${CMAKE_SOURCE_DIR}/scripts/doc.js
+        --output ${WODOTEXTEDITORDOC_BUILDDIR}
+        --source ${CMAKE_CURRENT_SOURCE_DIR}/wodotexteditor.js
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DEPENDS ${NODE} wodotexteditorbuilddir-target
+        ${CMAKE_SOURCE_DIR}/scripts/doc.js
 )
 add_custom_target(wodotexteditor-doc DEPENDS ${WODOTEXTEDITORDOC_BUILDDIR}/index.html)
 

@@ -5,7 +5,10 @@
  * sources, with jsdoc, that replaces the abandoned jsdoc-toolkit 2.4.0 of the
  * original build.
  *
- * Usage: node scripts/doc.js
+ * The build with cmake runs this script as well, on the library and on the
+ * editors, so that both builds read the same tool.
+ *
+ * Usage: node scripts/doc.js [--output path] [--source file ...]
  */
 
 var fs = require("fs"),
@@ -14,7 +17,19 @@ var fs = require("fs"),
     child = require("child_process"),
     sources = require("./lib/sources.js"),
     rootDir = path.resolve(__dirname, ".."),
-    outputDir = path.join(rootDir, "dist/docs"),
+    args = process.argv.slice(2),
+    outputIndex = args.indexOf("--output"),
+    outputDir = outputIndex === -1
+        ? path.join(rootDir, "dist/docs")
+        : path.resolve(args[outputIndex + 1]),
+    sourceIndex = args.indexOf("--source"),
+    // Everything after --source is a file to read, so that the editors give
+    // their own where the library gives the classes of its manifest.
+    sourceFiles = sourceIndex === -1
+        ? null
+        : args.slice(sourceIndex + 1).map(function (name) {
+            return path.resolve(name);
+        }),
     jsdoc = path.join(rootDir, "node_modules/.bin/jsdoc"),
     configDir = fs.mkdtempSync(path.join(os.tmpdir(), "webodf-doc-")),
     configPath = path.join(configDir, "jsdoc.json"),
@@ -31,7 +46,7 @@ fs.writeFileSync(configPath, JSON.stringify({
 result = child.spawnSync(jsdoc, [
     "--configure", configPath,
     "--destination", outputDir
-].concat(sources.libraryFiles()), {stdio: "inherit"});
+].concat(sourceFiles || sources.libraryFiles()), {stdio: "inherit"});
 fs.rmSync(configDir, {recursive: true, force: true});
 
 if (result.error) {

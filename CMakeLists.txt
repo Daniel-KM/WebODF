@@ -146,17 +146,6 @@ ExternalProject_Add(
 # Same version as the build with node, see scripts/lib/rhino.js.
 set(RHINO ${EXTERNALS_DOWNLOAD_DIR}/rhino-all-1.9.1.jar)
 
-# JSDoc
-ExternalProject_Add(
-    JsDoc
-    DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-    URL "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/jsdoc-toolkit/jsdoc_toolkit-2.4.0.zip"
-    URL_MD5 a8f78f5ecd24b54501147b2af341a231
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-)
-set(JSDOCDIR ${CMAKE_BINARY_DIR}/JsDoc-prefix/src/JsDoc/jsdoc-toolkit)
 
 # Node.js is expected to be installed, on every platform. Windows used to
 # download a single node.exe, but the build needs npm as well, that comes with

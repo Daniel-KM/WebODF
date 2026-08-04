@@ -301,14 +301,15 @@ add_custom_target(simplerhinotest
 )
 endif (RHINOTEST)
 
+# The documentation is written by the build with node, with jsdoc 4, as the
+# jsdoc-toolkit 2.4.0 of 2011 the build downloaded is abandoned.
 add_custom_command(
     OUTPUT docs/index.html
-    COMMAND ${Java_JAVA_EXECUTABLE}
-    ARGS -jar ${JSDOCDIR}/jsrun.jar
-        ${JSDOCDIR}/app/run.js -d=${CMAKE_CURRENT_BINARY_DIR}/docs
-            -t=${JSDOCDIR}/templates/jsdoc ${LIBJSFILES}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${LIBJSFILES} JsDoc
+    COMMAND ${NODE} ARGS ${CMAKE_SOURCE_DIR}/scripts/doc.js
+        --output ${CMAKE_CURRENT_BINARY_DIR}/docs
+    DEPENDS ${NODE} ${LIBJSFILES} manifest.json-target
+        ${CMAKE_SOURCE_DIR}/scripts/doc.js
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_custom_target(doc DEPENDS docs/index.html)
 
