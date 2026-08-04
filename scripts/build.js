@@ -10,32 +10,15 @@
 
 var fs = require("fs"),
     path = require("path"),
+    bundle = require("./lib/bundle.js"),
     sources = require("./lib/sources.js"),
-    generated = require("./lib/generated.js"),
     rootDir = path.resolve(__dirname, ".."),
     distDir = path.join(rootDir, "dist"),
     outputPath = path.join(distDir, "webodf.js"),
     minify = process.argv.indexOf("--no-minify") === -1;
 
-/**
- * Concatenate the header, the generated files, the library and the packaged
- * dependencies. IS_COMPILED_CODE tells the runtime that all the classes are
- * already loaded, so that loadClass() does not fetch them one by one.
- * @return {string}
- */
-function bundle() {
-    var parts = [generated.versionSource()];
-    sources.libraryFiles().forEach(function (file) {
-        parts.push(fs.readFileSync(file, "utf8"));
-    });
-    parts.push(generated.cssSource());
-    parts.push(fs.readFileSync(path.join(sources.libDir, "externs/JSZip.js"), "utf8"));
-    return parts.join("\n").replace("var IS_COMPILED_CODE = false;",
-        "var IS_COMPILED_CODE = true;");
-}
-
 function main() {
-    var code = bundle(),
+    var code = bundle.library(),
         // License of the compiled file, that keeps the exception of the AGPL
         // for the pages that only call the library.
         header = fs.readFileSync(path.join(sources.libDir, "HeaderCompiled.js"), "utf8"),

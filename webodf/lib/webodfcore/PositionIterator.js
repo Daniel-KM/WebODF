@@ -506,8 +506,10 @@ webodfcore.PositionIterator = function PositionIterator(root, whatToShow, filter
         nodeFilter.acceptNode = nodeFilter;
         whatToShow = whatToShow || NodeFilter.SHOW_ALL;
         runtime.assert(root.nodeType !== Node.TEXT_NODE, "Internet Explorer doesn't allow tree walker roots to be text nodes");
+        // The last argument must be a boolean: a dom of java refuses undefined,
+        // while a browser ignores the argument.
         walker = root.ownerDocument.createTreeWalker(root, whatToShow,
-                nodeFilter, expandEntityReferences);
+                nodeFilter, expandEntityReferences === true);
 
         currentPos = 0;
         if (walker.firstChild() === null) {
