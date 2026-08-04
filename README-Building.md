@@ -184,10 +184,16 @@ npm run doc     # generate the documentation of the api in "dist/docs"
 
 The command "npm run check" uses the closure compiler as a type checker only:
 it writes no output. The jar is downloaded once from maven central into the
-directory ".tools". The version is pinned in "scripts/lib/closure.js", because
-a newer compiler reports about two hundred more errors, mostly from a stricter
-inference, so updating it is a task of its own. Set the environment variable
-CLOSURE_JAR to use another copy.
+directory ".tools". The version is pinned in "scripts/lib/closure.js" and the
+sources pass with it as with the one of 2016, that the project used before:
+
+```sh
+CLOSURE_VERSION=v20160911 npm run check   # the previous compiler
+CLOSURE_JAR=/path/to/compiler.jar npm run check   # another copy
+```
+
+The groups of checks removed from the compilers newer than 2016 are dropped
+automatically, so both versions run with the same set of checks.
 
 The tests needing a browser are still run with karma, see
 "webodf/tools/karma.conf.js".
