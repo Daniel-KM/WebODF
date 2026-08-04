@@ -40,6 +40,7 @@
   "devDependencies": {
     "jsdoc": "^4.0.5",
     "jsdom": "^30.0.1",
+    "playwright-core": "^1.62.1",
     "terser": "^5.50.0"
   },
   "scripts": {
@@ -49,7 +50,8 @@
     "test": "node scripts/test.js",
     "test:node": "node scripts/test.js",
     "test:rhino": "node scripts/test-rhino.js",
-    "all": "npm run check && npm test && npm run build && npm run doc"
+    "all": "npm run check && npm test && npm run build && npm run doc",
+    "test:browser": "node scripts/test-browser.js"
   },
   "files": [
     "dist",
