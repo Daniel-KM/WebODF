@@ -166,6 +166,18 @@ if (UNIX AND NOT APPLE)
     # The tool of the AppImage gathers the libraries an executable reads, and
     # the one of qt gathers what the webengine reads beside them, the
     # process of the engine among the rest.
+    # The plugin of qt is told where qmake is: it reads from it where the
+    # plugins of the platform, the images and the media stand, and it looks
+    # for "qmake" alone, which is the one of qt 5 where both are installed.
+    # An empty value is worse than none, as the plugin then looks no further
+    # and stops with "Could not find qmake".
+    find_program(QMAKE6 NAMES qmake6 qmake
+        PATHS /usr/lib/qt6/bin /usr/lib/x86_64-linux-gnu/qt6/bin)
+    if (QMAKE6)
+        set(VIEWER_QMAKE QMAKE=${QMAKE6})
+    else ()
+        set(VIEWER_QMAKE "")
+    endif ()
     find_program(LINUXDEPLOY linuxdeploy)
     find_program(LINUXDEPLOY_QT linuxdeploy-plugin-qt)
     find_program(APPIMAGETOOL appimagetool)
@@ -178,7 +190,7 @@ if (UNIX AND NOT APPLE)
                 --prefix ${VIEWER_APPDIR}/usr
             COMMAND ${CMAKE_COMMAND} -E env
                 OUTPUT=${VIEWER_APPIMAGE}
-                QMAKE=${QT_QMAKE_EXECUTABLE}
+                ${VIEWER_QMAKE}
                 ${LINUXDEPLOY} --appdir ${VIEWER_APPDIR}
                     --plugin qt --output appimage
             COMMAND ${CMAKE_COMMAND} -E echo "Wrote ${VIEWER_APPIMAGE}"
