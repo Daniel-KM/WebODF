@@ -47,12 +47,13 @@
   "scripts": {
     "build": "node scripts/build.js",
     "check": "node scripts/check.js",
+    "check:tests": "node scripts/check.js --tests",
     "doc": "node scripts/doc.js",
     "test": "node scripts/test.js",
     "test:node": "node scripts/test.js",
     "test:rhino": "node scripts/test-rhino.js",
     "coverage": "node scripts/coverage.js",
-    "all": "npm run check && npm test && npm run build && npm run doc",
+    "all": "npm run check && npm run check:tests && npm test && npm run build && npm run doc",
     "test:browser": "node scripts/test-browser.js"
   },
   "files": [

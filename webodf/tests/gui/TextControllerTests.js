@@ -48,9 +48,9 @@ gui.TextControllerTests = function TextControllerTests(runner) {
     /*jslint emptyblock:true*/
     function MockOdfCanvas(node) {
         var self = this;
-        this.odfContainer = function () { return self; };
+        this.odfContainer = function () { return /**@type{?}*/ (self); };
         this.getContentElement = function () { return node.getElementsByTagNameNS(officens, 'text')[0]; };
-        this.getElement = function () { return node; };
+        this.getElement = function () { return /**@type{!HTMLElement}*/ (node); };
         this.rootElement = node;
         this.refreshSize = function() { };
         this.rerenderAnnotations = function() { };

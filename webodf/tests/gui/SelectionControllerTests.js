@@ -48,9 +48,9 @@ gui.SelectionControllerTests = function SelectionControllerTests(runner) {
      */
     function MockOdfCanvas(node) {
         var self = this;
-        this.odfContainer = function () { return self; };
+        this.odfContainer = function () { return /**@type{?}*/ (self); };
         this.getContentElement = function () { return node.getElementsByTagNameNS(odf.Namespaces.officens, 'text')[0]; };
-        this.getElement = function () { return node; };
+        this.getElement = function () { return /**@type{!HTMLElement}*/ (node); };
         this.rootElement = node;
     }
 

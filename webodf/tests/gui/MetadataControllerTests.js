@@ -51,7 +51,7 @@ gui.MetadataControllerTests = function MetadataControllerTests(runner) {
 
         this.odfContainer = function() {return odfContainer; };
         this.getContentElement = function () { return node.getElementsByTagNameNS(officens, 'text')[0]; };
-        this.getElement = function () { return node; };
+        this.getElement = function () { return /**@type{!HTMLElement}*/ (node); };
         this.rootElement = node;
         this.refreshSize = function() { };
         this.rerenderAnnotations = function() { };

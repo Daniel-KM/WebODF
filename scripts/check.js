@@ -5,7 +5,12 @@
  * is built by scripts/build.js: the compiler is used as a type checker only,
  * and it writes no output.
  *
- * Usage: node scripts/check.js
+ * With --tests the tests are checked too, as the target "compiled.js" of the
+ * build with cmake does. reportUnknownTypes is then off, since the tests were
+ * never written to hold up to it: the mocks they declare are partial on
+ * purpose.
+ *
+ * Usage: node scripts/check.js [--tests]
  */
 
 var fs = require("fs"),
@@ -16,6 +21,7 @@ var fs = require("fs"),
     generated = require("./lib/generated.js"),
     closure = require("./lib/closure.js"),
     rootDir = path.resolve(__dirname, ".."),
+    withTests = process.argv.indexOf("--tests") !== -1,
     // Declarations of the interfaces of a browser, in the order of the
     // original build. The file "externs/mediasource.js" is not used.
     externs = [
@@ -73,7 +79,9 @@ function flags(files) {
         "--summary_detail_level", "3"
     ];
     closure.errorGroupsFor(closure.version).forEach(function (group) {
-        list.push("--jscomp_error", group);
+        if (!withTests || group !== "reportUnknownTypes") {
+            list.push("--jscomp_error", group);
+        }
     });
     closure.offGroups.forEach(function (group) {
         list.push("--jscomp_off", group);
@@ -91,6 +99,11 @@ function flags(files) {
         list.push("--js", file);
     });
     list.push("--js", files.css);
+    if (withTests) {
+        sources.testFiles().forEach(function (file) {
+            list.push("--js", file);
+        });
+    }
     return list;
 }
 

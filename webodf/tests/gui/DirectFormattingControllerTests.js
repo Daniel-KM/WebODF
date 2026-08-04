@@ -68,7 +68,7 @@ gui.DirectFormattingControllerTests = function DirectFormattingControllerTests(r
 
         this.getFormatting = function() { return formatting; };
         this.odfContainer = function () { return container; };
-        this.getElement = function () { return node; };
+        this.getElement = function () { return /**@type{!HTMLElement}*/ (node); };
         this.refreshSize = function() { };
         this.rerenderAnnotations = function() { };
     }
