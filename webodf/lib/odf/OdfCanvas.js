@@ -3958,7 +3958,10 @@
                 // after them, and the fonts it asks for, may make a page
                 // hold one line less, and they are broken again then, once.
                 runtime.setTimeout(function () {
+                    // A text that is still being broken sets its own pages
+                    // right when it is done, so nothing is asked of it here.
                     if (paginated && pagesDiv && pagesDiv.parentNode
+                            && !textLayout.isBreaking()
                             && !textLayout.pagesFit(odfnode)) {
                         textLayout.repair(odfnode,
                             /**@type{!HTMLDivElement}*/(pagesDiv));

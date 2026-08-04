@@ -109,6 +109,19 @@ odf.TextLayout = function TextLayout() {
          */
         lastPlan = null,
         /**
+         * The breaking of a text into pages that is under way, if any: it is
+         * done a few pages at a time, so that a reader is given the first of
+         * them at once.
+         * @type{?odf.TextLayout.Filling}
+         */
+        filling = null,
+        /**@type{?odf.ODFDocumentElement}*/
+        fillingRoot = null,
+        /**@type{?HTMLDivElement}*/
+        fillingDiv = null,
+        /**@type{!number}*/
+        fillingRound = 0,
+        /**
          * How many pages the text was broken into, when it is broken into
          * columns: there is no chain of boxes to count them there.
          * @type{!number}
@@ -1536,9 +1549,11 @@ odf.TextLayout = function TextLayout() {
      * @param {!PagePlan} plan
      * @param {!HTMLDivElement} pagesDiv
      * @param {!Object.<!string,!string>} meta what the document says of itself
+     * @param {!number=} from the first page to draw, where the pages that
+     *        went before it are already drawn
      * @return {undefined}
      */
-    function drawPageFurniture(odfroot, plan, pagesDiv, meta) {
+    function drawPageFurniture(odfroot, plan, pagesDiv, meta, from) {
         var /**@type{!Document}*/
             doc = /**@type{!Document}*/(pagesDiv.ownerDocument),
             /**@type{?string}*/
@@ -1563,15 +1578,20 @@ odf.TextLayout = function TextLayout() {
             /**@type{!number}*/
             top = 0,
             /**@type{!number}*/
+            first = 0,
+            /**@type{!number}*/
             n;
-        removeBoxes(pagesDiv);
-        removeBoxes(behind);
+        first = from || 0;
+        if (first === 0) {
+            removeBoxes(pagesDiv);
+            removeBoxes(behind);
+        }
         // The body no longer paints the ground of the whole text: each page
         // is painted on its own, see the rule of "office|body" in
         // "webodf.css". A class would not do, as the engine of the styles
         // reads none on an element of another namespace.
         behind.setAttributeNS(webodfhelperns, "paginated", "true");
-        for (n = 0; n < pages; n += 1) {
+        for (n = first; n < pages; n += 1) {
             dims = plan.at(n);
             // A page stands under the one before it when the text is one run
             // of text, and beside it when the text is broken into columns,
@@ -2555,44 +2575,180 @@ odf.TextLayout = function TextLayout() {
      * @param {!PagePlan} plan
      * @return {!number} how many pages the text was broken into
      */
-    function breakIntoPages(odfroot, plan) {
-        var text = /**@type{!Element}*/(odfroot.body.lastElementChild),
-            doc = /**@type{!Document}*/(text.ownerDocument),
-            htmlns = doc.documentElement.namespaceURI,
-            sheet = ownStyleSheet(doc),
+    /**
+     * Fill one page, and answer with the page that was filled.
+     *
+     * The paragraphs are taken from what waits to be written, several at a
+     * time and read once: a page holds many of them, and each measure has
+     * the browser lay the page out again. What was written too much is taken
+     * back and written one at a time, and what crosses the end of the page
+     * is cut there.
+     * @param {!odf.TextLayout.Filling} state
+     * @return {undefined}
+     */
+    function fillOnePage(state) {
+        var doc = state.doc,
+            /**@type{!odf.TextLayout.PageDimensions}*/
+            dims = /**@type{!PagePlan}*/(state.plan).at(state.page),
+            /**@type{!Element}*/
+            box = /**@type{!Element}*/(doc.createElementNS(state.htmlns,
+                "div")),
             /**@type{!Array.<!Node>}*/
-            waiting = [],
-            /**@type{!DocumentFragment}*/
-            store,
-            /**@type{!number}*/
-            chunk = 8,
-            /**@type{!Array.<!Node>}*/
-            added = [],
+            added,
             /**@type{?Node}*/
             taken,
-            /**@type{!number}*/
-            guard = 0,
-            /**@type{?Element}*/
-            more = null,
-            /**@type{?Element}*/
-            over = null,
-
-            /**@type{!Array.<!Node>}*/
-            sent = [],
-            /**@type{!number}*/
-            held = 0,
-            /**@type{!number}*/
-            top = 0,
-            /**@type{!number}*/
-            page = 0,
-            /**@type{!Element}*/
-            box,
-            /**@type{!odf.TextLayout.PageDimensions}*/
-            dims,
             /**@type{?Node}*/
             node,
             /**@type{?Element}*/
             rest,
+            /**@type{?Element}*/
+            more,
+            /**@type{?Element}*/
+            over,
+            /**@type{!Array.<!Node>}*/
+            sent,
+            /**@type{?Node}*/
+            walk,
+            /**@type{?Node}*/
+            next,
+            /**@type{!number}*/
+            held,
+            /**@type{!number}*/
+            guard,
+            /**@type{!number}*/
+            n;
+        box.className = "webodf-pageBox";
+        /**@type{!HTMLElement}*/(box).style.width =
+            (dims.pageWidth - dims.marginLeft - dims.marginRight) + "px";
+        /**@type{!HTMLElement}*/(box).style.height =
+            (dims.pageHeight - dims.marginTop - dims.marginBottom) + "px";
+        // A page is set at the place of the page it is, and not left to
+        // follow the one before it: the margin of the foot of a page and the
+        // margin of the head of the next fall into one another where margins
+        // are used, and the pages would stand closer than the sheets they
+        // are drawn on.
+        /**@type{!HTMLElement}*/(box).style.position = "absolute";
+        /**@type{!HTMLElement}*/(box).style.left = dims.marginLeft + "px";
+        /**@type{!HTMLElement}*/(box).style.top = (state.top + dims.marginTop)
+            + "px";
+        state.top += dims.pageHeight + dims.pageSeparation;
+        state.text.appendChild(box);
+        while (state.waiting.length > 0) {
+            added = /**@type{!Array.<!Node>}*/([]);
+            while (added.length < state.chunk && state.waiting.length > 0) {
+                node = /**@type{!Node}*/(state.waiting.shift());
+                box.appendChild(node);
+                added.push(node);
+            }
+            if (overflows(box) && added.length > 1) {
+                while (added.length > 0) {
+                    taken = /**@type{!Node}*/(added.pop());
+                    if (taken) {
+                        box.removeChild(taken);
+                        state.waiting.unshift(taken);
+                    }
+                }
+                state.chunk = 1;
+            }
+            if (added.length === 0 || !overflows(box)) {
+                node = null;
+            } else {
+                node = /**@type{!Node}*/(added[added.length - 1]);
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    held = String(node.textContent).length;
+                    rest = cutElement(box, /**@type{!Element}*/(node), 8,
+                        box.childNodes.length === 1);
+                    if (rest && String(rest.textContent).length >= held
+                            && held > 0) {
+                        // Nothing of it was left on the page, so cutting it
+                        // gains nothing: it is written whole, here if the
+                        // page holds nothing else and on the next page
+                        // otherwise, or it would be cut for ever and never
+                        // written.
+                        while (rest.firstChild) {
+                            node.appendChild(rest.firstChild);
+                        }
+                        rest = null;
+                    }
+                    if (rest) {
+                        state.waiting.unshift(rest);
+                    } else if (box.childNodes.length > 1) {
+                        box.removeChild(node);
+                        state.waiting.unshift(node);
+                    }
+                } else if (box.childNodes.length > 1) {
+                    // What is not an element is written whole, on this page
+                    // when the page is empty and on the next when it is not.
+                    box.removeChild(node);
+                    state.waiting.unshift(node);
+                }
+                node = null;
+                break;
+            }
+        }
+        // The page is read once it is filled: the first thing that crosses
+        // its end is cut there, and what was written after it goes to the
+        // next page with what was cut off.
+        guard = 2;
+        over = firstOverflowing(box);
+        while (guard > 0 && over) {
+            held = String(over.textContent).length;
+            more = cutElement(box, over, 8, over === box.firstElementChild);
+            if (more && String(more.textContent).length >= held
+                    && held > 0) {
+                while (more.firstChild) {
+                    over.appendChild(more.firstChild);
+                }
+                more = null;
+            }
+            sent = [];
+            walk = over.nextSibling;
+            while (walk) {
+                next = walk.nextSibling;
+                sent.push(walk);
+                box.removeChild(walk);
+                walk = next;
+            }
+            if (more) {
+                sent.unshift(more);
+            } else if (over !== box.firstElementChild) {
+                sent.unshift(over);
+                box.removeChild(over);
+            }
+            if (sent.length === 0) {
+                guard = 0;
+            } else {
+                for (n = sent.length - 1; n >= 0; n -= 1) {
+                    state.waiting.unshift(sent[n]);
+                }
+                guard -= 1;
+                over = firstOverflowing(box);
+            }
+        }
+        // The pages that follow are filled by as many at a time as the page
+        // that was just filled took: a page of a hundred short paragraphs is
+        // not read a hundred times.
+        state.chunk = Math.max(4, Math.min(64,
+            Math.floor(box.childNodes.length / 2)));
+        state.page += 1;
+    }
+    /**
+     * Make ready to break a text into pages: the rules the pages are drawn
+     * by are written, and what is to be written is taken out of the document
+     * while it is laid out, as a text that waits in the document is laid out
+     * again at every measure.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!PagePlan} plan
+     * @return {!odf.TextLayout.Filling}
+     */
+    function startPages(odfroot, plan) {
+        var text = /**@type{!Element}*/(odfroot.body.lastElementChild),
+            doc = /**@type{!Document}*/(text.ownerDocument),
+            sheet = ownStyleSheet(doc),
+            /**@type{!DocumentFragment}*/
+            store = doc.createDocumentFragment(),
+            /**@type{!Array.<!Node>}*/
+            waiting = [],
             /**@type{!number}*/
             i;
         for (i = sheet.cssRules.length - 1; i >= 0; i -= 1) {
@@ -2604,19 +2760,10 @@ odf.TextLayout = function TextLayout() {
         });
         sheet.insertRule("@namespace webodfhelper url(" + webodfhelperns
             + ");", sheet.cssRules.length);
-        sheet.insertRule("office|text {height:auto;width:auto;margin:0;"
-            + "padding:0;}", sheet.cssRules.length);
-        // A page is shut off from the pages that went before it: what is
-        // written in one of them is laid out on its own, so that a page that
-        // is being filled does not have the whole document laid out again at
-        // every measure.
+        sheet.insertRule("office|text {width:auto;margin:0;padding:0;"
+            + "position:relative;}", sheet.cssRules.length);
         sheet.insertRule(".webodf-pageBox {overflow:hidden;}",
             sheet.cssRules.length);
-        // What is to be written is taken out of the document while it is
-        // laid out: what waits in the text is laid out again at every
-        // measure, and a document of a thousand pages would be laid out a
-        // thousand times over.
-        store = doc.createDocumentFragment();
         while (text.firstChild) {
             store.appendChild(text.firstChild);
         }
@@ -2624,160 +2771,18 @@ odf.TextLayout = function TextLayout() {
             waiting.push(store.firstChild);
             store.removeChild(store.firstChild);
         }
-        while (waiting.length > 0 && page < maxPages) {
-            dims = plan.at(page);
-            box = /**@type{!Element}*/(doc.createElementNS(htmlns, "div"));
-            box.className = "webodf-pageBox";
-            /**@type{!HTMLElement}*/(box).style.width =
-                (dims.pageWidth - dims.marginLeft - dims.marginRight) + "px";
-            /**@type{!HTMLElement}*/(box).style.height =
-                (dims.pageHeight - dims.marginTop - dims.marginBottom) + "px";
-            // A page is set at the place of the page it is, and not left to
-            // follow the one before it: the margin of the foot of a page and
-            // the margin of the head of the next fall into one another where
-            // margins are used, and the pages would stand closer than the
-            // sheets they are drawn on.
-            /**@type{!HTMLElement}*/(box).style.position = "absolute";
-            /**@type{!HTMLElement}*/(box).style.left = dims.marginLeft + "px";
-            /**@type{!HTMLElement}*/(box).style.top = (top + dims.marginTop)
-                + "px";
-            top += dims.pageHeight + dims.pageSeparation;
-            text.appendChild(box);
-            while (waiting.length > 0) {
-                // Several are written at once and read once: a page holds
-                // many paragraphs, and each measure has the browser lay the
-                // page out again. What was written too much is taken back
-                // and written one at a time.
-                added = /**@type{!Array.<!Node>}*/([]);
-                while (added.length < chunk && waiting.length > 0) {
-                    node = /**@type{!Node}*/(waiting.shift());
-                    box.appendChild(node);
-                    added.push(node);
-                }
-                if (overflows(box) && added.length > 1) {
-                    while (added.length > 0) {
-                        taken = /**@type{!Node}*/(added.pop());
-                        if (taken) {
-                            box.removeChild(taken);
-                            waiting.unshift(taken);
-                        }
-                    }
-                    chunk = 1;
-                }
-                if (added.length === 0) {
-                    node = null;
-                } else if (!overflows(box)) {
-                    node = null;
-                } else {
-                    node = /**@type{!Node}*/(added[added.length - 1]);
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        held = String(node.textContent).length;
-                        rest = cutElement(box, /**@type{!Element}*/(node), 8,
-                            box.childNodes.length === 1);
-                        if (rest
-                                && String(rest.textContent).length >= held
-                                && held > 0) {
-                            // Nothing of it was left on the page, so cutting
-                            // it gains nothing: it is written whole, here if
-                            // the page holds nothing else and on the next
-                            // page otherwise, or it would be cut for ever
-                            // and never written.
-                            while (rest.firstChild) {
-                                node.appendChild(rest.firstChild);
-                            }
-                            rest = null;
-                        }
-                        if (rest) {
-                            waiting.unshift(rest);
-                            // What is left may still cross the end of the
-                            // page, a line of it at a time: it is cut again
-                            // until it fits, or three times at the most.
-                            guard = 3;
-                            while (guard > 0 && overflows(box)) {
-                                more = cutElement(box,
-                                    /**@type{!Element}*/(node), 8,
-                                    box.childNodes.length === 1);
-                                if (!more) {
-                                    guard = 0;
-                                } else {
-                                    while (more.firstChild) {
-                                        rest.insertBefore(more.firstChild,
-                                            rest.firstChild);
-                                    }
-                                    guard -= 1;
-                                }
-                            }
-                        } else if (box.childNodes.length > 1) {
-                            // Nothing of it fits and nothing of it can be
-                            // cut, so it is written whole on the next page:
-                            // a page that holds it alone keeps it, or it
-                            // would be sent from page to page for ever.
-                            box.removeChild(node);
-                            waiting.unshift(node);
-                        }
-                    } else if (box.childNodes.length > 1) {
-                        // What is not an element is written whole, on this
-                        // page when the page is empty and on the next when
-                        // it is not.
-                        box.removeChild(node);
-                        waiting.unshift(node);
-                    }
-                    node = null;
-                    break;
-                }
-            }
-            // The page is read once it is filled: the first thing that
-            // crosses its end is cut there, and what was written after it
-            // goes to the next page with what was cut off.
-            guard = 2;
-            over = firstOverflowing(box);
-            while (guard > 0 && over) {
-                held = String(over.textContent).length;
-                more = cutElement(box, over, 8,
-                    over === box.firstElementChild);
-                if (more && String(more.textContent).length >= held
-                        && held > 0) {
-                    // Cutting it gains nothing, so it is written whole: it
-                    // would be cut for ever otherwise.
-                    while (more.firstChild) {
-                        over.appendChild(more.firstChild);
-                    }
-                    more = null;
-                }
-                sent = [];
-                node = over.nextSibling;
-                while (node) {
-                    taken = node.nextSibling;
-                    sent.push(node);
-                    box.removeChild(node);
-                    node = taken;
-                }
-                if (more) {
-                    sent.unshift(more);
-                }
-                if (sent.length === 0) {
-                    guard = 0;
-                } else {
-                    waiting = /**@type{!Array.<!Node>}*/(
-                        sent.concat(waiting)
-                    );
-                    guard -= 1;
-                    over = firstOverflowing(box);
-                }
-            }
-            // The pages that follow are filled by as many at a time as the
-            // page that was just filled took: a page of a hundred short
-            // paragraphs is not read a hundred times.
-            chunk = Math.max(4, Math.min(64,
-                Math.floor(box.childNodes.length / 2)));
-            page += 1;
-        }
-        // The text is as tall as the pages it was broken into, so that what
-        // is drawn after it stands under them.
-        sheet.insertRule("office|text {height:" + Math.max(0, top
-            - plan.at(Math.max(0, page - 1)).pageSeparation) + "px;}",
-            sheet.cssRules.length);
-        return Math.max(1, page);
+        return {
+            text: text,
+            doc: doc,
+            htmlns: doc.documentElement.namespaceURI,
+            plan: plan,
+            waiting: waiting,
+            chunk: 8,
+            page: 0,
+            top: 0,
+            sheet: sheet,
+            heightRule: -1
+        };
     }
     /**
      * Draw a text over pages, breaking it into columns.
@@ -2974,6 +2979,92 @@ odf.TextLayout = function TextLayout() {
         columnPages = boxes.length;
     }
     /**
+     * Whether every page holds what was written on it.
+     *
+     * A page is filled by measuring it, and what is drawn after the pages —
+     * the headers and the feet, the fonts they ask for — may change the
+     * width of a line and make a page hold one line less: a reader that
+     * asks this after the pages are drawn is told whether they are to be
+     * set right.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {!boolean}
+     */
+    function pagesHold(odfroot) {
+        var text = odfroot.body.lastElementChild,
+            /**@type{?Element}*/
+            node = text
+                ? text.firstElementChild
+                : null,
+            /**@type{!boolean}*/
+            fits = true;
+        while (node && fits) {
+            if (node.className === "webodf-pageBox"
+                    && firstOverflowing(node)) {
+                fits = false;
+            }
+            node = node.nextElementSibling;
+        }
+        return fits;
+    }
+    /**
+     * Break a few pages, draw them, and take up the rest later.
+     * @param {!number} round the layout this belongs to, so that a layout
+     *                  that went before does not go on drawing
+     * @return {undefined}
+     */
+    function fillSlice(round) {
+        var end = new Date().getTime() + 150,
+            /**@type{!PagePlan}*/
+            plan,
+            /**@type{!number}*/
+            from;
+        if (round !== fillingRound || !filling || !fillingRoot
+                || !fillingDiv) {
+            return;
+        }
+        from = filling.page;
+        while (filling.waiting.length > 0 && filling.page < maxPages
+                && new Date().getTime() < end) {
+            fillOnePage(filling);
+        }
+        columnPages = Math.max(1, filling.page);
+        // The text is as tall as the pages it was broken into, so that what
+        // is drawn after it stands under them.
+        plan = /**@type{!PagePlan}*/(filling.plan);
+        // The text is as tall as the pages it holds so far, so that what is
+        // drawn after it stands under them. The rule is written anew at each
+        // turn and not added to: a sheet of a thousand rules is read again
+        // for each of them.
+        if (filling.heightRule >= 0
+                && filling.heightRule < filling.sheet.cssRules.length) {
+            filling.sheet.deleteRule(filling.heightRule);
+        }
+        filling.heightRule = filling.sheet.cssRules.length;
+        filling.sheet.insertRule("office|text {height:" + Math.max(0,
+            filling.top - plan.at(Math.max(0, filling.page - 1))
+                .pageSeparation) + "px;}", filling.heightRule);
+        drawPageFurniture(fillingRoot, plan, fillingDiv,
+            readMeta(fillingRoot), from);
+        if (filling.waiting.length > 0 && filling.page < maxPages) {
+            runtime.setTimeout(function () {
+                fillSlice(round);
+            }, 0);
+            return;
+        }
+        // The pages are all broken: what the headers and the feet, and the
+        // fonts they ask for, took from a page is given back to the page
+        // that follows it.
+        filling = null;
+        runtime.setTimeout(function () {
+            if (round === fillingRound && fillingRoot && fillingDiv
+                    && !pagesHold(fillingRoot)) {
+                trimPages(fillingRoot, plan);
+                drawPageFurniture(fillingRoot, plan, fillingDiv,
+                    readMeta(fillingRoot), 0);
+            }
+        }, 0);
+    }
+    /**
      * Draw a text over pages laid one under another, each page a box of its
      * own that holds what the page holds.
      * @param {!odf.ODFDocumentElement} odfroot
@@ -2984,9 +3075,7 @@ odf.TextLayout = function TextLayout() {
         var /**@type{!Element}*/
             text = /**@type{!Element}*/(odfroot.body.lastElementChild),
             /**@type{!PagePlan}*/
-            plan,
-            /**@type{!number}*/
-            pages;
+            plan;
         while (pagesDiv.firstChild) {
             pagesDiv.removeChild(pagesDiv.firstChild);
         }
@@ -2995,14 +3084,19 @@ odf.TextLayout = function TextLayout() {
         plan = new PagePlan(odfroot);
         markPageBreaks(odfroot);
         columnPageOrigins = [];
-        pages = breakIntoPages(odfroot, plan);
         columnPageSize = {
             width: plan.at(0).pageWidth,
             height: plan.at(0).pageHeight
         };
-        columnPages = pages;
         lastPlan = plan;
-        drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
+        // The pages are broken a few at a time: the first of them are drawn
+        // at once, and a reader reads them while the rest are broken, rather
+        // than waiting on a document of a thousand pages.
+        filling = startPages(odfroot, plan);
+        fillingRoot = odfroot;
+        fillingDiv = pagesDiv;
+        fillingRound += 1;
+        fillSlice(fillingRound);
     }
     /**
      * Layout the text by resizing frames and updating the numbers of pages.
@@ -3077,6 +3171,21 @@ odf.TextLayout = function TextLayout() {
         stackedMode = enable;
     };
     /**
+     * Whether every page holds what was written on it.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {!boolean}
+     */
+    this.pagesFit = function (odfroot) {
+        return pagesHold(odfroot);
+    };
+    /**
+     * Whether a text is still being broken into pages.
+     * @return {!boolean}
+     */
+    this.isBreaking = function () {
+        return filling !== null;
+    };
+    /**
      * Set the pages right without breaking the whole text again: what
      * crosses the end of a page is moved to the page that follows.
      * @param {!odf.ODFDocumentElement} odfroot
@@ -3089,34 +3198,6 @@ odf.TextLayout = function TextLayout() {
         }
         trimPages(odfroot, lastPlan);
         drawPageFurniture(odfroot, lastPlan, pagesDiv, readMeta(odfroot));
-    };
-    /**
-     * Whether every page holds what was written on it.
-     *
-     * A page is filled by measuring it, and what is drawn after the pages —
-     * the headers and the feet, the fonts they ask for — may change the
-     * width of a line and make a page hold one line less: a reader that
-     * asks this after the pages are drawn is told whether they are to be
-     * set right.
-     * @param {!odf.ODFDocumentElement} odfroot
-     * @return {!boolean}
-     */
-    this.pagesFit = function (odfroot) {
-        var text = odfroot.body.lastElementChild,
-            /**@type{?Element}*/
-            node = text
-                ? text.firstElementChild
-                : null,
-            /**@type{!boolean}*/
-            fits = true;
-        while (node && fits) {
-            if (node.className === "webodf-pageBox"
-                    && firstOverflowing(node)) {
-                fits = false;
-            }
-            node = node.nextElementSibling;
-        }
-        return fits;
     };
     /**
      * Leave a lane beside each page for the notes of the annotations, of the
@@ -3171,6 +3252,20 @@ odf.TextLayout.PageShape;
     type:!string
 }}*/
 odf.TextLayout.TabStop;
+
+/**@typedef{{
+    text:!Element,
+    doc:!Document,
+    htmlns:?string,
+    plan:!Object,
+    waiting:!Array.<!Node>,
+    chunk:!number,
+    page:!number,
+    top:!number,
+    sheet:!CSSStyleSheet,
+    heightRule:!number
+}}*/
+odf.TextLayout.Filling;
 
 /**@typedef{{
     shapes:!Array.<!odf.TextLayout.PageShape>,
