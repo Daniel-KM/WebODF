@@ -29,10 +29,12 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -103,32 +105,45 @@ public class ViewerActivity extends Activity {
     }
 
     /**
+     * An empty answer, that the web view takes as the whole of a request: it
+     * asks nothing from the network, where returning null would let it fetch
+     * the address itself.
+     */
+    private static WebResourceResponse nothing() {
+        return new WebResourceResponse("text/plain", "utf-8",
+                new ByteArrayInputStream(new byte[0]));
+    }
+
+    /**
      * Answer a request of the page, and nothing else: the name is compared to
-     * the files that are served, never used to build a path.
+     * the files that are served, never used to build a path. Anything else is
+     * answered with nothing at all, so that a document holding an image or a
+     * style sheet of the web reaches no server: no request of this viewer ever
+     * leaves the device.
      */
     private WebResourceResponse answer(Uri uri) {
         if (!DOMAIN.equals(uri.getHost())) {
-            return null;
+            return nothing();
         }
-        String name = uri.getLastPathSegment();
-        if (name == null) {
-            return null;
+        String path = uri.getPath();
+        if (path == null) {
+            return nothing();
         }
         try {
-            if (("/" + CACHED).equals(uri.getPath())) {
-                return new WebResourceResponse(typeOf(name), null,
+            if (("/" + CACHED).equals(path)) {
+                return new WebResourceResponse("application/octet-stream", null,
                         new FileInputStream(new File(getCacheDir(), CACHED)));
             }
             for (String served : FILES) {
-                if (served.equals(name) && ("/" + served).equals(uri.getPath())) {
-                    return new WebResourceResponse(typeOf(name), "utf-8",
+                if (("/" + served).equals(path)) {
+                    return new WebResourceResponse(typeOf(served), "utf-8",
                             getAssets().open(served));
                 }
             }
         } catch (IOException e) {
-            return null;
+            return nothing();
         }
-        return null;
+        return nothing();
     }
 
     @Override
@@ -136,7 +151,18 @@ public class ViewerActivity extends Activity {
         super.onCreate(state);
 
         WebView view = new WebView(this);
-        view.getSettings().setJavaScriptEnabled(true);
+        WebSettings settings = view.getSettings();
+        // The library runs in the page, so scripts are needed. Everything
+        // else a web view may reach is closed: the page reads no file, no
+        // content provider and no database of its own, and it is never
+        // allowed to read the network, see answer() above.
+        settings.setJavaScriptEnabled(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setGeolocationEnabled(false);
+        settings.setDomStorageEnabled(false);
+        settings.setDatabaseEnabled(false);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         view.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(
