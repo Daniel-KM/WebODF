@@ -1,6 +1,6 @@
 # The files that go into the extension, copied as they are. "webodf.js" comes
 # from the build and the manifest carries the version, see below.
-set(ODFVIEWER_WEBEXT_FILES
+set(OPENDOCUMENTVIEWER_WEBEXT_FILES
     background.js
     background-chrome.js
     viewer.html
@@ -16,7 +16,7 @@ configure_file(manifest-chrome.json.in ${CMAKE_CURRENT_BINARY_DIR}/manifest-chro
 # Pack the add-on from one of the three manifests. The viewer is the same in
 # all of them: only the way the documents reach it differs, and Chrome takes
 # a file of rules rather than a script, see "README-Products.md".
-macro(PACK_ODFVIEWER_WEBEXT xpi dir manifest extra)
+macro(PACK_OPENDOCUMENTVIEWER_WEBEXT xpi dir manifest extra)
     add_custom_command(
         OUTPUT ${xpi}
         COMMAND ${CMAKE_COMMAND} -E remove_directory ${dir}
@@ -40,24 +40,24 @@ macro(PACK_ODFVIEWER_WEBEXT xpi dir manifest extra)
             notopdir
         DEPENDS ${NODE}
             ${TOOLS_DIR}/zipdir.js
-            ${ODFVIEWER_WEBEXT_FILES}
+            ${OPENDOCUMENTVIEWER_WEBEXT_FILES}
             webodf.js-target
             ${CMAKE_CURRENT_BINARY_DIR}/${manifest}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endmacro()
 
-PACK_ODFVIEWER_WEBEXT(${FIREFOX_EXTENSION_ODFVIEWER}
-    ${FIREFOX_EXTENSION_ODFVIEWER_DIR} manifest-v3.json background.js)
-PACK_ODFVIEWER_WEBEXT(${FIREFOX_EXTENSION_ODFVIEWER_MV2}
-    ${FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR} manifest-v2.json background.js)
-PACK_ODFVIEWER_WEBEXT(${CHROME_EXTENSION_ODFVIEWER}
-    ${CHROME_EXTENSION_ODFVIEWER_DIR} manifest-chrome.json background-chrome.js)
+PACK_OPENDOCUMENTVIEWER_WEBEXT(${OPENDOCUMENTVIEWER_FIREFOX}
+    ${OPENDOCUMENTVIEWER_FIREFOX_DIR} manifest-v3.json background.js)
+PACK_OPENDOCUMENTVIEWER_WEBEXT(${OPENDOCUMENTVIEWER_FIREFOX_MV2}
+    ${OPENDOCUMENTVIEWER_FIREFOX_MV2_DIR} manifest-v2.json background.js)
+PACK_OPENDOCUMENTVIEWER_WEBEXT(${OPENDOCUMENTVIEWER_CHROME}
+    ${OPENDOCUMENTVIEWER_CHROME_DIR} manifest-chrome.json background-chrome.js)
 
-add_custom_target(build-odfviewer-webext
-    DEPENDS ${FIREFOX_EXTENSION_ODFVIEWER} ${FIREFOX_EXTENSION_ODFVIEWER_MV2}
-        ${CHROME_EXTENSION_ODFVIEWER})
+add_custom_target(build-opendocumentviewer-webext
+    DEPENDS ${OPENDOCUMENTVIEWER_FIREFOX} ${OPENDOCUMENTVIEWER_FIREFOX_MV2}
+        ${OPENDOCUMENTVIEWER_CHROME})
 
-add_custom_target(test-odfviewer-webext DEPENDS webodf.js-tests)
+add_custom_target(test-opendocumentviewer-webext DEPENDS webodf.js-tests)
 
-add_custom_target(product-odfviewer-webext DEPENDS build-odfviewer-webext test-odfviewer-webext)
+add_custom_target(product-opendocumentviewer-webext DEPENDS build-opendocumentviewer-webext test-opendocumentviewer-webext)

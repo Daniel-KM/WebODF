@@ -40,7 +40,7 @@ if (WEBODF_ANDROID)
     )
     set(GRADLE ${CMAKE_CURRENT_BINARY_DIR}/Gradle-prefix/src/Gradle/bin/gradle)
 
-    set(ODFVIEWER_ANDROID_SOURCES
+    set(OPENDOCUMENTVIEWER_ANDROID_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/build.gradle
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main/AndroidManifest.xml
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/webodf/viewer/ViewerActivity.java
@@ -52,7 +52,7 @@ if (WEBODF_ANDROID)
     # signed, as only its author may sign it; the one of the debug is, with
     # the key gradle writes for that, so that it installs on a device or in an
     # emulator without anything else, see "README-Products.md".
-    macro(BUILD_ODFVIEWER_ANDROID apk task)
+    macro(BUILD_OPENDOCUMENTVIEWER_ANDROID apk task)
         add_custom_command(
             OUTPUT ${apk}
             # The library is read from the assets, as the page is.
@@ -64,19 +64,19 @@ if (WEBODF_ANDROID)
                 -PwebodfVersion=${WEBODF_MANIFEST_VERSION}
                 -PbuildDir=${CMAKE_CURRENT_BINARY_DIR}/build
                 ${task}
-            DEPENDS webodf.js-target Gradle ${ODFVIEWER_ANDROID_SOURCES}
+            DEPENDS webodf.js-target Gradle ${OPENDOCUMENTVIEWER_ANDROID_SOURCES}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
     endmacro()
 
-    set(ODFVIEWER_ANDROID_APK
-        ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/release/odfviewer-android-release-unsigned.apk)
-    set(ODFVIEWER_ANDROID_APK_DEBUG
-        ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/debug/odfviewer-android-debug.apk)
+    set(OPENDOCUMENTVIEWER_ANDROID_APK
+        ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/release/opendocumentviewer-android-release-unsigned.apk)
+    set(OPENDOCUMENTVIEWER_ANDROID_APK_DEBUG
+        ${CMAKE_CURRENT_BINARY_DIR}/build/outputs/apk/debug/opendocumentviewer-android-debug.apk)
 
-    BUILD_ODFVIEWER_ANDROID(${ODFVIEWER_ANDROID_APK} assembleRelease)
-    BUILD_ODFVIEWER_ANDROID(${ODFVIEWER_ANDROID_APK_DEBUG} assembleDebug)
+    BUILD_OPENDOCUMENTVIEWER_ANDROID(${OPENDOCUMENTVIEWER_ANDROID_APK} assembleRelease)
+    BUILD_OPENDOCUMENTVIEWER_ANDROID(${OPENDOCUMENTVIEWER_ANDROID_APK_DEBUG} assembleDebug)
 
-    add_custom_target(product-odfviewer-android DEPENDS ${ODFVIEWER_ANDROID_APK})
-    add_custom_target(odfviewer-android-debug DEPENDS ${ODFVIEWER_ANDROID_APK_DEBUG})
+    add_custom_target(product-opendocumentviewer-android DEPENDS ${OPENDOCUMENTVIEWER_ANDROID_APK})
+    add_custom_target(opendocumentviewer-android-debug DEPENDS ${OPENDOCUMENTVIEWER_ANDROID_APK_DEBUG})
 endif ()
