@@ -2221,6 +2221,108 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
+     * The page a place across the drawn document falls on, from zero.
+     * @param {!number} x from the left edge of the body of the document
+     * @return {!number}
+     */
+    function pageOfPlace(x) {
+        var found = 0;
+        columnPageOrigins.forEach(function (left, index) {
+            if (left <= x) {
+                found = index;
+            }
+        });
+        return found;
+    }
+    /**
+     * Set the frames the document anchors to a page against that page.
+     *
+     * A frame anchored to a page stands at a place of the page and not of
+     * the text, and the pages stand beside one another here: the frame is
+     * set against the page the document names, "text:anchor-page-number", or
+     * against the page the line it was written at stands on. It is drawn
+     * where the styles of the canvas draw it otherwise, which is a place of
+     * the text and would be the same place on every page.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!CSSStyleSheet} sheet
+     * @return {undefined}
+     */
+    function setFramesAgainstTheirPage(odfroot, sheet) {
+        var text = /**@type{!Element}*/(odfroot.body.lastElementChild),
+            frames = text.getElementsByTagNameNS(drawns, "frame"),
+            ground = odfroot.body.getBoundingClientRect(),
+            /**@type{!Array.<!Element>}*/
+            anchored = [],
+            /**@type{!Array.<!{x:!number,y:!number}>}*/
+            wanted = [],
+            /**@type{!number}*/
+            first = sheet.cssRules.length,
+            /**@type{!number}*/
+            i;
+        if (columnPageOrigins.length === 0) {
+            return;
+        }
+        for (i = 0; i < frames.length; i += 1) {
+            if (/**@type{!Element}*/(frames.item(i)).getAttributeNS(textns,
+                    "anchor-type") === "page"
+                    && /**@type{!Element}*/(frames.item(i)).getAttributeNS(
+                        webodfhelperns,
+                        "styleid"
+                    )) {
+                anchored.push(/**@type{!Element}*/(frames.item(i)));
+            }
+        }
+        if (anchored.length === 0) {
+            return;
+        }
+        // Where each frame is to stand, from the left edge of the body of the
+        // document: the page it belongs to, and the place of the page the
+        // document writes.
+        anchored.forEach(function (frame) {
+            var /**@type{!string}*/
+                named = frame.getAttributeNS(textns, "anchor-page-number")
+                    || "",
+                /**@type{!number}*/
+                page = named === ""
+                    ? pageOfPlace(frame.getBoundingClientRect().left
+                        - ground.left)
+                    : Math.min(Math.max(0, parseInt(named, 10) - 1),
+                        columnPageOrigins.length - 1);
+            wanted.push({
+                x: columnPageOrigins[page] + lengthInPx(frame, "x", 0, svgns),
+                y: lengthInPx(frame, "y", 0, svgns)
+            });
+        });
+        // A frame is set against the box that holds it, the paragraph it was
+        // written in, and not against the body: it is first drawn at the
+        // corner of that box, so that where the corner stands can be read,
+        // and then set at what is left between the corner and the page.
+        anchored.forEach(function (frame) {
+            sheet.insertRule("draw|" + frame.localName
+                + "[webodfhelper|styleid=\""
+                + frame.getAttributeNS(webodfhelperns, "styleid")
+                + "\"] {position:absolute;left:0;top:0;}",
+                sheet.cssRules.length);
+        });
+        anchored.forEach(function (frame, index) {
+            var box = frame.getBoundingClientRect();
+            wanted[index].x -= box.left - ground.left;
+            wanted[index].y -= box.top - ground.top;
+        });
+        while (sheet.cssRules.length > first) {
+            sheet.deleteRule(sheet.cssRules.length - 1);
+        }
+        anchored.forEach(function (frame, index) {
+            sheet.insertRule("draw|" + frame.localName
+                + "[webodfhelper|styleid=\""
+                + frame.getAttributeNS(webodfhelperns, "styleid")
+                + "\"] {position:absolute;"
+                + "left:" + wanted[index].x + "px;"
+                + "top:" + wanted[index].y + "px;}",
+                sheet.cssRules.length);
+        });
+    }
+    /**
      * Draw a text over pages, breaking it into columns.
      * @param {!odf.ODFDocumentElement} odfroot
      * @param {!HTMLDivElement} pagesDiv
@@ -2283,6 +2385,9 @@ odf.TextLayout = function TextLayout() {
             height: plan.at(0).pageHeight
         };
         columnPages = Math.min(total, maxPages);
+        setFramesAgainstTheirPage(odfroot, ownStyleSheet(
+            /**@type{!Document}*/(text.ownerDocument)
+        ));
         drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
     }
     /**
