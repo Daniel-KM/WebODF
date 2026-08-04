@@ -1234,6 +1234,27 @@ odf.Style2CSS = function Style2CSS() {
             }
 
         } else if (documentType === 'text') {
+            // A document holds a layout for each master page it was written
+            // with, and the text is drawn on one of them: the first master
+            // page of the document, which is the one a paragraph is written
+            // on unless it says otherwise. The rules of every other layout
+            // were written all the same, and the last of them won, so the
+            // text was drawn in the margins of the endnotes or of the html
+            // page rather than in its own.
+            masterStyles = domUtils.getDirectChild(
+                /**@type{!Element}*/(node.parentNode.parentNode),
+                officens,
+                'master-styles'
+            );
+            e = masterStyles && masterStyles.firstElementChild;
+            while (e && !(e.namespaceURI === stylens
+                    && e.localName === "master-page")) {
+                e = e.nextElementSibling;
+            }
+            if (e && e.getAttributeNS(stylens, 'page-layout-name')
+                    !== stylename) {
+                return;
+            }
             contentLayoutRule = 'office|text {' + rule + '}';
             rule = '';
 
