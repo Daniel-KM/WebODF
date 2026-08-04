@@ -160,8 +160,8 @@ not been verified.
 
 * Visual Studio 2010 (or [Visual Studio 2010 Express][] works as well)
 * [Visual Studio 2010 Service Pack 1][]
-* [Qt 5.2.1 x86 installer](http://download.qt-project.org/official_releases/qt/5.2/5.2.1/qt-opensource-windows-x86-msvc2010-5.2.1.exe)
-  for Visual Studio 2010
+* [The installer of Qt 6](https://www.qt.io/download-qt-installer), with the
+  modules WebEngine and WebChannel, for the option WEBODF_QTJSRUNTIME only
 * [CMake 2.8.12.2 x86](http://www.cmake.org/files/v2.8/cmake-2.8.12.2-win32-x86.exe)
 * [Java Runtime 1.7](http://java.com/en/download/index.jsp) (or more recent)
 * [Git for Windows][]

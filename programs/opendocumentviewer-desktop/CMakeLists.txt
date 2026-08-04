@@ -49,8 +49,11 @@ qt_add_resources(opendocumentviewer-desktop "library"
 )
 
 # One icon serves every product, so it is read where it lies rather than copied
-# here, and it names the window and the entry of the desktop.
+# here, and it names the window and the entry of the desktop. The one of the
+# window is the small one, that the extensions carry; the icon of windows is
+# made from the large one, as a bar of tasks draws it at 256.
 set(ICON ${CMAKE_CURRENT_SOURCE_DIR}/../opendocumentviewer-webext/skin/default/icon.png)
+set(ICON_MASTER ${CMAKE_CURRENT_SOURCE_DIR}/../opendocumentviewer-android/src/main/fastlane/metadata/android/en-US/images/icon.png)
 set_source_files_properties(${ICON} PROPERTIES QT_RESOURCE_ALIAS icon.png)
 qt_add_resources(opendocumentviewer-desktop "icon"
     PREFIX "/"
@@ -72,6 +75,52 @@ target_link_libraries(opendocumentviewer-desktop
 
 
 
+# Windows draws a program with the icon of its resources, in the format of its
+# own, and shows what the version tells in the properties of the file. The icon
+# is made from the one of the project, at the sizes windows asks for, rather
+# than kept as a second file to hold in step, see "webodf/tools/makeico.js".
+if (WIN32)
+    set(OPENDOCUMENTVIEWER_ICO ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer.ico)
+    add_custom_command(
+        OUTPUT ${OPENDOCUMENTVIEWER_ICO}
+        COMMAND ${NODE} ARGS ${TOOLS_DIR}/makeico.js ${ICON_MASTER}
+            ${OPENDOCUMENTVIEWER_ICO}
+        DEPENDS ${ICON_MASTER} ${TOOLS_DIR}/makeico.js
+    )
+
+    # The version of a resource is four numbers separated by commas, where the
+    # one of the build may hold fewer, "0.5.10" on a tag. The numbers are
+    # counted rather than matched: the regular expressions of cmake know no
+    # repetition, "{3}".
+    string(REPLACE "." ";" OPENDOCUMENTVIEWER_VERSION_PARTS
+        ${WEBODF_MANIFEST_VERSION})
+    list(LENGTH OPENDOCUMENTVIEWER_VERSION_PARTS OPENDOCUMENTVIEWER_VERSION_HELD)
+    while (OPENDOCUMENTVIEWER_VERSION_HELD LESS 4)
+        list(APPEND OPENDOCUMENTVIEWER_VERSION_PARTS 0)
+        math(EXPR OPENDOCUMENTVIEWER_VERSION_HELD
+            "${OPENDOCUMENTVIEWER_VERSION_HELD} + 1")
+    endwhile ()
+    string(REPLACE ";" "," OPENDOCUMENTVIEWER_VERSION_NUMBERS
+        "${OPENDOCUMENTVIEWER_VERSION_PARTS}")
+    configure_file(data/opendocumentviewer.rc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer.rc @ONLY)
+    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer.rc
+        PROPERTIES OBJECT_DEPENDS ${OPENDOCUMENTVIEWER_ICO})
+    target_sources(opendocumentviewer-desktop PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer.rc)
+
+    # A viewer opens no terminal behind its window.
+    set_target_properties(opendocumentviewer-desktop PROPERTIES
+        WIN32_EXECUTABLE TRUE)
+
+    # The script of the installer, that gathers what was deployed, see
+    # "README-Products.md".
+    # Inno Setup reads the paths of windows, with backslashes.
+    file(TO_NATIVE_PATH "${CMAKE_INSTALL_PREFIX}" OPENDOCUMENTVIEWER_DEPLOYED)
+    configure_file(data/opendocumentviewer.iss.in
+        ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer.iss @ONLY)
+endif ()
+
 add_custom_target(product-opendocumentviewer-desktop
     DEPENDS opendocumentviewer-desktop)
 
@@ -86,3 +135,15 @@ install(FILES data/org.webodf.OpenDocumentViewer.desktop
 install(FILES ${ICON}
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps
     RENAME org.webodf.OpenDocumentViewer.png)
+
+# The libraries of qt are gathered beside the program by the tool of the
+# platform, "windeployqt" on windows and "macdeployqt" on macos, so that
+# "cmake --install" writes a directory that runs on a machine without qt. On
+# linux the program is installed among the files of the system, that carry
+# them, and the tool does not exist: the script is then empty.
+qt_generate_deploy_app_script(
+    TARGET opendocumentviewer-desktop
+    OUTPUT_SCRIPT OPENDOCUMENTVIEWER_DEPLOY
+    NO_UNSUPPORTED_PLATFORM_ERROR
+)
+install(SCRIPT ${OPENDOCUMENTVIEWER_DEPLOY})
