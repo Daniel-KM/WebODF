@@ -117,6 +117,23 @@
         },
 
         /**
+         * Put the document away and show what the window shows with none.
+         * @return {undefined}
+         */
+        unload: function () {
+            if (canvas) {
+                canvas.destroy(function () {
+                    return;
+                });
+                canvas = null;
+                container.innerHTML = "";
+            }
+            failure.hidden = true;
+            message.hidden = false;
+            ways.hidden = false;
+        },
+
+        /**
          * @param {!number} factor
          */
         zoomBy: function (factor) {
