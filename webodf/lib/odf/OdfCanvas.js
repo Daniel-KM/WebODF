@@ -3986,15 +3986,32 @@
             }
         };
         /**
-         * The way a text is drawn over pages.
-         *
-         * "pages", which is what a reader is given, lays them one under
-         * another, each page a box of its own that holds what the page
-         * holds: a paragraph and a table that cross the end of a page are
-         * cut there, as an office cuts them. "columns" lays them beside one
-         * another, each page a column, which is how two pages are read side
-         * by side. "flow" writes the text as one run of text with the pages
-         * floating beside it, where nothing is ever cut where a page ends.
+         * Whether the first page stands on its own, on the right of the
+         * first row, as the first page of a book does.
+         * @param {!boolean} alone
+         * @return {undefined}
+         */
+        this.setFirstPageOnItsOwn = function (alone) {
+            textLayout.setFirstPageOnItsOwn(alone);
+            if (paginated && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * How many pages stand side by side on a row, see "TextLayout.js".
+         * @param {!number} pages
+         * @return {undefined}
+         */
+        this.setPagesPerRow = function (pages) {
+            textLayout.setPagesPerRow(pages);
+            if (paginated && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * The way a text is drawn over pages, see "TextLayout.js".
          * @param {!string} mode
          * @return {undefined}
          */

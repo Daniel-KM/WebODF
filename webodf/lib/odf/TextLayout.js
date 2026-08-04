@@ -85,6 +85,18 @@ odf.TextLayout = function TextLayout() {
          * @type{!string}
          */
         pageMode = "pages",
+        /**
+         * How many pages stand side by side on a row: one for a reader who
+         * scrolls a document, two for one who reads it as a book.
+         * @type{!number}
+         */
+        pagesPerRow = 1,
+        /**
+         * Whether the first page stands on its own, on the right of the
+         * first row, as the first page of a book does.
+         * @type{!boolean}
+         */
+        firstPageOnItsOwn = false,
 
         /**
          * The plan of the pages of the last layout: the pages are set right
@@ -1325,6 +1337,39 @@ odf.TextLayout = function TextLayout() {
         };
     }
     /**
+     * Where a page stands, from the corner of the drawn document.
+     *
+     * The pages are laid one under another, as a reader scrolls them, and
+     * two or more of them stand side by side on a row when a reader asks
+     * for that, as a book is read: the page of a row and the row it stands
+     * on are read from the number of the page. The pages of a text broken
+     * into columns stand where their column stands.
+     * @param {!PagePlan} plan
+     * @param {!number} page from zero
+     * @return {!{left:!number,top:!number}}
+     */
+    function pagePlace(plan, page) {
+        var dims = plan.at(page),
+            // The first page of a book stands on the right, with the place
+            // of a page on its left left empty, as the first page of a book
+            // is a right hand page: a reader who asks for that is given it.
+            /**@type{!number}*/
+            slot = page + (firstPageOnItsOwn && pagesPerRow > 1
+                ? 1
+                : 0),
+            /**@type{!number}*/
+            row = Math.floor(slot / pagesPerRow),
+            /**@type{!number}*/
+            column = slot % pagesPerRow;
+        if (pageMode === "columns") {
+            return {left: columnPageOrigins[page] || 0, top: 0};
+        }
+        return {
+            left: column * (dims.pageWidth + dims.pageSeparation),
+            top: row * (dims.pageHeight + dims.pageSeparation)
+        };
+    }
+    /**
      * A box that holds the shapes of one page, of the size of the sheet.
      * @param {!Document} doc
      * @param {?string} htmlns
@@ -1418,6 +1463,8 @@ odf.TextLayout = function TextLayout() {
             top = 0,
             /**@type{!number}*/
             first = 0,
+            /**@type{!{left:!number,top:!number}}*/
+            place,
             /**@type{!number}*/
             n;
         first = from || 0;
@@ -1432,15 +1479,9 @@ odf.TextLayout = function TextLayout() {
         behind.setAttributeNS(webodfhelperns, "paginated", "true");
         for (n = first; n < pages; n += 1) {
             dims = plan.at(n);
-            // A page stands under the one before it when the text is one run
-            // of text, and beside it when the text is broken into columns,
-            // one column to a page.
-            left = pageMode === "columns"
-                ? columnPageOrigins[n] || 0
-                : 0;
-            top = pageMode === "columns"
-                ? 0
-                : plan.top(n);
+            place = pagePlace(plan, n);
+            left = place.left;
+            top = place.top;
             header = pageArea(plan, "header", n + 1);
             footer = pageArea(plan, "footer", n + 1);
             // The sheet of the page, that carries its fill: it is drawn
@@ -2263,6 +2304,8 @@ odf.TextLayout = function TextLayout() {
             held,
             /**@type{!number}*/
             guard,
+            /**@type{!{left:!number,top:!number}}*/
+            place,
             /**@type{!number}*/
             n;
         box.className = "webodf-pageBox";
@@ -2276,10 +2319,12 @@ odf.TextLayout = function TextLayout() {
         // are used, and the pages would stand closer than the sheets they
         // are drawn on.
         /**@type{!HTMLElement}*/(box).style.position = "absolute";
-        /**@type{!HTMLElement}*/(box).style.left = dims.marginLeft + "px";
-        /**@type{!HTMLElement}*/(box).style.top = (state.top + dims.marginTop)
-            + "px";
-        state.top += dims.pageHeight + dims.pageSeparation;
+        place = pagePlace(/**@type{!PagePlan}*/(state.plan), state.page);
+        /**@type{!HTMLElement}*/(box).style.left = (place.left
+            + dims.marginLeft) + "px";
+        /**@type{!HTMLElement}*/(box).style.top = (place.top
+            + dims.marginTop) + "px";
+        state.top = place.top + dims.pageHeight + dims.pageSeparation;
         state.text.appendChild(box);
         while (state.waiting.length > 0) {
             added = /**@type{!Array.<!Node>}*/([]);
@@ -2690,7 +2735,9 @@ odf.TextLayout = function TextLayout() {
         filling.heightRule = filling.sheet.cssRules.length;
         filling.sheet.insertRule("office|text {height:" + Math.max(0,
             filling.top - plan.at(Math.max(0, filling.page - 1))
-                .pageSeparation) + "px;}", filling.heightRule);
+                .pageSeparation) + "px;width:" + (pagesPerRow
+            * (plan.at(0).pageWidth + plan.at(0).pageSeparation)
+            - plan.at(0).pageSeparation) + "px;}", filling.heightRule);
         drawPageFurniture(fillingRoot, plan, fillingDiv,
             readMeta(fillingRoot), from);
         if (filling.waiting.length > 0 && filling.page < maxPages) {
@@ -2778,6 +2825,26 @@ odf.TextLayout = function TextLayout() {
      */
     this.setPageMode = function (mode) {
         pageMode = mode;
+    };
+    /**
+     * How many pages stand side by side on a row: one, which is how a
+     * document is scrolled, or two, which is how a book is read. The pages
+     * are broken the same way either way; only where they are drawn changes.
+     * @param {!number} pages
+     * @return {undefined}
+     */
+    this.setPagesPerRow = function (pages) {
+        pagesPerRow = Math.max(1, pages);
+    };
+    /**
+     * Whether the first page stands on its own, on the right of the first
+     * row, as the first page of a book does: the place on its left is left
+     * empty. It is only of use where a row holds more than one page.
+     * @param {!boolean} alone
+     * @return {undefined}
+     */
+    this.setFirstPageOnItsOwn = function (alone) {
+        firstPageOnItsOwn = alone;
     };
     /**
      * Whether every page holds what was written on it.
