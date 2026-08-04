@@ -9,6 +9,32 @@ The WebODF repository not only contains sources for the library webodf.js, but
 also a few products based on it. This is the complete list of products that can
 be created ("x.y.z" is a placeholder for the actual version number):
 
+### What each product runs on
+
+A product runs where the engine it is drawn in has what the library asks of
+it: the elements of a document are read by their namespace, the rules of the
+pages are written in a sheet of the document, and the pages are laid in
+columns that keep the spacings of an office apart. The floors below follow
+from that, and from what each store and each system asks of a package.
+
+| product                        | floor                              | what sets it                                                      |
+|--------------------------------|------------------------------------|-------------------------------------------------------------------|
+| library "webodf.js"            | Chrome 88, Firefox 78, Safari 15.4 | flex, `contain`, `insertRule` with `@namespace`, `document.fonts` |
+| add-on for Firefox (mv3)       | Firefox 109                        | `strict_min_version` of the manifest                              |
+| add-on for Firefox (mv2)       | Firefox 52                         | `strict_min_version` of the manifest                              |
+| add-on for Chrome              | Chrome 88                          | `minimum_chrome_version` of the manifest                          |
+| add-on for Thunderbird         | Thunderbird 128 (mv3), 98 (mv2)    | `strict_min_version` of the manifest                              |
+| viewer of the desktop          | Qt 6.4                             | `find_package(Qt6 6.4)`, the one of Debian 12                     |
+| viewer of the desktop, windows | Windows 10                         | `MinVersion` of the installer                                     |
+| viewer of the desktop, macos   | macOS 12                           | `CMAKE_OSX_DEPLOYMENT_TARGET`, 12.0 by default                    |
+| viewer of android              | Android 5 (API 21)                 | `minSdk` of the build, built against API 36                       |
+| viewer of ios                  | iOS 15                             | `deploymentTarget` of the project                                 |
+
+Internet Explorer draws nothing of a document, whatever its version: it has no
+DOM that reads a namespace, which everything here leans on. The sources are
+still written in the third edition of the language, and the compiler is told
+so, but that says how the file is parsed and not what it needs to run.
+
 None of them is built by a plain "make": they are asked for by their own
 target, from the build directory, and they need the option WEBODF_PROGRAMS,
 see "README-Building.md". The targets are listed by:
@@ -46,7 +72,7 @@ Download the latest officially released version from the [WebODF homepage](http:
 For those who want to get an OpenDocument Text editor with just a few lines of
 JavaScript in their HTML5 app, the component Wodo.TextEditor is the right choice.
 
-This product bundles a [HOWTO](https://github.com/webodf/WebODF/blob/master/programs/editor/HOWTO-wodotexteditor.md),
+This product bundles a [HOWTO](programs/editor/HOWTO-wodotexteditor.md),
 example files, API documentation and a subdirectory with all files belonging to
 the component in one zip file.
 
@@ -63,6 +89,32 @@ and read the included HOWTO.md file.
 See the online demo on [webodf.org/demo](http://webodf.org/demo) and download
 the latest officially released version from the [WebODF homepage](http://webodf.org/download).
 
+#### Trying the editor
+
+The editor reads its own files by request, so it is served rather than opened:
+a page that is opened from a disk reaches none of them.
+
+```sh
+ninja -C build products
+cd build/opendocumenttexteditor
+python3 -m http.server 8098
+```
+
+| Page              | What it shows                                        |
+|-------------------|------------------------------------------------------|
+| texteditor.html   | the editor on "welcome.odt", the document it carries |
+| localeditor.html  | a document of the disk, opened and written again     |
+| revieweditor.html | the same, with the annotations of a review           |
+
+What is worth looking at, in that order: the document is drawn with its styles
+and its picture; the toolbar answers, bold, italic, the styles of a paragraph,
+undo; a word typed in the text stays there and the cursor follows it;
+"localeditor.html" opens an "*.odt" of the disk and writes it again; and the
+console of the browser reports nothing.
+
+The tests of the library cover none of that: they draw documents, they do not
+write in them.
+
 
 ### Wodo.CollabTextEditor component
 
@@ -72,7 +124,14 @@ in their HTML5 app, the component Wodo.CollabTextEditor is a good choice.
 There is currently no documentation for it, besides what is in the code.
 Wodo.CollabTextEditor is not a complete solution itself, but has some
 abstraction layers which have to be implemented by adapters to the respective
-server systems. See the demo file ["splitscreeneditor.js"](programs/editor/splitscreeneditor.js)
+server systems.
+
+Nothing of it is opened as the editor of one writer is: the product carries no
+page at all, only the component and what it draws with. A page of its own has
+to load it, and a server of sessions has to answer it, which is what an
+adapter is written for. The server the demonstrations of the time answered to
+is gone, so what can be told of this component here is that it is built and
+that its files are whole. See the demo file ["splitscreeneditor.js"](programs/editor/splitscreeneditor.js)
 for an example application by a client-side server with an example adapter.
 This product bundles a subdirectory with all files belonging to the component in
 one zip file.
@@ -132,6 +191,13 @@ sends under a generic type, or under a url without an extension, is missed. A
 rule only reads the response headers from Chrome 128, and asking for that
 would leave out forty of its releases.
 
+The page of the welcome comes in two, and each package carries the one of its
+own under the same name: in a browser a link is enough to read a document, where
+Thunderbird needs the menu of an attachment, and telling one the ways of the
+other would be telling it wrong. They are written from
+"welcome-browser.*.html.in" and "welcome-thunderbird.*.html.in", and both hold
+the text of the format, see "One text for every product" below.
+
 ### Running the packages without installing them
 
 Both browsers load a package from a directory, with a profile of their own, so
@@ -155,6 +221,14 @@ where git describe adds the number of commits and a hash: the build writes
 "0.5.10-161-gc2572a4a" as "0.5.10.161", so that the builds between two tags
 still follow each other.
 
+That version is read when the build is configured, not when it is made, and it
+names the packages. A build made after a commit would therefore carry the
+version of the commit before. Cmake watches ".git/HEAD" and ".git/index" for
+that reason: a commit or a checkout writes one of them, cmake configures itself
+again before make runs, and the packages are named after the sources they hold.
+Nothing has to be remembered, and "cmake ." by hand is only needed when the
+options change.
+
 An xpi is a zip whose "manifest.json" sits at its root. The two hold the same
 scripts, only their manifest differs: the version 3 declares the hosts apart,
 in "host_permissions", and its web accessible resources as objects. Firefox
@@ -162,7 +236,10 @@ keeps reading the version 2, unlike Chrome, so the version 2 alone would reach
 every Firefox in use; the version 3 is built as well because it is the one
 addons.mozilla.org asks for.
 
-Download and install the latest officially released version from [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/).
+The add-on was published on addons.mozilla.org, and it is not listed there any
+more: the page of "webodf" answers 404 and a search of the store returns
+nothing. The xpi of the build is installed by hand, see above.
+
 The description the stores are given, that the field "description" of the
 manifests holds a shortened form of, as Chrome only takes 132 characters
 there:
@@ -206,6 +283,29 @@ offers to save it or to open it with an office suite as it would without the
 add-on. The stream converter that was replaced sat under all of them, so it
 caught those as well; no api of a WebExtension does.
 
+A text is drawn over pages, which the library breaks it into: the pages of a
+text are in no odt at all — the file holds a flow of paragraphs, and where a
+page ends is decided by whoever draws it. Each page is a box of the size the
+master page of the document gives it, and what does not fit in one is cut
+there, a paragraph between two of its words and a table between two of its
+rows, with the rows of its head written again. A presentation is another
+matter, its slides being written apart in the file, and it is drawn one slide
+at a time.
+
+A reader asks for it, and for the way the pages are laid out, of the canvas:
+
+```js
+canvas.setPaginated(true);         // pages, one under another
+canvas.setPagesPerRow(2);          // two to a row, as a book is read
+canvas.setFirstPageOnItsOwn(true); // the first page on the right, as a book
+canvas.setPageMode("columns");     // every page on one row, scrolled sideways
+canvas.setPageMode("flow");        // one run of text, cut nowhere
+```
+
+The pages are broken a few at a time: the first of them are drawn in half a
+second where a document of eight hundred pages takes minutes, and a reader
+reads them while the rest is broken.
+
 The add-on holds nothing of its own outside the browser. It asks for
 "webRequest" and "webRequestBlocking" to send the responses to its page, for
 the hosts to read them, and for "downloads" to save the document the page
@@ -217,6 +317,123 @@ version 2 runs down to the version 52 its manifest asks for, that is the one
 the key "author" needs. Chrome is out of reach for both: its manifest version
 3 wants a service worker as background, that Firefox does not support, and it
 dropped the blocking webRequest this add-on redirects with.
+
+### OpenDocument Viewer for Thunderbird
+
+The same viewer reads the attachments of the messages, so that a document that
+arrives by mail is read in Thunderbird, without saving it and without an office
+suite.
+
+An attachment never travels over http: it is a part of the message itself,
+addressed in "mailbox://" or "imap://", that webRequest never sees. The way of
+the browsers does not reach it, and the add-on takes another one: it reads the
+attachment as a file with "messages.getAttachmentFile" and opens it in a tab of
+the viewer. That is the path the button "open a local document" already takes,
+so "viewer.html" is used as it is.
+
+The document is opened from an entry of the menu of the attachment, and from
+the menu of a message that carries one, where it is shown once the attachments
+have been read. There is no button of its own in the header of a message:
+Thunderbird disables such a button but never hides it, and one that is grey on
+nearly every message is noise.
+
+The manager of the add-ons of Thunderbird shows two texts. The short one, that
+sits under the name, is the field "description" of the manifest, and it is one
+sentence. The long one, under the tab of the details, is not in the package at
+all: it is the text of the listing of addons.thunderbird.net, written there at
+the submission, and the manager reads it from the store. The one below is
+that text.
+
+> Reads the OpenDocument attachments of a message inside Thunderbird, without
+> saving them and without an office suite.
+>
+> How it is used:
+> - right-click an attachment and choose "Open in OpenDocument Viewer";
+> - or right-click the message that carries it, which offers the same entry,
+>   and a submenu when it carries several documents;
+> - the document opens in a tab, at the size of the page, and nothing is
+>   written to the disk.
+>
+> It reads the text (.odt, .ott, .fodt), the spreadsheets (.ods, .ots, .fods)
+> and the presentations (.odp, .otp, .fodp) that LibreOffice and every other
+> office suite write.
+>
+> Why this format rather than the other one: OpenDocument is the first format
+> of office documents approved as an international standard, ISO/IEC 26300, in
+> 2006, and the only one that works as one. It is written in the open by OASIS,
+> it belongs to no company, and several programs of several makers write and
+> read all of it. OOXML was approved in 2008 with a transitional form, meant
+> for the older documents and to be dropped from the standard, and that form is
+> still what the office suites write today, Microsoft 365 among them, on the
+> desktop as on the web.
+>
+> It holds no permission on the network, reads no message but the one that is
+> shown, and is free software, under the AGPL 3.
+
+Neither text takes a link, so the way to the page that tells the whole of it is
+the button of the options, the wrench of that same page, which "options_ui"
+points at "welcome.html": a page that holds nothing but the choice of the
+language, since the manager opens a single address and knows none.
+
+The page of the welcome is written once for each language it is translated in,
+"welcome.fr.html" beside "welcome.en.html", and the one of the language of
+Thunderbird is opened, English being the one the others fall on. Its opening
+is written three times, in the attributes of the title and of the first
+sentence: the add-on greets a reader when it is installed, says it is up to
+date when it is updated, and tells what it is when it is read from the
+manager. A page of
+prose is read and corrected far more easily as a page than as a file of
+sentences apart, which is why the messages of i18n are not used for it.
+
+A page of welcome is opened when the add-on is installed, and once more when
+it is updated from a version that never showed it, a flag of the storage
+telling one from the other. It says where the entries of the menu are, how the
+settings are changed so that a double click opens the document in Thunderbird,
+and what the format is worth against the other one. The pictures of the menus
+are read from "skin/default/menu-attachment.png" and
+"skin/default/menu-message.png". They carry the words of Thunderbird, so one
+is kept for each language they are taken in, named after it:
+"menu-message.fr.png" beside "menu-message.png". The page tries the language
+of the reader, then that language alone, "pt" for "pt-BR", then the English
+one. Each figure that finds no picture at all leaves the page rather than
+showing a hole, so the page holds with none of them, with one, or with the
+whole set.
+
+A double click on an attachment is not answered for: Thunderbird carries no api
+for that, and what it runs is the program the settings of the system name,
+LibreOffice for a document of this format. Neither does an add-on write those
+settings: no api reads or writes the handlers of the types, and only an
+experiment, that runs privileged code and breaks at every release, reaches
+them. An add-on adds a way of opening an attachment, it does not take the one
+of the system over.
+
+The entry is shown on the documents alone. An attachment is one when its type
+is one of the nine of the format, or, for the servers that send everything as
+an octet stream, when its name ends in one of the nine extensions.
+
+The add-on asks for "menus", to add the entry, for "messagesRead", to read the
+attachment of the message that is shown, and for "downloads", as the viewer
+saves the document it draws. It reads no other message, and no network.
+
+```sh
+make -C build product-opendocumentviewer-thunderbird
+```
+
+It is packed twice as well: the version 3 needs Thunderbird 128, of 2024, and
+the version 2 reaches back to the 98, of 2022. That floor is the one of the
+menu on an attachment; every other call the add-on makes is older: the button
+of the header comes from the 71, the list of the messages that are shown and
+its event from the 81, and the attachments of a message from the 88.
+Thunderbird carries no service worker, so both hold their background as
+scripts. The add-on is published on
+[addons.thunderbird.net](https://addons.thunderbird.net/), which is not AMO,
+and is signed there.
+
+The linter of Mozilla reads those packages as well, and reports two warnings
+on each that belong to Firefox and not to Thunderbird: the permission
+"messagesRead", that it does not know, and the key
+"data_collection_permissions", that AMO asks for since Firefox 140 and that no
+Thunderbird of those versions reads.
 
 ### OpenDocument Viewer for Android
 
@@ -244,9 +461,21 @@ make product-opendocumentviewer-android
 It is behind the option WEBODF_ANDROID, as it needs the sdk of android and a
 jdk, that the build does not download. Gradle is downloaded, as the closure
 compiler and Rhino are: its version is the one the plugin of android asks for,
-9 for the plugin 9, where Debian 13 packages the 4.4.1 of 2017. The sdk is read
-from $ANDROID_HOME, the directory it is installed in, or from "sdk.dir" of the
-file "local.properties"; cmake stops with that message when it finds neither.
+9 for the plugin 9, where Debian 13 packages the 4.4.1 of 2017. The sdk is read from
+-DANDROID_SDK, from $ANDROID_HOME or $ANDROID_SDK_ROOT, from a
+"local.properties" that is already there, or from "~/Android/Sdk" and
+"/usr/lib/android-sdk". What is looked for in each of them is a "platforms"
+directory: a machine may hold a "/usr/lib/android-sdk" of the tools of the
+platform alone, which is not an sdk to build with, beside a whole one
+elsewhere. Cmake stops with a message when it finds none, and
+keeps what it found in its cache, so that the option or the variable is given
+once and not at every build. It writes "local.properties" itself, which is how
+gradle reads the sdk when make runs from another shell.
+
+A variable that is exported apart, "ANDROID_HOME=/path/to/sdk; cmake ...", is
+never seen by cmake: the semicolon ends the command, and the assignment stays
+in the shell. It is written in the same command as cmake, with no semicolon,
+or exported, or given as -DANDROID_SDK.
 The command line tools that install the sdk are at https://developer.android.com/studio#command-tools,
 and the packages the build needs are:
 
@@ -380,6 +609,30 @@ nine types of the format, and the icon under the name of the entry, as the
 specification of the freedesktop asks. A double click on a document then offers
 the viewer among the applications that read the format.
 
+#### Trying the viewer that was built
+
+The program that was built is run where it stands, without installing it and
+without packing it:
+
+```sh
+build/programs/opendocumentviewer-desktop/opendocumentviewer-desktop
+build/programs/opendocumentviewer-desktop/opendocumentviewer-desktop a-document.odt
+```
+
+Named with a document, it opens it; named with nothing, it opens the empty
+screen. The library it draws with is put in it when it is linked, so a fix of
+the library is seen only once the program is linked again: "make -C build
+product-opendocumentviewer-desktop" answers for both.
+
+The archive holds the same program with the entry of the menu and the icon, for
+a machine where it is to be tried as it is handed over:
+
+```sh
+mkdir -p /tmp/viewer
+tar xzf build/products/opendocumentviewer-x.y.z-linux-x86_64.tar.gz -C /tmp/viewer
+/tmp/viewer/bin/opendocumentviewer-desktop a-document.odt
+```
+
 The page and the document it shows are served by the program itself, under a
 scheme of its own, "odf:", see "programs/opendocumentviewer-desktop/viewerscheme.cpp":
 they are one origin that way, which is what the page needs to read the document,
@@ -502,11 +755,102 @@ xcrun notarytool submit --wait ...
 xcrun stapler staple "dist/OpenDocument Viewer.app"
 ```
 
+### One place for every product
+
+Every product is written where the target that packs it stands, deep in the
+tree of the build. They are gathered in one place by:
+
+```sh
+make -C build products     # or: ninja -C build products
+```
+
+which makes each one, gathers it in "products/" of the build and names it. The
+add-ons of the browsers and of Thunderbird, the two editors, the apk of android,
+docnosis, the archive of the viewer of the desktop and the packages of it a
+system installs are all there, each one named after the version of the sources
+it was built from, so a product tells which sources it holds.
+
+A way of handing the viewer over that the machine has no tool to write is named
+at the end, with the tool that is wanting, so that a product that is missing is
+not taken for one that failed:
+
+```
+The products of this build are in build/products:
+  docnosis-0.5.10-314-g3b87b4ee.zip
+  opendocumentviewer-firefox-0.5.10-314-g3b87b4ee.xpi
+  opendocumentviewer-0.5.10-314-g3b87b4ee-linux-x86_64.tar.gz
+  opendocumentviewer-0.5.10-314-g3b87b4ee-x86_64.deb
+  opendocumenttexteditor-0.5.10-314-g3b87b4ee.zip
+
+This machine has no tool to make:
+  the package of fedora, for want of rpmbuild
+  the AppImage, for want of linuxdeploy
+  the flatpak, for want of flatpak-builder
+```
+
+The tests are run the same way, by one target:
+
+```sh
+make -C build tests
+```
+
+### Handing the viewer of the desktop over
+
+A program of the desktop is not a file that is downloaded and read, as an
+add-on is: it is installed. Five ways are written here, from the shortest to
+the most finished. Each one is a target of its own, for a build that wants one
+of them alone:
+
+```sh
+make -C build package-deb
+```
+
+and "products" makes the ones the tools of the machine allow, with everything
+else the build is for, see "One place for every product" above.
+
+| Target           | What it writes                                 | What it asks of the machine                               |
+|------------------|------------------------------------------------|-----------------------------------------------------------|
+| package-archive  | "opendocumentviewer-x.y.z-linux-x86_64.tar.gz" | qt 6 of the system, unpacked by hand                      |
+| package-deb      | "opendocumentviewer-x.y.z-x86_64.deb"          | dpkg-deb, and qt 6 named as a dependency                  |
+| package-rpm      | "opendocumentviewer-x.y.z-x86_64.rpm"          | rpmbuild, and qt 6 named as a dependency                  |
+| package-appimage | "OpenDocumentViewer-x.y.z-x86_64.AppImage"     | linuxdeploy and its plugin of qt, and it carries qt       |
+| package-flatpak  | "org.webodf.OpenDocumentViewer-x.y.z.flatpak" | flatpak-builder and the runtime of KDE, and it carries qt |
+
+Every one of them is written among the products of the build.
+
+The archive and the packages of a system name the qt of the machine rather
+than carrying it, which is what a distribution asks for: a program that
+carries its own qt is a program that no one updates when qt is fixed. The two
+universal packages carry it, which is what someone who runs another
+distribution than the one the package was made on needs.
+
+The manifest of the flatpak names the runtime of KDE, that carries qt, and the
+base app of qt, that carries its webengine, and gives the sandbox what a reader needs and no more: a window,
+and the documents the reader opens. It reaches no network, as a document is
+drawn on the machine and nothing of it is sent.
+
+That runtime is installed apart from the tool, and the build asks for both when
+cmake is run rather than in the middle of the build, where a runtime that is
+not there reads as a broken build:
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user flathub org.kde.Platform//6.9 org.kde.Sdk//6.9 \
+    io.qt.qtwebengine.BaseApp//6.9
+cmake -S . -B build
+```
+
+The branch is the newest one the machine has, read when cmake is run, as a
+branch of the runtime is declared end of life as soon as a newer one is out;
+"-DWEBODF_FLATPAK_RUNTIME=6.9" names another. Without any of them, "products"
+is made without the flatpak and says so at the end, and
+"make -C build package-flatpak" tells what to install.
+
 ### OpenDocument Viewer for iOS
 
 Apple allows no engine of the web but its own on iOS, so a viewer there is a
 shell around WKWebView, the view of the system, which is the WebKit of Safari.
-It is what Cordova did in 2012, in the project that was in "attic/programs/ios",
+It is what Cordova did in 2012, in the project that was in the attic,
 with the UIWebView of the time: the same architecture, without the framework
 between, and with the engine of today, that compiles the javascript rather than
 reading it.
@@ -546,10 +890,10 @@ the developer.
 
 ### One text for every product
 
-The pages of the products tell what the OpenDocument format is worth, and they
-tell it in the same words: the text is written once, in
-"programs/text/format.en.html" and "programs/text/format.fr.html", and nowhere
-else.
+Three products tell what the OpenDocument format is worth, in French and in
+English: the add-ons of the browsers, in their page of the welcome, the viewer
+for android and the one for the desktop, in their page about. It is one text,
+written once, in "programs/text/format.en.html" and "programs/text/format.fr.html".
 
 A page that shows it is a template, "*.html.in", that names it where it goes:
 
@@ -559,10 +903,13 @@ A page that shows it is a template, "*.html.in", that names it where it goes:
 
 Cmake reads the text and writes the page, see the macro INSERT_TEXT in the
 CMakeLists of the root. The page of a product is written where that product
-reads it, and it is not in the repository: only its template and the text are.
+reads it: in the build directory for the add-ons and for the viewer of the
+desktop, which reads it from its resources, and among the assets for android,
+where gradle reads it, as the library is copied there as well. Those pages are
+not in the repository, only their templates and the text.
 
 The text is named as a dependency of the configuration, so cmake runs itself
-again as soon as it is revised, and every product follows. A revision is
+again as soon as it is revised, and the three products follow. A revision is
 therefore made in one file, and it cannot be forgotten in another.
 
 ### Products that are not built any more
@@ -615,3 +962,29 @@ not fit the schema, and it is not broken for that: the standard says that a
 program writes its additions under a name of its own and that a reader that does
 not know them ignores them, see the text of the format. Reporting them apart
 from the errors is what keeps a validator from calling a sound document broken.
+
+### The products that were
+
+A viewer of documents has been written for whatever ran a web view, since 2012,
+and the list is kept here: what a thing was, and what became of it. The code is
+in the history of the repository, and it is taken out of the commit that dropped
+it:
+
+```sh
+git log --diff-filter=D -- programs/touchui
+git show <commit>^:programs/touchui/index.html
+```
+
+| Product                               | What it was                                                                                                                                                                                  | What became of it                                                                                                                                                                                                                                                        |
+|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| nativeQtClient                        | A window of qt 4, with a tree of files, that showed a document in a QWebView. It carried "programs/touchui"                                                                                  | Dropped in 2026, commit 3b64c38a. The viewer of the desktop, in qt 6, does what it did                                                                                                                                                                                   |
+| The client for iOS                    | Cordova 1.8 around a UIWebView, of 2012, that Apple stopped accepting                                                                                                                        | Dropped in 2026, commit 3b64c38a. Written again in Swift, around WKWebView                                                                                                                                                                                               |
+| The client of the BlackBerry PlayBook | A widget of WebWorks, of 2012, with an extension of its own to read a file. The tablet was abandoned in 2014, BlackBerry 10 in 2022, and the servers that signed an application are gone     | Dropped in 2026, commit 3b64c38a. Nothing replaces it, as nothing runs it                                                                                                                                                                                                |
+| The viewer for android of cordova     | Cordova 3.5, of 2014, built with ant, that google dropped in 2015                                                                                                                            | Replaced in 2026 by "programs/opendocumentviewer-android", that is a web view and no framework                                                                                                                                                                           |
+| The viewer for Firefox OS             | Cordova as well, packed as a widget of the system                                                                                                                                            | Still declared, and still unbuildable, see above                                                                                                                                                                                                                         |
+| qtjsruntime in Qt WebKit              | The tests of the library, run in the webkit of qt                                                                                                                                            | Written again in 2026 for the webengine of qt 6, WebKit having left qt in 5.6                                                                                                                                                                                            |
+| "programs/touchui"                    | The touch interface of 2012, written with Sencha Touch: a browser of files and a view of a document. It was never packed on its own, the client of qt and the one of the PlayBook carried it | Dropped in 2026, commit de1bf464, with the externs of Ext JS that went with it. [Sencha Touch was merged into Ext JS](https://www.sencha.com/products/touch/), which is sold rather than free, and the viewers of today need no framework at all: a page and the library |
+
+Two products were envisaged and never written: one for KaiOS, which the package
+of Firefox OS is the beginning of, and one for macos, which is the viewer of the
+desktop once it is packed as a bundle, signed and notarised.

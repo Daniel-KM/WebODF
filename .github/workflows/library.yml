@@ -1,7 +1,7 @@
-# Builds the library the way "README-Building.md" calls the simplest one, with
-# node alone, and runs what that build runs: the tests in node, the same ones
-# in rhino, and the check of the types. It is the short one, that answers on
-# every push, where the build of the viewers is the long one.
+# Builds the library the short way, with node alone, and runs what that build
+# runs: the tests in node, the same ones in rhino, and the check of the types.
+# It is the short one, that answers on every push, where the build of the
+# viewers is the long one.
 name: The library
 
 on:

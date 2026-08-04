@@ -9,9 +9,13 @@ documents.
 * Visit the project homepage at: [WebODF](https://webodf.org)
 * Want some live demos? Visit: [WebODF Demos](https://webodf.org/demos/)
 * Get in contact:
+  * the issues of the repository, that are read
   * Slack: webodf.slack.com, use the [self-invite](https://join.slack.com/t/webodf/shared_invite/enQtNTQ1NDAyNDU1NjY2LWFlZDg1NzBjY2IzY2RmMzhhMTcwZjM1YjJjOTRmMjM4Yzg1MzhjODY5N2MwOWQwMWNiNzhlZTVlYjI3MDY5YTc)
-  * [mailing list](https://lists.opendocsociety.org/mailman/listinfo/webodf) or
-  * IRC (#webodf auf freenode, [Web access](http://webchat.freenode.net/?nick=webodfcurious_gh&channels=webodf))
+  * the [mailing list](https://lists.nlnet.nl/archives/list/webodf@nlnet.nl/),
+    that NLnet hosts
+
+The channel of freenode was the other way, and it answers no more: freenode was
+abandoned in 2021.
 
 ### License
 
@@ -58,7 +62,8 @@ webodf.js-target                       | webodf/webodf.js                       
 product-library                        | webodf.js-x.y.z.zip                      | zip file with library and API docs       | [WebODF homepage](http://webodf.org/download)
 product-opendocumenttexteditor         | opendocumenttexteditor-x.y.z.zip         | simple to use editor component           | [WebODF homepage](http://webodf.org/download)
 product-opendocumenttextcollab         | opendocumenttextcollab-x.y.z.zip         | collaborative editor component           | [WebODF homepage](http://webodf.org/download)
-product-opendocumentviewer-webext      | opendocumentviewer-firefox-x.y.z.xpi     | ODF viewer add-on for Firefox and Chrome | [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/)
+product-opendocumentviewer-webext      | opendocumentviewer-firefox-x.y.z.xpi     | ODF viewer add-on for Firefox and Chrome | (delisted from addons.mozilla.org)
+product-opendocumentviewer-thunderbird | opendocumentviewer-thunderbird-x.y.z.xpi | ODF viewer add-on for Thunderbird        | (not published yet)
 product-opendocumentviewer-android     | opendocumentviewer-x.y.z.apk             | ODF viewer application for Android       | (not published yet)
 
 ("x.y.z" is a placeholder for the actual version number)
