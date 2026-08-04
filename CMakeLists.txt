@@ -249,17 +249,47 @@ endif()
 option(WEBODF_PROGRAMS "Build the editors and the extensions of programs/" OFF)
 
 # Dojo
+# The source release of dojotoolkit.org is not published any more, so the four
+# packages are taken from the registry of npm, where they are still released.
+set(DOJO_VERSION 1.17.3)
 if (WEBODF_PROGRAMS)
 ExternalProject_Add(
-    Dojo
+    DojoCore
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-    URL "http://download.dojotoolkit.org/release-1.8.1/dojo-release-1.8.1-src.tar.gz"
-    URL_MD5 9b80b9a736b81c336accd832f3c3aea2
+    URL "https://registry.npmjs.org/dojo/-/dojo-${DOJO_VERSION}.tgz"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
-set(DOJO ${CMAKE_BINARY_DIR}/Dojo-prefix/src/Dojo)
+ExternalProject_Add(
+    DojoDijit
+    DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
+    URL "https://registry.npmjs.org/dijit/-/dijit-${DOJO_VERSION}.tgz"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)
+ExternalProject_Add(
+    DojoDojox
+    DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
+    URL "https://registry.npmjs.org/dojox/-/dojox-${DOJO_VERSION}.tgz"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)
+ExternalProject_Add(
+    DojoUtil
+    DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
+    URL "https://registry.npmjs.org/dojo-util/-/dojo-util-${DOJO_VERSION}.tgz"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)
+add_custom_target(Dojo DEPENDS DojoCore DojoDijit DojoDojox DojoUtil)
+set(DOJO_CORE ${CMAKE_BINARY_DIR}/DojoCore-prefix/src/DojoCore)
+set(DOJO_DIJIT ${CMAKE_BINARY_DIR}/DojoDijit-prefix/src/DojoDijit)
+set(DOJO_DOJOX ${CMAKE_BINARY_DIR}/DojoDojox-prefix/src/DojoDojox)
+set(DOJO_UTIL ${CMAKE_BINARY_DIR}/DojoUtil-prefix/src/DojoUtil)
 endif (WEBODF_PROGRAMS)
 
 # Dojo requires a patch on windows
