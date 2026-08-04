@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OpenDocument Viewer</title>
+  <link rel="stylesheet" href="welcome.css">
+  <script defer src="welcome.js"></script>
+</head>
+<body>
+  <main>
+    <h1 id="heading" data-about="OpenDocument Viewer" data-update="OpenDocument Viewer is up to date">OpenDocument
+      Viewer is installed</h1>
+    <p id="lead" data-about="The reader of the OpenDocument documents, in the browser itself." data-update="The reader of the OpenDocument documents, in the
+      browser itself.">It reads the documents of the OpenDocument standard
+      written by LibreOffice and by every other office suite, in the browser,
+      without saving them and with no office suite.</p>
+    <p>The format is worth as much as the reader, and <a href="#format">why this
+      format</a> tells what sets OpenDocument apart from OOXML, and why a
+      document written today with ODF will still be read in twenty years.</p>
+
+    <h2>Opening a document</h2>
+    <p>There is nothing to do: a link to a document of the OpenDocument format
+      opens in the reader, in a tab, instead of being downloaded. A document
+      that is already saved opens by dragging it into a window of the browser,
+      if the add-on is allowed to read local files, which is granted on its page
+      in the manager of the add-ons.</p>
+
+@FORMAT_TEXT@
+
+    <h2>Elsewhere</h2>
+    <p>The same reader is an add-on of Thunderbird, that shows the attachments
+      in the message itself, and an application for Android, that reads them
+      from an email or from a file manager.</p>
+    <p>It is built on WebODF, a library that reads the format in JavaScript,
+      and it is free software, under the AGPL 3.
+      <a id="about" href="http://webodf.org/about/">About WebODF</a>.</p>
+  </main>
+</body>
+</html>

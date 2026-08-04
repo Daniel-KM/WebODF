@@ -1,0 +1,59 @@
+/* The page follows the theme of the reader, as the viewer does. */
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #15141a;
+    font-family: sans-serif;
+    line-height: 1.5;
+}
+main {
+    max-width: 40em;
+    margin: 0 auto;
+    padding: 2em 1.5em 4em;
+}
+h1 {
+    font-size: 1.6em;
+}
+h2 {
+    margin-top: 2em;
+    font-size: 1.15em;
+}
+#lead {
+    font-size: 1.1em;
+}
+figure {
+    margin: 1em 0;
+}
+figure > img {
+    max-width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+/* A caption without its image says nothing, so it goes with it. */
+figure > img[hidden] {
+    display: none;
+}
+figure > img[hidden] + figcaption {
+    display: none;
+}
+figcaption {
+    padding-top: 0.4em;
+    font-size: 0.9em;
+    opacity: 0.75;
+}
+a {
+    color: #0060df;
+}
+@media (prefers-color-scheme: dark) {
+    html, body {
+        background: #1c1b22;
+        color: #fbfbfe;
+    }
+    figure > img {
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    a {
+        color: #00ddff;
+    }
+}
