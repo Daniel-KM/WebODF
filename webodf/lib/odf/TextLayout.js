@@ -2922,6 +2922,12 @@ odf.TextLayout = function TextLayout() {
                 }
                 if (more) {
                     sent.unshift(more);
+                } else if (over !== box.firstElementChild) {
+                    // Nothing of it can be cut, a heading or a line of one
+                    // word: it is written whole on the page that follows,
+                    // unless the page holds nothing else.
+                    sent.unshift(over);
+                    box.removeChild(over);
                 }
                 if (sent.length === 0) {
                     guard = 0;
