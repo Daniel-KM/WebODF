@@ -2752,15 +2752,16 @@ odf.TextLayout = function TextLayout() {
             if (added.length === 0) {
                 break;
             }
-            if (overflows(box, added[0]) && added.length > 1) {
-                while (added.length > 0) {
-                    taken = /**@type{!Node}*/(added.pop());
-                    if (taken) {
-                        box.removeChild(taken);
-                        state.waiting.unshift(taken);
-                    }
-                }
-                state.chunk = 1;
+            while (added.length > 1 && overflows(box, added[0])) {
+                // The chunk is more than the page holds: what is over is
+                // taken back one node at a time, from the end, and the rest
+                // is left where it is. Taking the whole chunk back and
+                // writing it again one node at a time reads the page once
+                // for every node of it.
+                taken = /**@type{!Node}*/(added.pop());
+                box.removeChild(taken);
+                state.waiting.unshift(taken);
+                state.chunk = Math.max(1, added.length);
             }
             if (added.length === 0
                     || !overflows(box, added[0])) {
