@@ -45,6 +45,10 @@
         menu = document.getElementById("menu"),
         menubutton = document.getElementById("menubutton"),
         ratio = window.devicePixelRatio,
+        // Whether the document is to be scaled to the window once the pages
+        // are drawn anew, which the reader asks for by laying them out
+        // another way.
+        refitting = false,
         // The languages the page of the welcome is written in, beside the
         // English one every other language falls on.
         LANGUAGES = ["en", "fr"];
@@ -171,6 +175,7 @@
                 return;
             }
             entry.addEventListener("click", function () {
+                refitting = true;
                 canvas.setPagesPerRow(way.perRow);
                 canvas.setFirstPageOnItsOwn(way.alone);
                 showMenu(false);
@@ -196,8 +201,14 @@
 
     canvas.addListener("statereadychange", fit);
     // A row of two pages is twice as wide as one, so the document is scaled to
-    // the window anew every time the pages are drawn.
-    canvas.addListener("pagesdrawn", fit);
+    // the window anew when the reader asks for another way of laying the pages
+    // out, and then alone: a document is read at the size it was written at.
+    canvas.addListener("pagesdrawn", function () {
+        if (refitting) {
+            refitting = false;
+            fit();
+        }
+    });
     window.addEventListener("resize", refit);
 
     // Thunderbird names the attachment of a message rather than an address:

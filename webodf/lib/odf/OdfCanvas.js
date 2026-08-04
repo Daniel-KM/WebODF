@@ -246,10 +246,13 @@
 
     /**
      * A new styles.xml has been loaded. Update the live document with it.
+     *
+     * What wrote the labels of the lists and of the headings is answered, so
+     * that an editor may ask for them to be written again.
      * @param {!odf.OdfContainer} odfcontainer
      * @param {!odf.Formatting} formatting
      * @param {!HTMLStyleElement} stylesxmlcss
-     * @return {undefined}
+     * @return {!odf.ListStyleToCss}
      **/
     function handleStyles(odfcontainer, formatting, stylesxmlcss) {
         // update the css translation of the styles
@@ -272,7 +275,7 @@
             styleSheet,
             styleTree,
             odfcontainer.rootElement.body);
-
+        return list2css;
     }
 
     /**
@@ -3541,6 +3544,8 @@
             waitingForDoneTimeoutId,
             /**@type{!webodfcore.ScheduledTask}*/redrawContainerTask,
             shouldRefreshCss = false,
+            /**@type{?odf.ListStyleToCss}*/
+            numbering = null,
             shouldRerenderAnnotations = false,
             loadingQueue = new LoadingQueue(),
             /**
@@ -3777,7 +3782,8 @@
          */
         function redrawContainer() {
             if (shouldRefreshCss) {
-                handleStyles(odfcontainer, formatting, stylesxmlcss);
+                numbering = handleStyles(odfcontainer, formatting,
+                    stylesxmlcss);
                 shouldRefreshCss = false;
                 // different styles means different layout, thus different sizes
             }
@@ -3966,7 +3972,9 @@
          */
         function drawPages(container, odfnode) {
             var /**@type{?FontFaceSet}*/
-                fonts;
+                fonts,
+                /**@type{!Array.<!Promise>}*/
+                askedFonts = [];
             if (pagesDiv && pagesDiv.parentNode) {
                 pagesDiv.parentNode.removeChild(pagesDiv);
             }
@@ -4021,7 +4029,63 @@
                 });
                 return;
             }
-            loadingQueue.whenDrained(function () {
+            // A engine may say its fonts are ready before it draws with
+            // them: the first pages are then broken with the letters of
+            // another font and hold a line too many, which is only seen when
+            // the pages are all broken. The pages are set right as soon as
+            // the fonts have truly landed, and not at the end of the whole.
+            // The engine is asked to load the fonts the document names, and
+            // not only to say when the ones it knows of are ready: an engine
+            // may hold a font ready before it draws with it, and the pages
+            // would be broken with the letters of another font. A font that
+            // never comes is waited on for a moment and no longer, as a
+            // document is better drawn late than never.
+            if (fonts && fonts.load) {
+                askedFonts = Object.keys(formatting.getFontMap()).map(
+                    function (name) {
+                        var family = formatting.getFontMap()[name];
+                        return fonts.load("12px " + (family || name))
+                            .then(null, function () {
+                                return null;
+                            });
+                    }
+                );
+            }
+            if (fonts && fonts.ready) {
+                fonts.ready.then(function () {
+                    var tries = 20;
+                    // The pages that were broken with the letters of another
+                    // font are set right as the next slice is drawn, and not
+                    // at the end of the whole text.
+                    textLayout.fontsChanged();
+                    /**
+                     * @return {undefined}
+                     */
+                    function whenBroken() {
+                        if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
+                            return;
+                        }
+                        if (textLayout.isBreaking()) {
+                            tries -= 1;
+                            if (tries > 0) {
+                                runtime.setTimeout(whenBroken, 250);
+                            }
+                            return;
+                        }
+                        if (!textLayout.pagesFit(odfnode)) {
+                            textLayout.repair(odfnode,
+                                /**@type{!HTMLDivElement}*/(pagesDiv));
+                        }
+                    }
+                    whenBroken();
+                });
+            }
+            /**
+             * Break the text into pages, once what it is drawn with is
+             * there.
+             * @return {undefined}
+             */
+            function breakPages() {
                 if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
                     return;
                 }
@@ -4040,6 +4104,29 @@
                             /**@type{!HTMLDivElement}*/(pagesDiv));
                     }
                 }, 0);
+            }
+            // The text is broken once the fonts it is written in are loaded:
+            // a line is of another width until then, and the pages would be
+            // broken twice. A font that never comes is waited on for three
+            // seconds and no longer.
+            loadingQueue.whenDrained(function () {
+                var waited = false;
+                /**
+                 * @return {undefined}
+                 */
+                function once() {
+                    if (!waited) {
+                        waited = true;
+                        breakPages();
+                    }
+                }
+                if (askedFonts.length > 0 && runtime.getWindow().Promise) {
+                    runtime.setTimeout(once, 3000);
+                    runtime.getWindow().Promise.all(askedFonts).then(once,
+                        once);
+                    return;
+                }
+                once();
             });
         }
         /**
@@ -4069,6 +4156,21 @@
             if (paginated && odfcontainer
                     && odfcontainer.state === odf.OdfContainer.DONE) {
                 drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * Write the labels of the lists and of the headings again.
+         *
+         * The numbers are worked out as the document is drawn: an editor
+         * that adds an item to a list, or a heading to the text, asks for
+         * them to be worked out again. The rules of the styles are left
+         * alone, so this is the work of the labels alone.
+         * @return {undefined}
+         */
+        this.refreshNumbering = function () {
+            if (numbering && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                numbering.renumber(odfcontainer.rootElement.body);
             }
         };
         /**
@@ -4271,7 +4373,8 @@
 
                 formatting.setOdfContainer(odfcontainer);
                 handleFonts(odfcontainer, fontcss);
-                handleStyles(odfcontainer, formatting, stylesxmlcss);
+                numbering = handleStyles(odfcontainer, formatting,
+                    stylesxmlcss);
                 // do content last, because otherwise the document is constantly
                 // updated whenever the css changes
                 handleContent(odfcontainer, odfnode);

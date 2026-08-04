@@ -693,12 +693,25 @@
          * @return {undefined}
          */
         function setRootElement(root) {
+            var doc = /**@type{!Document}*/(root.ownerDocument);
+            /**
+             * The child of the root of that name, made empty where the
+             * document holds none: a document written by hand, or by a
+             * program that wrote no styles, holds none of them, and a reader
+             * that looks for a style in nothing at all throws.
+             * @param {!string} name
+             * @return {!Element}
+             */
+            function childOrEmpty(name) {
+                return domUtils.getDirectChild(root, officens, name)
+                    || doc.createElementNS(officens, name);
+            }
             contentElement = null;
             self.rootElement = /**@type{!odf.ODFDocumentElement}*/(root);
             root.fontFaceDecls = domUtils.getDirectChild(root, officens, 'font-face-decls');
-            root.styles = domUtils.getDirectChild(root, officens, 'styles');
-            root.automaticStyles = domUtils.getDirectChild(root, officens, 'automatic-styles');
-            root.masterStyles = domUtils.getDirectChild(root, officens, 'master-styles');
+            root.styles = childOrEmpty('styles');
+            root.automaticStyles = childOrEmpty('automatic-styles');
+            root.masterStyles = childOrEmpty('master-styles');
             root.body = domUtils.getDirectChild(root, officens, 'body');
             root.meta = domUtils.getDirectChild(root, officens, 'meta');
             root.settings = domUtils.getDirectChild(root, officens, 'settings');

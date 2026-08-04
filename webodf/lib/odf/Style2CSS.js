@@ -1085,6 +1085,11 @@ odf.Style2CSS = function Style2CSS() {
                     || props.hasAttributeNS(stylens, 'rel-width'))) {
             rule += 'table-layout:fixed;';
         }
+        // A table wider than the text of the page is drawn to the width of
+        // the text, its columns narrowed by as much, as an office draws it:
+        // a table written for a page of another size would otherwise run
+        // into the margin and be cut off at the edge of the paper.
+        rule += 'max-width:100%;';
         borderModel = props.getAttributeNS(tablens, 'border-model');
 
         if (borderModel === 'collapsing') {
@@ -1171,6 +1176,35 @@ odf.Style2CSS = function Style2CSS() {
     }
 
     /**
+     * The css of a section: the columns it is written in.
+     *
+     * A section of two columns is written in two columns by the browser, as
+     * an office writes it: what a section holds runs from the foot of one
+     * column to the head of the next.
+     * @param {!Element} props <style:section-properties/>
+     * @return {!string}
+     */
+    function getSectionProperties(props) {
+        var rule = '',
+            columns = domUtils.getDirectChild(props, stylens, 'columns'),
+            /**@type{!number}*/
+            count = 0,
+            /**@type{!string}*/
+            gap = '';
+        if (columns) {
+            count = parseInt(columns.getAttributeNS(fons, 'column-count'),
+                10) || 0;
+            gap = columns.getAttributeNS(fons, 'column-gap') || '';
+        }
+        if (count > 1) {
+            rule += 'column-count:' + count + ';';
+            if (gap) {
+                rule += 'column-gap:' + gap + ';';
+            }
+        }
+        return rule;
+    }
+    /**
      * @param {!CSSStyleSheet} sheet
      * @param {string} family
      * @param {string} name
@@ -1191,6 +1225,11 @@ odf.Style2CSS = function Style2CSS() {
                 stylens, 'paragraph-properties');
         if (properties) {
             rule += getParagraphProperties(properties);
+        }
+        properties = domUtils.getDirectChild(node.element,
+                 stylens, 'section-properties');
+        if (properties) {
+            rule += getSectionProperties(properties);
         }
         properties = domUtils.getDirectChild(node.element,
                  stylens, 'graphic-properties');

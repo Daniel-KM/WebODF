@@ -176,7 +176,10 @@ if (UNIX AND NOT APPLE)
     if (QMAKE6)
         set(VIEWER_QMAKE QMAKE=${QMAKE6})
     else ()
-        set(VIEWER_QMAKE "")
+        # The variable is left undefined and not set to nothing: a variable
+        # that holds nothing is still one argument, and the plugin reads it
+        # as a qmake of no name and looks no further.
+        unset(VIEWER_QMAKE)
     endif ()
     find_program(LINUXDEPLOY linuxdeploy)
     find_program(LINUXDEPLOY_QT linuxdeploy-plugin-qt)

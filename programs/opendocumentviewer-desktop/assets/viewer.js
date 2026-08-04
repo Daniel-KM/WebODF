@@ -8,6 +8,7 @@
         failure = document.getElementById("failure"),
         ways = document.getElementById("ways"),
         canvas = null,
+        refitting = false,
         translated,
         i;
 
@@ -29,6 +30,80 @@
         return document.documentElement.clientWidth
             - parseFloat(style.paddingLeft)
             - parseFloat(style.paddingRight);
+    }
+
+    // A document of eight hundred pages is a very tall thing to paint: the
+    // engine rasterises what is near the window and leaves the rest, and a
+    // reader that jumps far ahead lands on a page that was never painted.
+    // The pages are told to be drawn only when they come near the window,
+    // each keeping the room of a page while it is away, so that the reader
+    // scrolls over the same length and the engine paints far less.
+    function skipPagesAway(on) {
+        var sheet = document.getElementById("pagesaway"),
+            first = document.querySelector(".webodf-pageSheet"),
+            box;
+        if (!on) {
+            if (sheet) {
+                sheet.parentNode.removeChild(sheet);
+            }
+            return;
+        }
+        if (!first) {
+            return;
+        }
+        box = first.getBoundingClientRect();
+        if (!sheet) {
+            sheet = document.createElement("style");
+            sheet.id = "pagesaway";
+            document.head.appendChild(sheet);
+        }
+        sheet.textContent = ".webodf-pageSheet {content-visibility:auto;"
+            + "contain-intrinsic-size:" + Math.round(box.width) + "px "
+            + Math.round(box.height) + "px;}";
+    }
+
+    // How the first page came out: the height of its text, how far its text
+    // reaches, and where the foot drawn on it begins. A foot that begins
+    // above the end of the text is drawn over the last line of it.
+    function pageReport() {
+        var box = document.querySelector(".webodf-pageBox"),
+            furniture = document.querySelector(".webodf-pageFurniture"),
+            drawn = document.querySelectorAll(".webodf-pageSheet").length,
+            edge,
+            bottom = 0,
+            top = Infinity,
+            i,
+            parts,
+            rect;
+        if (!box) {
+            return String(drawn) + " drawn, no page box";
+        }
+        edge = box.getBoundingClientRect();
+        for (i = 0; i < box.children.length; i += 1) {
+            rect = box.children[i].getBoundingClientRect();
+            if (rect.height > 0) {
+                bottom = Math.max(bottom, rect.bottom);
+            }
+        }
+        if (furniture) {
+            parts = furniture.getElementsByTagName("*");
+            for (i = 0; i < parts.length; i += 1) {
+                rect = parts[i].getBoundingClientRect();
+                if (rect.height > 0
+                        && rect.top > edge.bottom - edge.height / 2) {
+                    top = Math.min(top, rect.top);
+                }
+            }
+        }
+        return String(drawn) + " drawn, zoom " + zoom()
+            + ", box " + Math.round(edge.height)
+            + ", text ends " + Math.round(bottom - edge.top)
+            + ", foot begins " + (top === Infinity
+                ? "nowhere"
+                : Math.round(top - edge.top))
+            + ", over by " + (top === Infinity
+                ? 0
+                : Math.round(bottom - top));
     }
 
     // What the first text of the document is drawn in, and what it is drawn on:
@@ -80,12 +155,26 @@
             message.hidden = true;
             failure.hidden = true;
             ways.hidden = true;
+            skipPagesAway(false);
             canvas = new odf.OdfCanvas(container);
             // A row of two pages is twice as wide as one, so the document is
-            // scaled to the window anew every time the pages are drawn: they
-            // are drawn a few at a time, and the last of them says how wide
-            // the document is.
+            // scaled to the window anew when the reader asks for another way
+            // of laying the pages out, and then alone: a document is read at
+            // the size it was written at, and a window that holds a page
+            // whole leaves it at that size.
             canvas.addListener("pagesdrawn", function () {
+                // What the pages came to, written when the category
+                // "webodf.viewer" is turned on: it tells a foot drawn over
+                // the last line of a page apart from one that stands clear.
+                window.console.log("pages " + pageReport());
+                // The pages are all broken, so nothing of them is measured
+                // any more: the ones away from the window may be left
+                // undrawn until the reader comes to them.
+                skipPagesAway(true);
+                if (!refitting) {
+                    return;
+                }
+                refitting = false;
                 canvas.fitSmart(available());
             });
             // A text is drawn over pages, as it is printed, which the
@@ -170,6 +259,10 @@
          */
         setPages: function (perRow, firstAlone) {
             if (canvas) {
+                refitting = true;
+                // The pages are about to be broken again, and what is broken
+                // is measured: a page that is not drawn measures nothing.
+                skipPagesAway(false);
                 canvas.setPagesPerRow(perRow);
                 canvas.setFirstPageOnItsOwn(firstAlone);
             }
