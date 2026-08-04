@@ -154,6 +154,14 @@ odf.TextLayout = function TextLayout() {
          */
         maxPages = 2000,
         /**
+         * How many nodes are written at once at the most, before what is
+         * left of an element is put aside: some pages of a dense text, so
+         * that a page is measured against a page and not against a book.
+         * @const
+         * @type{!number}
+         */
+        nodesToAPage = 2000,
+        /**
          * A4 in pixels at 96 dpi, and the margin LibreOffice writes, for a
          * document that declares no page layout at all.
          * @const
@@ -2540,6 +2548,72 @@ odf.TextLayout = function TextLayout() {
         return true;
     }
     /**
+     * How many nodes a node holds, counted no further than a bound.
+     * @param {!Node} node
+     * @param {!number} bound
+     * @return {!number}
+     */
+    function nodesIn(node, bound) {
+        var count = 1,
+            /**@type{?Node}*/
+            child = node.firstChild;
+        while (child && count < bound) {
+            count += nodesIn(child, bound - count);
+            child = child.nextSibling;
+        }
+        return count;
+    }
+    /**
+     * Take out of an element everything past the first so many nodes.
+     *
+     * A document holds elements that hold thousands of nodes: a table of
+     * contents is one of them, and a page of it was written by measuring the
+     * whole of what was left, page after page. The element is parted in two
+     * beforehand, by counting and not by measuring, so that a page is drawn
+     * against what a page may hold and not against everything that is left
+     * to write.
+     *
+     * What is taken out is put in a copy of the element, as a cut does, so
+     * that it is written in the style it was written in.
+     * @param {!Element} element
+     * @param {!number} bound how many nodes are left in it
+     * @return {?Element} what was taken out, or null where it held less
+     */
+    function splitOff(element, bound) {
+        var count = 1,
+            /**@type{?Node}*/
+            node = element.firstChild,
+            /**@type{!Element}*/
+            tail = /**@type{!Element}*/(element.cloneNode(false)),
+            /**@type{?Element}*/
+            inner,
+            /**@type{?Node}*/
+            next;
+        while (node && count < bound) {
+            count += nodesIn(node, bound - count);
+            if (count >= bound && node.firstChild
+                    && node.nodeType === Node.ELEMENT_NODE) {
+                // The bound falls inside this one: what it holds past the
+                // bound is taken out of it in the same way.
+                inner = splitOff(/**@type{!Element}*/(node), bound);
+                if (inner) {
+                    tail.appendChild(inner);
+                }
+                node = node.nextSibling;
+                break;
+            }
+            node = node.nextSibling;
+        }
+        while (node) {
+            next = node.nextSibling;
+            tail.appendChild(node);
+            node = next;
+        }
+        return tail.firstChild
+            ? tail
+            : null;
+    }
+    /**
      * Cut an element where the page ends, and answer what is left of it: a
      * copy of the element that holds what did not fit.
      *
@@ -2744,6 +2818,18 @@ odf.TextLayout = function TextLayout() {
                 // where the pages are broken into columns.
                 if (asksForANewPage(node) && box.firstChild) {
                     break;
+                }
+                // An element of thousands of nodes — a table of contents,
+                // a long section — is parted before it is written: a page is
+                // drawn against what a page may hold, and not against the
+                // whole of what is left to write, which was drawn again for
+                // every page of it.
+                if (node.nodeType === Node.ELEMENT_NODE
+                        && nodesIn(node, nodesToAPage + 1) > nodesToAPage) {
+                    rest = splitOff(/**@type{!Element}*/(node), nodesToAPage);
+                    if (rest) {
+                        state.waiting.splice(1, 0, rest);
+                    }
                 }
                 state.waiting.shift();
                 box.appendChild(node);
