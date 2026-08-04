@@ -4136,32 +4136,12 @@
                 );
             }
             if (fonts && fonts.ready) {
+                // A font that lands after the pages are broken, which an
+                // engine may do whatever it was asked: the pages already
+                // drawn are set right as the next slice of them is drawn,
+                // see "TextLayout.js".
                 fonts.ready.then(function () {
-                    var tries = 20;
-                    // The pages that were broken with the letters of another
-                    // font are set right as the next slice is drawn, and not
-                    // at the end of the whole text.
                     textLayout.fontsChanged();
-                    /**
-                     * @return {undefined}
-                     */
-                    function whenBroken() {
-                        if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
-                            return;
-                        }
-                        if (textLayout.isBreaking()) {
-                            tries -= 1;
-                            if (tries > 0) {
-                                runtime.setTimeout(whenBroken, 250);
-                            }
-                            return;
-                        }
-                        if (!textLayout.pagesFit(odfnode)) {
-                            textLayout.repair(odfnode,
-                                /**@type{!HTMLDivElement}*/(pagesDiv));
-                        }
-                    }
-                    whenBroken();
                 });
             }
             /**

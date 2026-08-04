@@ -4264,9 +4264,7 @@ odf.TextLayout = function TextLayout() {
                     }
                     guard -= 1;
                     // The notes of what was moved went with it, so the foot
-                    // of the page is drawn again before it is read anew, and
-                    // what the cut left holding nothing keeps no spacing.
-                    unspaceEmptyTail(box);
+                    // of the page is drawn again before it is read anew.
                     layNotes(box);
                     over = firstOverflowing(box);
                 }
