@@ -1,0 +1,27 @@
+OpenDocument Viewer shows the documents of LibreOffice and OpenOffice, the
+texts, the spreadsheets and the presentations, so that a document a phone
+receives is read at once, without an office suite.
+
+It registers for the nine types of the format, so the system offers it when one
+is opened from a mail, a message or a file manager. Started on its own, it
+shows an empty page that asks for a document, and opens the picker of the
+system when it is touched: the system reads the file and hands it over, so the
+viewer holds no permission to reach the storage, and it reaches no network.
+
+It is light: the whole application weighs less than a megabyte, where the other
+viewers of the format weigh a hundred times that, so it is installed on a phone
+that has no room left, and it opens at once.
+
+OpenDocument is the first format of office documents that was approved as an
+international standard, ISO/IEC 26300, in 2006, and the only one that works as
+one: it is written in the open by OASIS, it belongs to no company, and several
+programs of several makers write and read the whole of it.
+
+A document written today is still read in twenty years, by whoever, with
+whatever.
+
+The same viewer is an add-on of Firefox and of Chrome, that shows those
+documents in the browser instead of downloading them.
+
+It is built on WebODF, a library that reads the format in JavaScript, and it is
+free software, under the AGPL 3.

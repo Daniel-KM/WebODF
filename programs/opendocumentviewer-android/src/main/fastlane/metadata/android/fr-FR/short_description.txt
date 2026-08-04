@@ -1,0 +1,1 @@
+Lit les documents .odt, .ods et .odp sans suite bureautique.
