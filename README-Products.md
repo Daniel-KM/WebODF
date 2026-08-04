@@ -576,3 +576,42 @@ by Mozilla in 2016, but it lives on through its forks, B2G OS, KaiOS and
 Capyloon, so the product is worth reviving rather than dropping. KaiOS in
 particular runs on feature phones that no office suite serves, which is the kind
 of place a viewer of the OpenDocument format is the most useful.
+
+### docnosis, that tells whether a document keeps to the standard
+
+A page, and nothing else: a document is dropped on it, and it says what it is
+made of and whether it holds to OpenDocument. The document is read in the page
+and goes nowhere — nothing is uploaded, and no server sees it, which is what
+sets it apart from [the validator of the ODF Toolkit](https://odfvalidator.org/),
+of [odftoolkit.org](https://odftoolkit.org/), that reads the same schemas in
+java, on a server.
+
+```sh
+cmake -S ../webodf -DWEBODF_PROGRAMS=ON
+make product-docnosis
+```
+
+It writes "docnosis-x.y.z.zip", that holds the page, the schemas and the sources
+of the library: the validator of Relax NG is left out of "webodf.js", as no
+viewer uses it, so the page reads the library from its sources. A document is
+dropped on the page, or named in the address, which is how it is run without
+hands:
+
+```
+index.html?file=document.odt
+```
+
+What it tells of a document:
+
+* the type it declares, and whether the package says the same;
+* the version of the standard it was written to, from 1.0 to 1.4, the schemas
+  of every one of them being there, as published by OASIS;
+* whether it holds to the schema of that version;
+* what it holds that the standard does not define, named by the namespace it is
+  written under, "loext" for LibreOffice.
+
+That last one is the point of the whole thing. A document of LibreOffice does
+not fit the schema, and it is not broken for that: the standard says that a
+program writes its additions under a name of its own and that a reader that does
+not know them ignores them, see the text of the format. Reporting them apart
+from the errors is what keeps a validator from calling a sound document broken.

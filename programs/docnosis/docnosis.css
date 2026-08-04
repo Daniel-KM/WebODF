@@ -1,0 +1,44 @@
+/* The page follows the theme of the system, as the viewers do. */
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #15141a;
+    font-family: sans-serif;
+    line-height: 1.5;
+}
+h1, p#lead, div#docnosis {
+    max-width: 50em;
+    margin: 0 auto;
+    padding: 0 1.5em;
+}
+h1 {
+    padding-top: 1em;
+    font-size: 1.6em;
+}
+p#lead {
+    padding-bottom: 1em;
+}
+fieldset {
+    border: 1px dashed rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    padding: 1em;
+}
+/* What a diagnosis says: a heading by file, then what each test found. */
+div#docnosis h1 {
+    padding: 1.5em 0 0;
+    font-size: 1.2em;
+}
+div#docnosis img {
+    vertical-align: middle;
+    padding-right: 0.5em;
+}
+@media (prefers-color-scheme: dark) {
+    html, body {
+        background: #1c1b22;
+        color: #fbfbfe;
+    }
+    fieldset {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+}
