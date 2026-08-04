@@ -37,14 +37,25 @@
     function LoadingQueue() {
         var /**@type{!Array.<!Function>}*/
             queue = [],
-            taskRunning = false;
+            taskRunning = false,
+            /**@type{!boolean}*/
+            destroyed = false,
+            /**@type{!number}*/
+            timeoutId = -1;
         /**
          * @param {!Function} task
          * @return {undefined}
          */
         function run(task) {
             taskRunning = true;
-            runtime.setTimeout(function () {
+            timeoutId = runtime.setTimeout(function () {
+                // The queue outlives the canvas by the time of one timeout: a
+                // task that runs after the canvas was destroyed draws into a
+                // document that was taken apart, and holds it from being
+                // collected.
+                if (destroyed) {
+                    return;
+                }
                 try {
                     task();
                 } catch (/**@type{Error}*/e) {
@@ -61,6 +72,18 @@
          */
         this.clearQueue = function () {
             queue.length = 0;
+        };
+        /**
+         * Drop what is waiting and what was about to run.
+         * @return {undefined}
+         */
+        this.destroy = function () {
+            destroyed = true;
+            queue.length = 0;
+            if (timeoutId !== -1) {
+                runtime.clearTimeout(timeoutId);
+                timeoutId = -1;
+            }
         };
         /**
          * @param {!Function} loadingTask
@@ -4347,10 +4370,21 @@
                 cleanup = [pageSwitcher.destroy, redrawContainerTask.destroy];
 
             runtime.clearTimeout(waitingForDoneTimeoutId);
-            // TODO: anything to clean with annotationViewManager?
+            // Nothing of the document is left wrapped or highlighted, and the
+            // manager is dropped with it: it holds every annotation of the
+            // document, and the elements it wrapped them in.
+            if (annotationViewManager) {
+                annotationViewManager.forgetAnnotations();
+                annotationViewManager = null;
+            }
             if (annotationsPane && annotationsPane.parentNode) {
                 annotationsPane.parentNode.removeChild(annotationsPane);
             }
+            // The pages a text was broken over, that hang beside the content.
+            if (pagesDiv && pagesDiv.parentNode) {
+                pagesDiv.parentNode.removeChild(pagesDiv);
+            }
+            pagesDiv = null;
 
             zoomHelper.destroy(function () {
                 if (sizer) {
@@ -4365,7 +4399,9 @@
             head.removeChild(stylesxmlcss);
             head.removeChild(positioncss);
 
-            // TODO: loadingQueue, make sure it is empty
+            // What was waiting to be loaded is dropped: a task that runs
+            // after this holds a document that no one reads any more.
+            loadingQueue.destroy();
             webodfcore.Async.destroyAll(cleanup, callback);
         };
 
