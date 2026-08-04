@@ -174,29 +174,59 @@ order of their dependencies, taken from the file "webodf/lib/manifest.json",
 then minified with terser. The output has the same size as the one of the
 closure compiler used with SIMPLE_OPTIMIZATIONS, that the original build used.
 
-Other commands:
+Each command builds one output, so only what is needed is built:
 
 ```sh
-npm run check   # check the types with the closure compiler (java is needed)
-npm test        # run the tests that do not need a browser
-npm run doc     # generate the documentation of the api in "dist/docs"
+npm run build       # the library, in "dist/webodf.js"
+npm run doc         # the documentation of the api, in "dist/docs"
+npm run check       # check the types with the closure compiler (java is needed)
+npm test            # run the tests with node
+npm run test:rhino  # run the tests with Rhino, on a java virtual machine
+npm run all         # check, test, build and doc
 ```
 
 The command "npm run check" uses the closure compiler as a type checker only:
 it writes no output. The jar is downloaded once from maven central into the
-directory ".tools". The version is pinned in "scripts/lib/closure.js" and the
-sources pass with it as with the one of 2016, that the project used before:
+directory ".tools" and the version is pinned in "scripts/lib/closure.js".
 
 ```sh
-CLOSURE_VERSION=v20160911 npm run check   # the previous compiler
+CLOSURE_VERSION=v20240101 npm run check           # another version
 CLOSURE_JAR=/path/to/compiler.jar npm run check   # another copy
 ```
 
 The groups of checks removed from the compilers newer than 2016 are dropped
-automatically, so both versions run with the same set of checks.
+automatically when an older one is used. The compiler of 2016, that the project
+used until now, does not check the sources any more: they use globalThis, that
+it does not know.
 
 The tests needing a browser are still run with karma, see
 "webodf/tools/karma.conf.js".
+
+### Running with Rhino
+
+Rhino runs javascript on a java virtual machine and gives a second engine for
+the tests, besides node. The jar of Rhino is downloaded from maven central into
+".tools", like the one of the closure compiler, and the version is set in
+"scripts/lib/rhino.js" or with the environment variable RHINO_VERSION.
+
+The file "tests.js" selects the suites from what the runtime provides, so each
+engine runs what it can:
+
+| Engine            | Suites | What it provides                          |
+|-------------------|--------|-------------------------------------------|
+| node, with jsdom  | 26     | a dom with a range and a tree walker      |
+| node, alone       | 3      | the package xmldom, without a range       |
+| Rhino             | 3      | the dom of java, lists without an index   |
+| a browser, karma  | 29     | everything, with a layout and its css     |
+
+The tests with node use jsdom when it is installed, which is the case after
+"npm install": it is a development dependency, the library itself does not use
+it. Three suites are added only in a browser: two measure where the text is
+drawn, that needs a layout engine, and one compares the rules of a stylesheet
+one by one, that needs a css parser rejecting the same rules.
+
+The runtime for Rhino could not even start between 2013 and now, so its own
+tests had never been run.
 
 ### Outputs
 
