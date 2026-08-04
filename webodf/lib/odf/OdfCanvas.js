@@ -4133,6 +4133,13 @@
             // every master shape relative to its slide text. Make the sizer the
             // containing block so the overlay always lines up with the slides.
             sizer.style.position = "relative";
+            // The document stands against the left of the box it is drawn
+            // in, and the box itself is what a reader puts in the middle of
+            // its window: a reader that lays its own text in the middle would
+            // otherwise set the document in the middle of the box, and a row
+            // of two pages, which is wider than the document, would hang off
+            // to the right of it.
+            sizer.style.textAlign = "left";
             // When the window is shrunk such that the
             // canvas container has a horizontal scrollbar,
             // zooming out seems to not make the scrollable
@@ -4202,6 +4209,12 @@
 
             sizer.insertBefore(shadowContent, sizer.firstChild);
             zoomHelper.setZoomableElement(sizer);
+            // A reader is told when the pages are all drawn, so that it can
+            // scale the document anew: a row of two pages is twice as wide as
+            // one, and is only that wide once the last page is drawn.
+            textLayout.whenDrawn(function () {
+                fireEvent("pagesdrawn", []);
+            });
 
             // Once the slide is laid out, shrink any overflowing autofit text.
             shrinkAutofitText(odfnode.body, container, css);

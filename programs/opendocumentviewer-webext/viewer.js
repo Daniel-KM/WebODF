@@ -195,6 +195,9 @@
     });
 
     canvas.addListener("statereadychange", fit);
+    // A row of two pages is twice as wide as one, so the document is scaled to
+    // the window anew every time the pages are drawn.
+    canvas.addListener("pagesdrawn", fit);
     window.addEventListener("resize", refit);
 
     // Thunderbird names the attachment of a message rather than an address:

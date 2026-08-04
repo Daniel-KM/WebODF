@@ -165,7 +165,8 @@ MainWindow::MainWindow(QWidget* parent)
       view(new QWebEngineView(this)),
       server(new ViewerScheme(this)),
       keeper(new QTimer(this)),
-      reading(nullptr) {
+      reading(nullptr),
+      closeAction(nullptr) {
 
     QWebEngineProfile::defaultProfile()->installUrlSchemeHandler("odf", server);
 
@@ -233,6 +234,11 @@ void MainWindow::createMenus() {
         this, &MainWindow::chooseDocument);
     openAction->setStatusTip(words::of("Read a document of the OpenDocument"
         " format", "Lire un document au format OpenDocument"));
+    closeAction = file->addAction(words::of("&Close", "&Fermer"),
+        QKeySequence::Close, this, &MainWindow::closeDocument);
+    closeAction->setStatusTip(words::of("Put the document away",
+        "Refermer le document"));
+    closeAction->setEnabled(false);
     file->addSeparator();
     file->addAction(words::of("&Print…", "Im&primer…"), QKeySequence::Print,
         this, &MainWindow::printDocument);
@@ -311,10 +317,23 @@ bool MainWindow::open(const QString& wanted) {
     setWindowTitle(info.fileName() + " — "
         + QApplication::applicationDisplayName());
     statusBar()->showMessage(path);
+    closeAction->setEnabled(true);
     // The page reads the document at a single address, so it is told to read it
     // again rather than sent to another one.
     ask("load()");
     return true;
+}
+
+void MainWindow::closeDocument() {
+    if (path.isEmpty()) {
+        return;
+    }
+    path.clear();
+    server->setPath(QString());
+    closeAction->setEnabled(false);
+    setWindowTitle(QApplication::applicationDisplayName());
+    statusBar()->clearMessage();
+    ask("unload()");
 }
 
 QString MainWindow::lastDirectory() const {

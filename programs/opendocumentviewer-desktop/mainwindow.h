@@ -29,6 +29,7 @@
 #include <QString>
 
 class ViewerScheme;
+class QAction;
 class QTimer;
 class QWebEngineView;
 
@@ -60,6 +61,8 @@ protected:
 
 private slots:
     void chooseDocument();
+    /** Put the document away, leaving the window as it opens with none. */
+    void closeDocument();
     /** Show the page that tells what the format is worth and what this does. */
     void aboutFormat();
     void exportPdf();
@@ -81,6 +84,8 @@ private:
     QTimer* keeper;
     /** The window of the page above, kept so that one is opened at a time. */
     QWidget* reading;
+    /** Turned off while no document is open, as there is none to close. */
+    QAction* closeAction;
     QString path;
 };
 
