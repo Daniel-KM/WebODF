@@ -3863,7 +3863,21 @@
             pagesDiv = null;
             if (!paginated
                     || !domUtils.getDirectChild(odfnode.body, officens, 'text')) {
+                // A text drawn as one run is drawn on a ground of its own, as
+                // it was before the pages were drawn. A presentation keeps a
+                // clear ground, so that the gap between two slides is seen.
+                if (sizer
+                        && domUtils.getDirectChild(odfnode.body, officens,
+                            'text')) {
+                    sizer.style.background = "white";
+                }
                 return;
+            }
+            // Each page paints itself from here on, so the box that holds them
+            // is left clear and the ground of the reader is seen between two
+            // of them, as it is between two slides.
+            if (sizer) {
+                sizer.style.background = "";
             }
             pagesDiv = /**@type{!HTMLDivElement}*/(doc.createElementNS(element.namespaceURI, 'div'));
             pagesDiv.className = 'webodf-pages';

@@ -1242,8 +1242,13 @@ odf.Style2CSS = function Style2CSS() {
                     + applySimpleMapping(imageProps, bgImageSimpleMapping);
             }
             if (background) {
-                sheet.insertRule('office|body {' + background + '}',
-                    sheet.cssRules.length);
+                // The same fill is given to the sheets a paginated text is
+                // drawn on, see "TextLayout.js": a page is painted on its own
+                // there, so the ground of the reader is seen between two of
+                // them, where the body is painted from the first page to the
+                // last.
+                sheet.insertRule('office|body, .webodf-pageSheet {'
+                    + background + '}', sheet.cssRules.length);
             }
 
             // TODO: We want to use the simpleMapping for ODTs, but not until we have pagination.

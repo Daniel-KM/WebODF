@@ -35,6 +35,7 @@ odf.TextLayout = function TextLayout() {
         stylens = "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
         textns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
         drawns = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0",
+        webodfhelperns = "urn:webodf:names:helper",
         svgns = "urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0",
         dcns = "http://purl.org/dc/elements/1.1/",
         metans = "urn:oasis:names:tc:opendocument:xmlns:meta:1.0",
@@ -316,16 +317,6 @@ odf.TextLayout = function TextLayout() {
             headerFirst: child("header-first"),
             footerFirst: child("footer-first")
         };
-    }
-    /**
-     * @param {!odf.TextLayout.PageFurniture} furniture
-     * @return {!boolean}
-     */
-    function hasFurniture(furniture) {
-        return Boolean(furniture.header || furniture.footer
-            || furniture.headerLeft || furniture.footerLeft
-            || furniture.headerFirst || furniture.footerFirst
-            || furniture.shapes.length > 0);
     }
     /**
      * The master page a document names after the first one: a title page is
@@ -723,7 +714,8 @@ odf.TextLayout = function TextLayout() {
         for (i = boxes.length - 1; i >= 0; i -= 1) {
             box = /**@type{!Element}*/(boxes.item(i));
             if (box.className === "webodf-pageShapes"
-                    || box.className === "webodf-pageFurniture") {
+                    || box.className === "webodf-pageFurniture"
+                    || box.className === "webodf-pageSheet") {
                 box.parentNode.removeChild(box);
             }
         }
@@ -760,13 +752,20 @@ odf.TextLayout = function TextLayout() {
             n;
         removeBoxes(pagesDiv);
         removeBoxes(behind);
-        if (!hasFurniture(dims.firstPage) && !hasFurniture(dims.otherPages)) {
-            return;
-        }
+        // The body no longer paints the ground of the whole text: each page
+        // is painted on its own, see the rule of "office|body" in
+        // "webodf.css". A class would not do, as the engine of the styles
+        // reads none on an element of another namespace.
+        behind.setAttributeNS(webodfhelperns, "paginated", "true");
         for (n = 0; n < pages; n += 1) {
             top = n * (dims.pageHeight + dims.pageSeparation);
             header = pageArea(dims, "header", n + 1);
             footer = pageArea(dims, "footer", n + 1);
+            // The sheet of the page, that carries its fill: it is drawn
+            // first, and everything of the page is drawn over it.
+            box = pageShapesBox(doc, htmlns, dims, top);
+            box.className = "webodf-pageSheet";
+            behind.insertBefore(box, behind.firstChild);
             shapes = (n === 0 ? dims.firstPage : dims.otherPages).shapes;
             if (shapes.length > 0) {
                 // What is drawn over the text hangs beside it, as the header

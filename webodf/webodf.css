@@ -48,6 +48,16 @@ office|body {
   /* The page, margins included, is white if document doesn't set background. */
   background: white;
 }
+/* A text drawn over pages paints each page on its own, so that the ground of
+   the reader is seen between two of them, see "TextLayout.js". The body is
+   then painted by nothing, as its fill would run from the first page to the
+   last. */
+office|body[webodfhelper|paginated] {
+  background: none;
+}
+.webodf-pageSheet {
+  background: white;
+}
 
 text|p, text|h {
   display: block;
@@ -766,20 +776,11 @@ div.webodf-customScrollbars::-webkit-scrollbar-thumb
     font-weight: bold;
 }
 
-/* The pages a text is broken over, see "TextLayout.js": the boxes themselves
-   are never seen, the text flows around them, and only the gap between two
-   pages is drawn, in the grey a reader expects between two sheets. The gap is
-   the one the slides of a presentation are drawn with, ten pixels, see the
-   rule of "draw|page" above.
-
-   TODO: the gap of the slides is a margin, that shows the ground of the
-   reader, where this one is painted: a text is one "office:text" whose fill
-   runs from the first page to the last, so a gap left clear would be white on
-   white and no page would be seen to end. Drawing the fill by page instead of
-   by document would make the two the same, and it touches what a document
-   says of its own ground, so it is left for later. */
+/* The gap between two pages of a text, that shows the ground of the reader as
+   the gap between two slides does: each page is painted on its own, so nothing
+   is drawn here, see "TextLayout.js". */
 .webodf-pageSeparator {
-  background: rgba(0, 0, 0, 0.15);
+  background: none;
 }
 
 /* The header and the footer of a page, laid over the room the boxes of the
