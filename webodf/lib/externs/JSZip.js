@@ -14,10 +14,15 @@ The wrapper of the distribution is replaced, so that the class is attached to
 the shared object "externs" instead of the global scope, and so that the
 modules it holds do not see the commonjs of node: the library of webodf is
 loaded with require(), and jszip would then export itself to it.
+
+The scope it is attached to is read from "globalThis" first: the "global" of
+rhino is an object of its shell and not the scope the scripts share, so the
+class was written where nothing could read it, and every test of the zip
+failed there.
  * @licend
 */
 !function(e){
-    var globalScope = typeof window !== "undefined" ? window : (typeof global !== "undefined" ? global : {}),
+    var globalScope = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : (typeof global !== "undefined" ? global : {})),
         externs = globalScope.externs || (globalScope.externs = {});
     externs.JSZip = e();
 }(function(){var define,module,exports;if(define||module||exports){console.log("");}return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){

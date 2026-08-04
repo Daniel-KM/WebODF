@@ -53,6 +53,25 @@ add_custom_command(
 add_custom_target(test-rhino ALL DEPENDS _rhinotest/rhinotest.timestamp)
 add_dependencies(webodf.js-tests test-rhino)
 
+# The same suite again, from the file the compiler wrote rather than from the
+# sources: what is shipped is what is tested. It carries the library, so it
+# needs no path to it, and it runs in a directory of its own, as a test writes
+# files and two engines would write the same ones at once.
+COPY_FILES(tests_simplerhinotests ${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_BINARY_DIR}/_simplerhinotest ${TESTS_TESTFILES} )
+
+add_custom_command(
+    OUTPUT _simplerhinotest/simplerhinotest.timestamp
+    COMMAND ${Java_JAVA_EXECUTABLE} -jar ${RHINO}
+        ${CMAKE_CURRENT_BINARY_DIR}/../simplecompiled.js
+    COMMAND ${TOUCHFILE} simplerhinotest.timestamp
+    WORKING_DIRECTORY _simplerhinotest
+    DEPENDS Rhino simplecompiled.js-target ${tests_simplerhinotests}
+)
+add_custom_target(test-simplerhino ALL
+    DEPENDS _simplerhinotest/simplerhinotest.timestamp)
+add_dependencies(webodf.js-tests test-simplerhino)
+
 if (BUILD_QTJSRUNTIME)
     COPY_FILES(tests_qtjsruntimetest ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/_qtjsruntimetest ${TESTS_TESTFILES} )

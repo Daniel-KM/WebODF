@@ -153,8 +153,19 @@ file (APPEND ${CMAKE_CURRENT_BINARY_DIR}/cc-noTestFiles.txt " --js ${CMAKE_CURRE
 # this requires a separate file as other targets don't want to compile the test files
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/cc-noTestFiles.txt ${CMAKE_CURRENT_BINARY_DIR}/cc-withTestFiles.txt)
 
+# A third flagfile, for the file that is run rather than checked: it carries
+# jszip, which the strict compilation refuses as it is minified, and it carries
+# it before the tests. The compiler puts a file named on the command line after
+# the ones of a flagfile, and jszip writes itself into the scope when it is
+# read: a test that opens a zip reads it at once in an engine that has no loop
+# of events, rhino among them.
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/cc-noTestFiles.txt ${CMAKE_CURRENT_BINARY_DIR}/cc-runTestFiles.txt)
+file (APPEND ${CMAKE_CURRENT_BINARY_DIR}/cc-runTestFiles.txt
+    " --js ${CMAKE_CURRENT_SOURCE_DIR}/lib/externs/JSZip.js")
+
 foreach(JSFILE ${TESTJSFILES})
     file (APPEND ${CMAKE_CURRENT_BINARY_DIR}/cc-withTestFiles.txt " --js ${CMAKE_CURRENT_SOURCE_DIR}/${JSFILE}")
+    file (APPEND ${CMAKE_CURRENT_BINARY_DIR}/cc-runTestFiles.txt " --js ${CMAKE_CURRENT_SOURCE_DIR}/${JSFILE}")
 endforeach(JSFILE ${TESTJSFILES})
 
 # nonStandardJsDocs is not used because we use @licstart @licend and @source
@@ -171,8 +182,7 @@ add_custom_command(
     COMMAND ${Java_JAVA_EXECUTABLE}
     ARGS ${SHARED_CLOSURE_ARGS}
         --js ${HEADERCOMPILED_FILE}
-        --flagfile ${CMAKE_CURRENT_BINARY_DIR}/cc-withTestFiles.txt
-        --js ${CMAKE_CURRENT_SOURCE_DIR}/lib/externs/*.js
+        --flagfile ${CMAKE_CURRENT_BINARY_DIR}/cc-runTestFiles.txt
         --compilation_level WHITESPACE_ONLY
         --formatting PRETTY_PRINT
         --js_output_file simplecompiled.js-
