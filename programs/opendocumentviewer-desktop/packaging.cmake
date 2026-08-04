@@ -204,9 +204,12 @@ if (UNIX AND NOT APPLE)
             COMMAND ${CMAKE_COMMAND} -E env
                 LDAI_OUTPUT=${VIEWER_APPIMAGE}
                 ${VIEWER_QMAKE}
-                # The plugin of qt looks for the modules of qml and says so
-                # where a program has none, which the viewer has not: it is
-                # told to leave qml alone.
+                # The plugin of qt looks for the modules of qml a program
+                # asks for and says it found none: the viewer holds no qml of
+                # its own, and the qml of qt is carried all the same, as the
+                # engine of the web leans on it. The warning is looked for
+                # and left alone: there is nothing to scan, and skipping the
+                # module would take from the engine what it runs on.
                 QT_SKIP_MODULES=qml
                 ${LINUXDEPLOY} --appdir ${VIEWER_APPDIR}
                     --desktop-file
