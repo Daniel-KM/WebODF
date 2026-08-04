@@ -1639,7 +1639,8 @@ odf.TextLayout = function TextLayout() {
      * @return {!string}
      */
     function namespaceRules() {
-        var text = "";
+        var /**@type{!string}*/
+            text = "";
         odf.Namespaces.forEachPrefix(function (prefix, ns) {
             text += "@namespace " + prefix + " url(" + ns + ");\n";
         });
@@ -1680,9 +1681,15 @@ odf.TextLayout = function TextLayout() {
      * @return {undefined}
      */
     function clearOwnRules(sheet) {
-        var i;
+        var /**@type{!number}*/
+            i,
+            /**@type{!CSSRule}*/
+            rule;
         for (i = sheet.cssRules.length - 1; i >= 0; i -= 1) {
-            if (sheet.cssRules[i].type !== 10) {
+            rule = /**@type{!CSSRule}*/(sheet.cssRules.item(i));
+            // A rule of a prefix, "CSSRule.NAMESPACE_RULE", is of the sheet
+            // itself and is kept: only what a layout wrote is dropped.
+            if (rule.type !== 10) {
                 sheet.deleteRule(i);
             }
         }
