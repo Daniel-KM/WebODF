@@ -8,6 +8,10 @@ add_subdirectory(docnosis)
 
 add_subdirectory(opendocumentviewer-webext)
 
+if(BUILD_DESKTOP)
+  add_subdirectory(opendocumentviewer-desktop)
+endif(BUILD_DESKTOP)
+
 add_subdirectory(benchmark)
 add_subdirectory(editor)
 add_subdirectory(cordova)

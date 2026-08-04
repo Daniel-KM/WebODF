@@ -1,0 +1,77 @@
+/* Every rule of this page names "html > body" rather than "body": an element of
+   a document carries the local name "body", "office:body", which a selector of
+   one name reaches as well, so the colour, the font and the alignment of the
+   page were inherited by the whole document. */
+html, html > body, div {
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+html {
+    /* The page of a document is white paper, so it is declared light whatever
+       the theme of the system is: chromium then leaves its colours alone
+       instead of darkening them as it paints, and the ground below still
+       follows the theme, from the rules of this file. */
+    color-scheme: light;
+}
+html, html > body {
+    height: 100%;
+    /* The ground sets the page apart, as a reader of pdf does, and follows the
+       theme of the system. The page itself is white, from the style sheet of
+       the library. */
+    background: #d4d4d7;
+    color: #15141a;
+    font-family: sans-serif;
+    /* The library turns the element it draws in into an inline block, so the
+       page is put in the middle by this alignment. */
+    text-align: center;
+}
+/* What is said when there is no document, or when it cannot be drawn, read in
+   the middle of the ground. */
+p#message, p#failure {
+    box-sizing: border-box;
+    max-width: 28em;
+    margin: 0 auto;
+    padding: 4em 2em;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+p#failure {
+    opacity: 1;
+}
+/* The way to the page of the format, read on the ground of the theme, under
+   the words that ask for a document. */
+p#ways {
+    padding-bottom: 2em;
+}
+p#ways > a {
+    color: inherit;
+    font-size: 0.95em;
+    opacity: 0.75;
+}
+div#odf {
+    /* Keeps the page off the edges of the window. */
+    padding: 1em;
+    /* The page is white paper, from the style sheet of the library, whatever
+       the theme of the system is, so the ink is dark in both themes: a
+       document that names no colour for a text would take the one of the
+       ground below, which is white under a dark theme, on white paper. */
+    color: #15141a;
+}
+@media (prefers-color-scheme: dark) {
+    html, html > body {
+        background: #2a2a2e;
+        color: #fbfbfe;
+    }
+}
+
+/* On paper, the ground has nothing to do: the page of the document is the page
+   that is printed, and the grey around it would be printed with it. */
+@media print {
+    html, html > body {
+        background: white;
+    }
+    div#odf {
+        padding: 0;
+    }
+}

@@ -333,6 +333,59 @@ It replaces the product of "programs/cordova", that drove cordova 3.5, of 2014,
 and built android with ant, which google dropped in 2015 for gradle, through the
 executable "android", that the sdk replaced by "sdkmanager" in 2018.
 
+### OpenDocument Viewer for the desktop
+
+This program shows a document of the OpenDocument format on a desktop, on linux,
+on windows and on macos: a window of qt around the same page the add-ons of the
+browsers and the viewer for android draw a document in. There is one place where
+the reading of the format lives, and one behaviour to keep in step.
+
+It reads the text (.odt), the spreadsheets (.ods), the presentations (.odp) and
+the drawings (.odg), with their templates. A document is opened from the menu,
+by dropping it in the window, or by naming it on the command line, which is how
+a file manager opens one. It is drawn at the size it was written at, and only
+scaled down when it is wider than the window; the menu of the display zooms it,
+sets it back to its own size, or fits it to the width.
+
+A document is printed, and written as a pdf, by the printing of the engine.
+
+The menu of the help, and the foot of the empty screen, lead to a page that
+tells what the viewer does and what the format is worth, in French or in
+English, after the language of the system. The part about the format is the same
+text as the one the add-ons and the viewer for android show, and it is the same
+file: see "One text for every product" below.
+
+With a prepared setup for building, from the build directory:
+
+```sh
+cmake -S ../webodf -DWEBODF_DESKTOP=ON
+make product-opendocumentviewer-desktop
+```
+
+It is behind the option WEBODF_DESKTOP, as it needs the modules of qt, and it
+is built by that option alone: it needs neither Dojo nor the editors, so
+WEBODF_PROGRAMS is not asked for. The modules are the ones qtjsruntime needs,
+see "README-Building.md".
+
+The program is one file: the page, its style, its script, the library and the
+icon are all put in it, so it runs wherever it is copied. It is installed with
+what a desktop needs to offer it for a document:
+
+```sh
+make install
+```
+
+It writes the program in "bin", an entry in "share/applications" that names the
+nine types of the format, and the icon under the name of the entry, as the
+specification of the freedesktop asks. A double click on a document then offers
+the viewer among the applications that read the format.
+
+The page and the document it shows are served by the program itself, under a
+scheme of its own, "odf:", see "programs/opendocumentviewer-desktop/viewerscheme.cpp":
+they are one origin that way, which is what the page needs to read the document,
+and the disk is not opened to it for that, as the one document that was chosen
+is served, at one address, whichever file it is.
+
 ### One text for every product
 
 The pages of the products tell what the OpenDocument format is worth, and they

@@ -95,17 +95,26 @@ string(REGEX REPLACE "-dirty$" "" WEBODF_MANIFEST_VERSION "${WEBODF_MANIFEST_VER
 # is the blink of chromium, see "programs/qtjsruntime".
 option(WEBODF_QTJSRUNTIME "Build qtjsruntime, that runs the tests in the webengine of qt" OFF)
 
-# 6.4 is the oldest version the program is written for, the one of Debian 12.
-# Everything it uses was already in the first release of Qt 6: a channel to the
-# page, a collection of scripts on the profile, and printing to a pdf.
+# The viewer of OpenDocument for the desktop is a window of qt around the page
+# the library draws in, see "programs/opendocumentviewer-desktop". It is opt-in
+# for the same reason, and it is built by the option alone, without
+# WEBODF_PROGRAMS, as it needs neither Dojo nor the editors.
+option(WEBODF_DESKTOP "Build the viewer of OpenDocument for the desktop, in qt" OFF)
+
+# 6.4 is the oldest version the two programs are written for, the one of Debian
+# 12. Everything they use was already in the first release of Qt 6: a channel to
+# the page, a collection of scripts on the profile, a handler of a url scheme,
+# and printing to a pdf.
 set(BUILD_QTJSRUNTIME FALSE)
-if (WEBODF_QTJSRUNTIME)
-  find_package(Qt6 6.4 COMPONENTS Core Gui Widgets WebChannel WebEngineCore WebEngineWidgets)
+set(BUILD_DESKTOP FALSE)
+if (WEBODF_QTJSRUNTIME OR WEBODF_DESKTOP)
+  find_package(Qt6 6.4 COMPONENTS Core Gui Widgets PrintSupport WebChannel WebEngineCore WebEngineWidgets)
 
   if (Qt6_FOUND)
-    set(BUILD_QTJSRUNTIME TRUE)
+    set(BUILD_QTJSRUNTIME ${WEBODF_QTJSRUNTIME})
+    set(BUILD_DESKTOP ${WEBODF_DESKTOP})
   else ()
-    message(FATAL_ERROR "Qt6 with the modules Core Gui Widgets WebChannel WebEngineCore WebEngineWidgets was not found, so qtjsruntime cannot be built. On Debian 12 and later: apt-get install qt6-base-dev qt6-base-dev-tools qt6-webchannel-dev qt6-webengine-dev qt6-webengine-dev-tools")
+    message(FATAL_ERROR "Qt6 with the modules Core Gui Widgets PrintSupport WebChannel WebEngineCore WebEngineWidgets was not found, so neither qtjsruntime nor the viewer for the desktop can be built. On Debian 12 and later: apt-get install qt6-base-dev qt6-base-dev-tools qt6-webchannel-dev qt6-webengine-dev qt6-webengine-dev-tools")
   endif ()
 endif ()
 
@@ -430,10 +439,16 @@ add_subdirectory(webodf)
 # the programs/components
 if (WEBODF_PROGRAMS)
     add_subdirectory(programs)
-elseif (BUILD_QTJSRUNTIME)
-    # It is a program, but the tests of the library are run with it, so it is
-    # built for them alone as well.
-    add_subdirectory(programs/qtjsruntime)
+else ()
+    # Two programs are built by their own option, without the others: the tests
+    # of the library are run with the first one, and the second needs neither
+    # Dojo nor the editors.
+    if (BUILD_QTJSRUNTIME)
+        add_subdirectory(programs/qtjsruntime)
+    endif ()
+    if (BUILD_DESKTOP)
+        add_subdirectory(programs/opendocumentviewer-desktop)
+    endif ()
 endif ()
 
 # vim:expandtab
