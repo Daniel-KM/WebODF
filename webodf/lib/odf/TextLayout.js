@@ -2021,6 +2021,78 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
+     * How many lines a paragraph is written over.
+     *
+     * The lines of a paragraph are the rectangles of the text it holds, of
+     * which there may be more than one to a line where the line holds text
+     * of more than one style: those that begin at the same height are of
+     * one line.
+     * @param {!Element} element
+     * @return {!number}
+     */
+    function linesOf(element) {
+        var doc = /**@type{!Document}*/(element.ownerDocument),
+            range = doc.createRange(),
+            /**@type{!Object.<string,boolean>}*/
+            tops = {},
+            /**@type{!ClientRectList}*/
+            rects,
+            /**@type{!number}*/
+            i;
+        range.selectNodeContents(element);
+        rects = range.getClientRects();
+        for (i = 0; i < rects.length; i += 1) {
+            tops[String(Math.round(rects.item(i).top))] = true;
+        }
+        return Object.keys(tops).length;
+    }
+    /**
+     * The number a style asks for, or the one that stands for none.
+     * @param {!string} said
+     * @param {!number} fallback
+     * @return {!number}
+     */
+    function askedNumber(said, fallback) {
+        var read = parseInt(said, 10);
+        return isNaN(read) || read < 1
+            ? fallback
+            : read;
+    }
+    /**
+     * Whether a paragraph that was cut in two is cut where an office would
+     * cut it.
+     *
+     * An office leaves no line of a paragraph alone at the foot of a page,
+     * nor alone at the head of the next: "fo:orphans" says how many lines
+     * are kept at the foot and "fo:widows" how many at the head, and
+     * "fo:keep-together" says that the paragraph is not cut at all. They are
+     * read from the style the browser worked out, as the sheet of the
+     * document carries them under the names css gives them.
+     * @param {!Element} element what is left on the page
+     * @param {!number} whole how many lines it held before it was cut
+     * @return {!boolean}
+     */
+    function cutWhereAnOfficeWould(element, whole) {
+        var style = runtime.getWindow().getComputedStyle(element),
+            /**@type{!number}*/
+            head,
+            /**@type{!number}*/
+            tail;
+        if (!style) {
+            return true;
+        }
+        if (style.getPropertyValue("break-inside") === "avoid") {
+            return false;
+        }
+        head = linesOf(element);
+        tail = whole - head;
+        if (tail < 1) {
+            return true;
+        }
+        return head >= askedNumber(style.getPropertyValue("orphans"), 2)
+            && tail >= askedNumber(style.getPropertyValue("widows"), 2);
+    }
+    /**
      * Whether a node was marked as beginning a page of its own.
      * @param {!Node} node
      * @return {!boolean}
@@ -2495,6 +2567,8 @@ odf.TextLayout = function TextLayout() {
             /**@type{!number}*/
             held,
             /**@type{!number}*/
+            lines,
+            /**@type{!number}*/
             guard,
             /**@type{!{left:!number,top:!number}}*/
             place,
@@ -2553,8 +2627,21 @@ odf.TextLayout = function TextLayout() {
                 node = /**@type{!Node}*/(added[added.length - 1]);
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     held = String(node.textContent).length;
+                    lines = linesOf(/**@type{!Element}*/(node));
                     rest = cutElement(box, /**@type{!Element}*/(node), 8,
                         box.childNodes.length === 1);
+                    if (rest && box.childNodes.length > 1
+                            && !cutWhereAnOfficeWould(
+                                /**@type{!Element}*/(node), lines
+                            )) {
+                        // The cut would leave a line alone at the foot of
+                        // the page or at the head of the next: the whole of
+                        // it is written on the page that follows.
+                        while (rest.firstChild) {
+                            node.appendChild(rest.firstChild);
+                        }
+                        rest = null;
+                    }
                     if (rest && String(rest.textContent).length >= held
                             && held > 0) {
                         // Nothing of it was left on the page, so cutting it
@@ -2793,11 +2880,21 @@ odf.TextLayout = function TextLayout() {
                 /**@type{!number}*/
                 held,
                 /**@type{!number}*/
+                lines,
+                /**@type{!number}*/
                 n;
             while (guard > 0 && over) {
                 held = String(over.textContent).length;
+                lines = linesOf(over);
                 more = cutElement(box, over, 8,
                     over === box.firstElementChild);
+                if (more && over !== box.firstElementChild
+                        && !cutWhereAnOfficeWould(over, lines)) {
+                    while (more.firstChild) {
+                        over.appendChild(more.firstChild);
+                    }
+                    more = null;
+                }
                 if (more && String(more.textContent).length >= held
                         && held > 0) {
                     while (more.firstChild) {
