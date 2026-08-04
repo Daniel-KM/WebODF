@@ -3857,6 +3857,8 @@
          * @return {undefined}
          */
         function drawPages(container, odfnode) {
+            var /**@type{?FontFaceSet}*/
+                fonts;
             if (pagesDiv && pagesDiv.parentNode) {
                 pagesDiv.parentNode.removeChild(pagesDiv);
             }
@@ -3886,6 +3888,17 @@
             container.getContentElement().parentNode.insertBefore(pagesDiv,
                 container.getContentElement());
             textLayout.layout(odfnode, pagesDiv, 100);
+            // A font of the document may still be on its way: the width of
+            // every line changes when it lands, and the pages are laid out
+            // once more so that a header keeps its parts apart.
+            fonts = doc.fonts || null;
+            if (fonts && fonts.ready) {
+                fonts.ready.then(function () {
+                    if (paginated && pagesDiv && pagesDiv.parentNode) {
+                        textLayout.layout(odfnode, pagesDiv, 100);
+                    }
+                });
+            }
         }
         /**
          * Draw a text over pages, or as one run of text, which is how it is

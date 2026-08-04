@@ -930,8 +930,12 @@ odf.TextLayout = function TextLayout() {
             }));
         });
         lines.forEach(function (pieces, l) {
-            var edge = 0,
-                right = room[l];
+            var /**@type{!number}*/
+                edge = 0,
+                /**@type{!number}*/
+                right = room[l],
+                /**@type{!number}*/
+                gap = 4;
             pieces.forEach(function (piece, i) {
                 var rect = rects[l][i],
                     push;
@@ -939,8 +943,10 @@ odf.TextLayout = function TextLayout() {
                     return;
                 }
                 push = 0;
-                if (edge > 0 && rect.left < edge) {
-                    push = Math.min(edge - rect.left,
+                if (edge > 0 && rect.left < edge + gap) {
+                    // A blank is left between two parts that were pushed
+                    // together, so the two are still read as two.
+                    push = Math.min(edge + gap - rect.left,
                         Math.max(0, right - rect.right));
                     // The part is already drawn against its stop, and is
                     // only pushed from where it stands.
@@ -949,6 +955,47 @@ odf.TextLayout = function TextLayout() {
                 }
                 edge = rect.right + push;
             });
+        });
+    }
+    /**
+     * Give back to the copies of a header the names of the styles the
+     * document wrote, where the canvas stamped names of its own.
+     *
+     * A style the canvas draws a second time is named "<time>_webodf_Footer",
+     * and no rule of the stylesheet answers to that name: a footer drawn with
+     * it is written in the font of nothing, rather than in the one the
+     * document asks for. The name of the document is set back wherever the
+     * stamped one stands for no style at all.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} box a header or a footer, drawn for a page
+     * @return {undefined}
+     */
+    function unstampStyleNames(odfroot, box) {
+        var /**@type{!Object.<!string,!string>}*/
+            families = {p: "paragraph", h: "paragraph", span: "text",
+                list: "list"},
+            nodes = box.getElementsByTagName("*"),
+            /**@type{!Array.<!Element>}*/
+            found = [],
+            i;
+        for (i = 0; i < nodes.length; i += 1) {
+            found.push(/**@type{!Element}*/(nodes.item(i)));
+        }
+        found.forEach(function (node) {
+            var /**@type{!string}*/
+                family = families.hasOwnProperty(node.localName)
+                    ? families[node.localName]
+                    : "",
+                name = node.getAttributeNS(textns, "style-name") || "",
+                plain = plainStyleName(name);
+            if (node.namespaceURI !== textns || family === ""
+                    || plain === name) {
+                return;
+            }
+            if (!styleOf(odfroot, name, family)
+                    && styleOf(odfroot, plain, family)) {
+                node.setAttributeNS(textns, "text:style-name", plain);
+            }
         });
     }
     /**
@@ -978,6 +1025,7 @@ odf.TextLayout = function TextLayout() {
             }
         }
         box.appendChild(doc.importNode(source, true));
+        unstampStyleNames(odfroot, box);
         fill("page-number", String(page));
         fill("page-count", String(pages));
         Object.keys(meta).forEach(function (name) {
