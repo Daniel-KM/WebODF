@@ -10,6 +10,13 @@ of it as they are, under the Mozilla Public License, version 2.0:
   libreoffice-beehive.otp          extras/source/templates/presnt/Beehive
   libreoffice-bpmn.otg             extras/source/templates/draw/bpmn
 
+Three more are documents of the suite of tests of LibreOffice, of the same
+licence, that answer for the kinds a template does not:
+
+  libreoffice-formats.ods          sc/qa/unit/data/ods/formats.ods
+  libreoffice-bullets.odp          sd/qa/unit/data/odp/BulletsAsImage.odp
+  libreoffice-fit-to-frame.odg     sd/qa/unit/data/odg/FitToFrameText.odg
+
   https://git.libreoffice.org/core/+/refs/heads/master/extras/source/templates/
 
 The sources keep a template unpacked, one directory to a template, and the

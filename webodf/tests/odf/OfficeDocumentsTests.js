@@ -40,6 +40,7 @@ odf.OfficeDocumentsTests = function OfficeDocumentsTests(runner) {
     "use strict";
     var t, r = runner,
         drawns = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0",
+        tablens = "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
         textns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0";
     this.setUp = function () {
         t = {};
@@ -62,8 +63,11 @@ odf.OfficeDocumentsTests = function OfficeDocumentsTests(runner) {
             t.expected = kind;
             r.shouldBe(t, "t.kind", "t.expected");
             // Every one of them is a template, which the mimetype says.
+            // A template says so in its mimetype; a document of the same
+            // kind does not, and is read the same way.
             t.template = t.odf.isTemplate();
-            r.shouldBe(t, "t.template", "true");
+            t.expectTemplate = path.indexOf(".ot") !== -1;
+            r.shouldBe(t, "t.template", "t.expectTemplate");
             callback();
         });
     }
@@ -82,28 +86,52 @@ odf.OfficeDocumentsTests = function OfficeDocumentsTests(runner) {
     function readTheCurriculumOfAnOffice(callback) {
         readOne("documents/libreoffice-cv.ott", "text", callback);
     }
-    function readThePresentationOfAnOffice(callback) {
-        readOne("documents/libreoffice-beehive.otp", "presentation", function () {
+    /**
+     * Answer that the document holds pages, and go on.
+     * @param {!function():undefined} callback
+     * @return {!function():undefined}
+     */
+    function hasPages(callback) {
+        return function () {
             t.pages = t.odf.rootElement.body.getElementsByTagNameNS(
                 drawns,
                 "page"
             ).length;
             r.shouldBe(t, "t.pages > 0", "true");
             callback();
-        });
+        };
+    }
+    function readThePresentationOfAnOffice(callback) {
+        readOne("documents/libreoffice-beehive.otp", "presentation",
+            hasPages(callback));
     }
     function readTheDrawingOfAnOffice(callback) {
         // A drawing holds its pages in "office:drawing", which was read as
         // nothing at all before: the document was refused for want of a body
         // it was taken to have none of.
-        readOne("documents/libreoffice-bpmn.otg", "drawing", function () {
-            t.pages = t.odf.rootElement.body.getElementsByTagNameNS(
-                drawns,
-                "page"
-            ).length;
-            r.shouldBe(t, "t.pages > 0", "true");
-            callback();
-        });
+        readOne("documents/libreoffice-bpmn.otg", "drawing",
+            hasPages(callback));
+    }
+    function readTheSpreadsheetOfAnOffice(callback) {
+        readOne("documents/libreoffice-formats.ods", "spreadsheet",
+            function () {
+                // Three sheets of cells, that the numbers of a spreadsheet
+                // are written in every format of.
+                t.sheets = t.odf.rootElement.body.getElementsByTagNameNS(
+                    tablens,
+                    "table"
+                ).length;
+                r.shouldBe(t, "t.sheets", "3");
+                callback();
+            });
+    }
+    function readThePagesOfAPresentation(callback) {
+        readOne("documents/libreoffice-bullets.odp", "presentation",
+            hasPages(callback));
+    }
+    function readThePagesOfADrawing(callback) {
+        readOne("documents/libreoffice-fit-to-frame.odg", "drawing",
+            hasPages(callback));
     }
     this.tests = function () {
         return [];
@@ -113,7 +141,10 @@ odf.OfficeDocumentsTests = function OfficeDocumentsTests(runner) {
             readTheLetterOfAnOffice,
             readTheCurriculumOfAnOffice,
             readThePresentationOfAnOffice,
-            readTheDrawingOfAnOffice
+            readTheDrawingOfAnOffice,
+            readTheSpreadsheetOfAnOffice,
+            readThePagesOfAPresentation,
+            readThePagesOfADrawing
         ]);
     };
 };
