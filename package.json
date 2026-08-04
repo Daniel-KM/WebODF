@@ -45,6 +45,7 @@
     "terser": "^5.50.0"
   },
   "scripts": {
+    "prepare": "node scripts/build.js",
     "build": "node scripts/build.js",
     "check": "node scripts/check.js",
     "check:tests": "node scripts/check.js --tests",
