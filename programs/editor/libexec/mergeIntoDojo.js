@@ -103,8 +103,17 @@
     // for as the last line of the file, which held while dojo was minified
     // into one line by its own build; it is looked for by what it does
     // instead, so that a build that is not minified is read as well.
+    // The modules are put before the block that boots the loader, which is
+    // the block that takes what the layer holds in its cache and hands it to
+    // the loader: a module written after it is a module the loader never
+    // finds there, and asks a server for. The block was looked for as the
+    // last line of the file, which held only while dojo minified its layer
+    // into one line; it is looked for by what it does instead.
     tail = dojo_build.toString();
-    idx = tail.lastIndexOf("!require.async");
+    idx = tail.lastIndexOf("require({cache:{}})");
+    if (idx !== -1) {
+        idx = tail.lastIndexOf("(function(", idx);
+    }
     if (idx === -1) {
         idx = tail.lastIndexOf("\n");
     }
