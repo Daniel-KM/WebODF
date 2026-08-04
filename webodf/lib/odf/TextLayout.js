@@ -1990,6 +1990,16 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
+     * Whether a node was marked as beginning a page of its own.
+     * @param {!Node} node
+     * @return {!boolean}
+     */
+    function asksForANewPage(node) {
+        return node.nodeType === Node.ELEMENT_NODE
+            && /**@type{!Element}*/(node).hasAttributeNS(webodfhelperns,
+                "breakbefore");
+    }
+    /**
      * The page a place across the drawn document falls on, from zero.
      * @param {!number} x from the left edge of the body of the document
      * @return {!number}
@@ -2480,9 +2490,21 @@ odf.TextLayout = function TextLayout() {
         while (state.waiting.length > 0) {
             added = /**@type{!Array.<!Node>}*/([]);
             while (added.length < state.chunk && state.waiting.length > 0) {
-                node = /**@type{!Node}*/(state.waiting.shift());
+                node = /**@type{!Node}*/(state.waiting[0]);
+                // What the document asks to be written on a new page ends
+                // the page that is being filled, unless it is the first
+                // thing on it: a break before the first node would leave an
+                // empty page behind, and the browser is asked for the same
+                // where the pages are broken into columns.
+                if (asksForANewPage(node) && box.firstChild) {
+                    break;
+                }
+                state.waiting.shift();
                 box.appendChild(node);
                 added.push(node);
+            }
+            if (added.length === 0) {
+                break;
             }
             if (overflows(box) && added.length > 1) {
                 while (added.length > 0) {
