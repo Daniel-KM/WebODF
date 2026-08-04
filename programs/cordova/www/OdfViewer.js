@@ -18,7 +18,7 @@
  * along with WebODF.  If not, see <http://www.gnu.org/licenses/>.
  * @licend
  *
- * @source: http://www.webodf.org/
+ * @source: https://webodf.org/
  * @source: https://github.com/webodf/WebODF/
  */
 /*global FileScanner, window, DirectoryEntry, FileScannerEntry, FileScannerFileEntry, Blob, XMLHttpRequest, odf, console, WebKitBlobBuilder, navigator, runtime, FileReader, Uint8Array, endsWith*/

@@ -22,6 +22,6 @@
  * along with WebODF.  If not, see <http://www.gnu.org/licenses/>.
  * @licend
  *
- * @source: http://www.webodf.org/
+ * @source: https://webodf.org/
  * @source: https://github.com/webodf/WebODF/
  */
