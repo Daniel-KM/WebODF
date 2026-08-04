@@ -123,6 +123,7 @@ if (DPKG_DEB)
             --config ${CMAKE_BINARY_DIR}/CPackConfig.cmake
         COMMAND ${CMAKE_COMMAND} -DDIR=${VIEWER_CPACK_DIR}
             -DDEST=${VIEWER_PRODUCTS} -DEXT=deb
+            -DNAME=${CPACK_PACKAGE_FILE_NAME}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/data/copy-packages.cmake
         DEPENDS opendocumentviewer-desktop
         COMMENT "The package of debian of the viewer of the desktop")
@@ -140,6 +141,7 @@ if (RPMBUILD)
             --config ${CMAKE_BINARY_DIR}/CPackConfig.cmake
         COMMAND ${CMAKE_COMMAND} -DDIR=${VIEWER_CPACK_DIR}
             -DDEST=${VIEWER_PRODUCTS} -DEXT=rpm
+            -DNAME=${CPACK_PACKAGE_FILE_NAME}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/data/copy-packages.cmake
         DEPENDS opendocumentviewer-desktop
         COMMENT "The package of fedora of the viewer of the desktop")
