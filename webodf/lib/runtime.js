@@ -1250,11 +1250,44 @@ function RhinoRuntime() {
     "use strict";
     var self = this,
         dom = Packages.javax.xml.parsers.DocumentBuilderFactory.newInstance(),
+        // A browser exposes these dom interfaces globally and the whole
+        // library uses their constants. Java provides the same constants on
+        // its own interface of a node, and NodeFilter is only a set of them.
+        // The global object is seen as a map holding them, since the type of
+        // the compiler for globalThis refuses an object of constants alone.
+        javaNode = Packages.org.w3c.dom.Node,
+        /**@type{!{Node:(!Function|undefined),NodeFilter:(!Object|undefined)}}*/
+        globalScope = /**@type{!{Node:(!Function|undefined),NodeFilter:(!Object|undefined)}}*/(globalThis),
         /**@type{!Packages.javax.xml.parsers.DocumentBuilder}*/
         builder,
         entityresolver,
         /**@type{!string}*/
         currentDirectory = "";
+    if (!globalScope.Node) {
+        globalScope.Node = javaNode;
+    }
+    if (!globalScope.NodeFilter) {
+        // Only the constants are used, so the object does not implement the
+        // methods of the interface of a browser.
+        globalScope.NodeFilter = {
+            SHOW_ALL: 4294967295,
+            SHOW_ELEMENT: 1,
+            SHOW_ATTRIBUTE: 2,
+            SHOW_TEXT: 4,
+            SHOW_CDATA_SECTION: 8,
+            SHOW_ENTITY_REFERENCE: 16,
+            SHOW_ENTITY: 32,
+            SHOW_PROCESSING_INSTRUCTION: 64,
+            SHOW_COMMENT: 128,
+            SHOW_DOCUMENT: 256,
+            SHOW_DOCUMENT_TYPE: 512,
+            SHOW_DOCUMENT_FRAGMENT: 1024,
+            SHOW_NOTATION: 2048,
+            FILTER_ACCEPT: 1,
+            FILTER_REJECT: 2,
+            FILTER_SKIP: 3
+        };
+    }
     dom.setValidating(false);
     dom.setNamespaceAware(true);
     dom.setExpandEntityReferences(false);

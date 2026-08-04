@@ -418,6 +418,24 @@ Packages.org.xml.sax.EntityResolver = function (definition) {"use strict"; };
  * @param {!Packages.java.io.Reader|!string} reader
  */
 Packages.org.xml.sax.InputSource = function (reader) {"use strict"; };
+
+/**
+ * @const {!Object}
+ */
+Packages.org.w3c = {};
+
+/**
+ * @const {!Object}
+ */
+Packages.org.w3c.dom = {};
+
+/**
+ * The interface of the nodes of the dom of java, that holds the constants a
+ * browser exposes on the global Node.
+ * @const {!Function}
+ */
+Packages.org.w3c.dom.Node;
+
 /**
  * @type {!StyleSheet}
  */
