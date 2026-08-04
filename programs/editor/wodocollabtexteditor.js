@@ -375,7 +375,7 @@ window.Wodo = window.Wodo || (function () {
         }
 
         /**
-         * @param {!function(err:?Error, !Uint8Array=):undefined} cb receiving zip as bytearray
+         * @param {!function(?Error, !Uint8Array=):undefined} cb receiving zip as bytearray
          * @return {undefined}
          */
         function getDocumentAsByteArray(cb) {
@@ -591,7 +591,7 @@ window.Wodo = window.Wodo || (function () {
     /**
      * @param {!string} mainContainerElementId
      * @param {!Object.<!string,!*>} editorOptions
-     * @param {!function(err:?Error, editor:!CollabTextEditor=):undefined} onEditorCreated
+     * @param {!function(?Error, !CollabTextEditor=):undefined} onEditorCreated
      * @return {undefined}
      */
     function createInstance(mainContainerElementId, editorOptions, onEditorCreated) {

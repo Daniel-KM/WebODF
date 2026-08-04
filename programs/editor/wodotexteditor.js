@@ -472,7 +472,7 @@ window.Wodo = window.Wodo || (function () {
         /**
          * @name TextEditor#getDocumentAsByteArray
          * @function
-         * @param {!function(err:?Error, file:!Uint8Array=):undefined} callback Called with the current document as ODT file as bytearray, passes an error object in case of error
+         * @param {!function(?Error, !Uint8Array=):undefined} callback Called with the current document as ODT file as bytearray, passes an error object in case of error
          * @return {undefined}
          */
         this.getDocumentAsByteArray = function (callback) {
@@ -809,7 +809,7 @@ window.Wodo = window.Wodo || (function () {
      * @param [editorOptions.userData] data about the user editing the document
      * @param [editorOptions.userData.fullName] full name of the user, used for annotations and in the metadata of the document
      * @param [editorOptions.userData.color="black"] color to use for any user related indicators like cursor or annotations
-     * @param {!function(err:?Error, editor:!TextEditor=):undefined} onEditorCreated
+     * @param {!function(?Error, !TextEditor=):undefined} onEditorCreated
      * @return {undefined}
      */
     function createTextEditor(editorContainerElementId, editorOptions, onEditorCreated) {
