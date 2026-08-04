@@ -380,11 +380,30 @@ and the css are generated in memory, not in files. The build with cmake writes
 in the directory given to cmake, usually "build", next to the sources, and
 keeps its downloads there.
 
-Both libraries hold the same code: the sources concatenated in the order of
-their dependencies, with IS_COMPILED_CODE set to true so that the runtime does
-not load the classes one by one. The one built with node is about eight percent
-smaller, since terser compresses more than the closure compiler used with
-SIMPLE_OPTIMIZATIONS.
+Both libraries are the same file, byte for byte: the sources concatenated in
+the order of their dependencies, with IS_COMPILED_CODE set to true so that the
+runtime does not load the classes one by one, minified by terser. The build
+with cmake runs "scripts/build.js" as well, see "Two ways to build" above.
+
+### Running the add-ons without installing them
+
+The three packages of "programs/firefoxextension", see "README-Products.md",
+are loaded from their directory, with a profile of their own, so that nothing
+has to be clicked and nothing is kept:
+
+```sh
+npx web-ext run --source-dir build/firefox-extension-odfviewer-mv2-x.y.z/
+chromium --user-data-dir=$(mktemp -d) --no-first-run \
+    --load-extension=build/chrome-extension-odfviewer-x.y.z/
+```
+
+web-ext writes a temporary profile, installs the add-on in it and follows the
+changes of the files; "--firefox" chooses the binary and "--url" opens a page
+at once. Firefox refuses an unsigned xpi, but not a directory loaded this way,
+which is what "about:debugging" does by hand.
+
+Chrome keeps the profile of "--user-data-dir", hence the temporary directory,
+and "--load-extension" only takes a directory, never a zip.
 
 ### What the closure compiler is used for
 
