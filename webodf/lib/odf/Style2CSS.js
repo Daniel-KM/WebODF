@@ -1493,6 +1493,10 @@ odf.Style2CSS.stampOne = function (element) {
     var /**@type{!Array.<!string>}*/
         written = [],
         named = odf.Style2CSS.styleNameAttributes,
+        /**@type{!Array.<!string>}*/
+        stale,
+        /**@type{!number}*/
+        borne,
         /**@type{!number}*/
         i,
         /**@type{!string}*/
@@ -1503,7 +1507,22 @@ odf.Style2CSS.stampOne = function (element) {
             written.push(odf.Style2CSS.classOfStyle(named[i].prefix, name));
         }
     }
-    written.forEach(function (attribute) {
+    // What was written for a name the element no longer carries is taken
+    // off: a header is drawn from a copy whose style was stamped by the
+    // canvas and named again after, and the attribute of the stamped name
+    // would stand beside the one of the true name.
+    stale = [];
+    borne = element.attributes.length;
+    for (i = 0; i < borne; i += 1) {
+        name = String(/**@type{!Attr}*/(element.attributes.item(i)).name);
+        if (name.indexOf("odf-") === 0 && written.indexOf(name) === -1) {
+            stale.push(name);
+        }
+    }
+    stale.forEach(function (/**@type{!string}*/ attribute) {
+        element.removeAttribute(attribute);
+    });
+    written.forEach(function (/**@type{!string}*/ attribute) {
         if (!element.hasAttribute(attribute)) {
             element.setAttribute(attribute, "");
         }

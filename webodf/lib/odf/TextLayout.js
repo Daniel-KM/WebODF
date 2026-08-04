@@ -1210,6 +1210,12 @@ odf.TextLayout = function TextLayout() {
         }
         box.appendChild(doc.importNode(source, true));
         unstampStyleNames(odfroot, box);
+        // The name of the style is the one of the document again, so the
+        // attribute the rules of that style are written against is written
+        // anew: it carried the name the canvas stamped, that names nothing
+        // any more, and a header drawn without its style is drawn of the
+        // size of a text and no longer of eight points.
+        odf.Style2CSS.stampStyleClasses(box);
         expandSpaces(box);
         paragraphsOf(box).forEach(function (paragraph, index) {
             layOutTabStops(odfroot, paragraph);
@@ -1458,6 +1464,12 @@ odf.TextLayout = function TextLayout() {
         /**@type{!HTMLElement}*/(box).style.width = width + "px";
         box.appendChild(doc.importNode(source, true));
         unstampStyleNames(odfroot, box);
+        // The name of the style is the one of the document again, so the
+        // attribute the rules of that style are written against is written
+        // anew: it carried the name the canvas stamped, that names nothing
+        // any more, and a header drawn without its style is drawn of the
+        // size of a text and no longer of eight points.
+        odf.Style2CSS.stampStyleClasses(box);
         expandSpaces(box);
         odfroot.body.appendChild(box);
         height = box.getBoundingClientRect().height;
