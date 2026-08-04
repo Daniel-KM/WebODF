@@ -171,6 +171,7 @@ if (NOT APPLE)
     # AppImage and of the flatpak ask for. The version is the one of the
     # build, in the three numbers a release carries.
     set(OPENDOCUMENTVIEWER_METAINFO_VERSION ${WEBODF_MANIFEST_VERSION})
+    string(TIMESTAMP OPENDOCUMENTVIEWER_METAINFO_DATE "%Y-%m-%d" UTC)
     configure_file(data/org.webodf.OpenDocumentViewer.metainfo.xml.in
         ${CMAKE_CURRENT_BINARY_DIR}/org.webodf.OpenDocumentViewer.metainfo.xml
         @ONLY)
