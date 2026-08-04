@@ -84,6 +84,18 @@ Root: HKA; Subkey: "Software\Classes\.otg\OpenWithProgids"; ValueType: string; \
 Root: HKA; Subkey: "Software\Classes\.odf\OpenWithProgids"; ValueType: string; \
     ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
     Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.fodt\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.fods\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.fodp\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.fodg\OpenWithProgids"; ValueType: string; \
+    ValueName: "OpenDocumentViewer.Document"; ValueData: ""; \
+    Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\opendocumentviewer-desktop.exe"; \
