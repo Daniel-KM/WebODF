@@ -3917,6 +3917,22 @@
             }
         };
         /**
+         * Break the text into columns, one column to a page, rather than
+         * write it as one run of text with the pages floating beside it. A
+         * column is broken by the browser itself, so a paragraph and a table
+         * are cut where a page ends, and the pages stand beside one another
+         * rather than under one another.
+         * @param {!boolean} enable
+         * @return {undefined}
+         */
+        this.setPagesInColumns = function (enable) {
+            textLayout.setColumns(enable);
+            if (paginated && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
          * @return {!boolean}
          */
         this.isPaginated = function () {
@@ -4138,6 +4154,21 @@
             refreshOdf(suppressEvent === true);
         };
         /**
+         * The word a reader is given while a document is read.
+         *
+         * The address of the document is not written beside it: a reader
+         * asked for the document and knows which one, and the address of a
+         * viewer is one of its own, "odf:/document", which says nothing.
+         * @param {!Document} doc
+         * @return {!Element}
+         */
+        function loadingMessage(doc) {
+            var box = doc.createElementNS(element.namespaceURI, 'div');
+            box.className = 'webodf-loading';
+            box.appendChild(doc.createTextNode(runtime.tr('Loading the document…')));
+            return box;
+        }
+        /**
          * @param {string} url
          * @return {undefined}
          */
@@ -4145,11 +4176,10 @@
             // clean up
             loadingQueue.clearQueue();
 
-            // FIXME: We need to support parametrized strings, because
-            // drop-in word replacements are inadequate for translations;
-            // see http://techbase.kde.org/Development/Tutorials/Localization/i18n_Mistakes#Pitfall_.232:_Word_Puzzles
             domUtils.removeAllChildNodes(element);
-            element.appendChild(element.ownerDocument.createTextNode(runtime.tr('Loading') + url + '...'));
+            element.appendChild(loadingMessage(
+                /**@type{!Document}*/(element.ownerDocument)
+            ));
             element.removeAttribute('style');
             // open the odf container
             odfcontainer = new odf.OdfContainer(url, function (container) {

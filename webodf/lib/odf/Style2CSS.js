@@ -1026,8 +1026,32 @@ odf.Style2CSS = function Style2CSS() {
      * @return {string}
      */
     function getTableProperties(props) {
-        var rule = '', borderModel;
+        var rule = '', borderModel, align;
         rule += applySimpleMapping(props, tablePropertySimpleMapping);
+        // Where the table stands between the margins of the page, as
+        // "table:align" says. A table set against the margins takes the
+        // width of the text and not the width its style writes, which is
+        // the width it had when it was written; one that stands on a side
+        // or in the middle keeps its width and is moved by its margins.
+        align = props.getAttributeNS(tablens, 'align');
+        if (align === 'margins') {
+            rule += 'width:100%;';
+        } else if (align === 'center') {
+            rule += 'margin-left:auto;margin-right:auto;';
+        } else if (align === 'right') {
+            rule += 'margin-left:auto;margin-right:0;';
+        } else if (align === 'left') {
+            rule += 'margin-left:0;margin-right:auto;';
+        }
+        // A table of a width the document wrote keeps that width: the
+        // browser lays a table out from what is written in it unless it is
+        // told otherwise, and a long address in a cell made the table wider
+        // than the page, with a bar to scroll under it.
+        if (align !== 'margins'
+                && (props.hasAttributeNS(stylens, 'width')
+                    || props.hasAttributeNS(stylens, 'rel-width'))) {
+            rule += 'table-layout:fixed;';
+        }
         borderModel = props.getAttributeNS(tablens, 'border-model');
 
         if (borderModel === 'collapsing') {
@@ -1226,6 +1250,27 @@ odf.Style2CSS = function Style2CSS() {
             }
 
         } else if (documentType === 'text') {
+            // A document holds a layout for each master page it was written
+            // with, and the text is drawn on one of them: the first master
+            // page of the document, which is the one a paragraph is written
+            // on unless it says otherwise. The rules of every other layout
+            // were written all the same, and the last of them won, so the
+            // text was drawn in the margins of the endnotes or of the html
+            // page rather than in its own.
+            masterStyles = domUtils.getDirectChild(
+                /**@type{!Element}*/(node.parentNode.parentNode),
+                officens,
+                'master-styles'
+            );
+            e = masterStyles && masterStyles.firstElementChild;
+            while (e && !(e.namespaceURI === stylens
+                    && e.localName === "master-page")) {
+                e = e.nextElementSibling;
+            }
+            if (e && e.getAttributeNS(stylens, 'page-layout-name')
+                    !== stylename) {
+                return;
+            }
             contentLayoutRule = 'office|text {' + rule + '}';
             rule = '';
 

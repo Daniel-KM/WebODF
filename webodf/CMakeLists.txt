@@ -61,6 +61,7 @@ set(TESTJSFILES
     tests/odf/StyleCacheTests.js
     tests/odf/FormattingTests.js
     tests/odf/LayoutTests.js
+    tests/odf/PageLayoutTests.js
     tests/odf/ListStyleToCssTests.js
     tests/odf/ObjectNameGeneratorTests.js
     tests/odf/MaliciousDocumentTests.js
