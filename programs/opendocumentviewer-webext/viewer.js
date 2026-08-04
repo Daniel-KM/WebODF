@@ -155,6 +155,29 @@
             api.runtime.getURL("welcome." + language + ".html");
     }());
 
+    // How the pages are laid out, which the menu asks of the canvas: one
+    // page under another as a document is scrolled, two beside one another as
+    // a book is read, and the first of them alone on the right where a book
+    // begins on a right page.
+    (function () {
+        var ways = [
+            {id: "onepage", perRow: 1, alone: false},
+            {id: "twopages", perRow: 2, alone: false},
+            {id: "twopagesright", perRow: 2, alone: true}
+        ];
+        ways.forEach(function (way) {
+            var entry = document.getElementById(way.id);
+            if (!entry) {
+                return;
+            }
+            entry.addEventListener("click", function () {
+                canvas.setPagesPerRow(way.perRow);
+                canvas.setFirstPageOnItsOwn(way.alone);
+                showMenu(false);
+            });
+        });
+    }());
+
     menubutton.addEventListener("click", function (event) {
         event.stopPropagation();
         showMenu(menu.hidden);

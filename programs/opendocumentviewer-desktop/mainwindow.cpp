@@ -50,6 +50,7 @@
 #include <QTimer>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
+#include <QActionGroup>
 #include <QWebEngineView>
 
 #include <functional>
@@ -253,6 +254,27 @@ void MainWindow::createMenus() {
         QKeySequence(Qt::CTRL | Qt::Key_0), this, [this] { ask("setZoom(1)"); });
     display->addAction(words::of("Fit to &width", "Ajuster à la &largeur"),
         QKeySequence(Qt::CTRL | Qt::Key_9), this, [this] { ask("fit()"); });
+
+    // How the pages are laid out: one under another as a document is
+    // scrolled, or two beside one another as a book is read, where the first
+    // page faces nothing of its own.
+    display->addSeparator();
+    QActionGroup* const rows = new QActionGroup(this);
+    QAction* const onePage = display->addAction(
+        words::of("&One page", "Une &page"), this,
+        [this] { ask("setPages(1, false)"); });
+    QAction* const twoPages = display->addAction(
+        words::of("&Two pages", "&Deux pages"), this,
+        [this] { ask("setPages(2, false)"); });
+    QAction* const twoPagesRight = display->addAction(
+        words::of("Two pages, first on the &right",
+            "Deux pages, la p&remière à droite"), this,
+        [this] { ask("setPages(2, true)"); });
+    for (QAction* const one : {onePage, twoPages, twoPagesRight}) {
+        one->setCheckable(true);
+        rows->addAction(one);
+    }
+    onePage->setChecked(true);
 
     QMenu* const help = menuBar()->addMenu(words::of("&Help", "Aid&e"));
     help->addAction(words::of("About &OpenDocument and this viewer",

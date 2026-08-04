@@ -1078,6 +1078,75 @@
             }
         }
         /**
+         * Hold the number of a heading away from what it names.
+         *
+         * A level of an outline says how wide its label stands and how far
+         * it stands from the text — "text:min-label-width" and
+         * "text:min-label-distance" — and a document that says neither
+         * writes a suffix instead: without any of the three the number of a
+         * chapter and its name run into one another, "1.2Terminology".
+         * @param {!CSSStyleSheet} styleSheet
+         * @param {(!Object.<string,!odf.StyleTreeNode>|undefined)} listStyles
+         * @return {undefined}
+         */
+        function spaceHeadings(styleSheet, listStyles) {
+            var /**@type{?Element}*/
+                outline = null,
+                /**@type{?Element}*/
+                node,
+                /**@type{!function(!Element):undefined}*/
+                spaceOneLevel;
+            if (!listStyles) {
+                return;
+            }
+            Object.keys(listStyles).forEach(function (name) {
+                if (!outline
+                        && listStyles[name].element.localName
+                            === "outline-style") {
+                    outline = listStyles[name].element;
+                }
+            });
+            if (!outline) {
+                return;
+            }
+            spaceOneLevel = function (/**@type{!Element}*/ level) {
+                var /**@type{?Element}*/
+                    props = level.firstElementChild,
+                    /**@type{!string}*/
+                    which = level.getAttributeNS(textns, "level") || "",
+                    /**@type{!string}*/
+                    width = props
+                        ? props.getAttributeNS(textns, "min-label-width") || ""
+                        : "",
+                    /**@type{!string}*/
+                    gap = props
+                        ? props.getAttributeNS(textns, "min-label-distance")
+                            || ""
+                        : "",
+                    /**@type{!string}*/
+                    rule = "";
+                if (!which) {
+                    return;
+                }
+                if (width) {
+                    rule += "min-width:" + convertToPxValue(width) + "px;";
+                }
+                if (gap) {
+                    rule += "padding-right:" + convertToPxValue(gap) + "px;";
+                }
+                if (rule) {
+                    appendRule(styleSheet,
+                        'text|h[odf-list-label][text|outline-level="' + which
+                            + '"]:before{' + rule + '}');
+                }
+            };
+            node = /**@type{!Element}*/(outline).firstElementChild;
+            while (node) {
+                spaceOneLevel(node);
+                node = node.nextElementSibling;
+            }
+        }
+        /**
          * Creates CSS styles from the given ODF list styles and applies them to the stylesheet
          * @param {!CSSStyleSheet} styleSheet
          * @param {!odf.StyleTree.Tree} styleTree
@@ -1103,7 +1172,9 @@
             numberLists(odfBody, styleFamilyTree);
             numberHeadings(odfBody, styleFamilyTree);
             appendRule(styleSheet, 'text|h[odf-list-label]:before'
-                + '{content: attr(odf-list-label); white-space: pre;}');
+                + '{content: attr(odf-list-label); white-space: pre;'
+                + 'display: inline-block;}');
+            spaceHeadings(styleSheet, styleFamilyTree);
         };
     };
 }());
