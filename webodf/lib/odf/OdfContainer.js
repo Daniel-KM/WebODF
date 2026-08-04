@@ -1456,6 +1456,12 @@
             zip = new webodfcore.Zip(url, function (err, zipobject) {
                 zip = zipobject;
                 if (err) {
+                    // A document that was read whole is not read again as a
+                    // flat xml because a late answer says it failed: the
+                    // second answer of one request would undo the first.
+                    if (self.state === OdfContainer.DONE) {
+                        return;
+                    }
                     loadFromXML(url, function (xmlerr) {
                         if (err) {
                             zip.error = err + "\n" + xmlerr;

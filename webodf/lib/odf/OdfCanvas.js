@@ -38,6 +38,10 @@
         var /**@type{!Array.<!Function>}*/
             queue = [],
             taskRunning = false,
+            /**@type{?Function}*/
+            drained = null,
+            /**@type{?Function}*/
+            waiting = null,
             /**@type{!boolean}*/
             destroyed = false,
             /**@type{!number}*/
@@ -64,6 +68,10 @@
                 taskRunning = false;
                 if (queue.length > 0) {
                     run(queue.pop());
+                } else if (drained) {
+                    waiting = drained;
+                    drained = null;
+                    waiting();
                 }
             }, 10);
         }
@@ -83,6 +91,20 @@
             if (timeoutId !== -1) {
                 runtime.clearTimeout(timeoutId);
                 timeoutId = -1;
+            }
+        };
+        /**
+         * Do something once nothing is left to load: the images of a
+         * document land after it is drawn, and what is drawn from the size
+         * of what it holds is drawn again then.
+         * @param {!Function} task
+         * @return {undefined}
+         */
+        this.whenDrained = function (task) {
+            if (!taskRunning && queue.length === 0) {
+                task();
+            } else {
+                drained = task;
             }
         };
         /**
@@ -3448,6 +3470,19 @@
             shouldRefreshCss = false,
             shouldRerenderAnnotations = false,
             loadingQueue = new LoadingQueue(),
+            /**
+             * How wide a note of an annotation is drawn, four centimetres,
+             * where the pane cannot be read for it: see "webodf.css".
+             * @const
+             * @type{!number}
+             */
+            noteLaneWidth = 151,
+            /**
+             * Whether the fonts of the reader have landed: the pages are
+             * laid out again when they do, and once only.
+             * @type{!boolean}
+             */
+            fontsWereReady = false,
             /**@type{!gui.ZoomHelper}*/
             zoomHelper = new gui.ZoomHelper(),
             /**@type{!gui.Viewport}*/
@@ -3887,18 +3922,52 @@
             pagesDiv.style.position = 'relative';
             container.getContentElement().parentNode.insertBefore(pagesDiv,
                 container.getContentElement());
-            textLayout.layout(odfnode, pagesDiv, 100);
-            // A font of the document may still be on its way: the width of
-            // every line changes when it lands, and the pages are laid out
-            // once more so that a header keeps its parts apart.
+            // A lane is left beside each page for the notes of the
+            // annotations when the pages stand beside one another, as the
+            // pane beside the whole text has nowhere to stand there.
+            textLayout.setNoteLane(allowAnnotations
+                ? noteLaneWidth
+                : 0);
             fonts = doc.fonts || null;
-            if (fonts && fonts.ready) {
+            // A text is broken into pages once the fonts and the images of
+            // the document have landed: a line is of another width and a
+            // frame of another height until then, so the pages would be
+            // broken twice, and a document of a thousand pages is not broken
+            // twice for nothing.
+            if (fonts && fonts.ready && String(fonts.status) !== "loaded"
+                    && !fontsWereReady) {
                 fonts.ready.then(function () {
+                    fontsWereReady = true;
                     if (paginated && pagesDiv && pagesDiv.parentNode) {
-                        textLayout.layout(odfnode, pagesDiv, 100);
+                        loadingQueue.whenDrained(function () {
+                            if (pagesDiv) {
+                                textLayout.layout(odfnode, pagesDiv, 100);
+                            }
+                        });
                     }
                 });
+                return;
             }
+            loadingQueue.whenDrained(function () {
+                if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
+                    return;
+                }
+                textLayout.layout(odfnode,
+                    /**@type{!HTMLDivElement}*/(pagesDiv), 100);
+                // The pages are read once they are drawn: what is drawn
+                // after them, and the fonts it asks for, may make a page
+                // hold one line less, and they are broken again then, once.
+                runtime.setTimeout(function () {
+                    // A text that is still being broken sets its own pages
+                    // right when it is done, so nothing is asked of it here.
+                    if (paginated && pagesDiv && pagesDiv.parentNode
+                            && !textLayout.isBreaking()
+                            && !textLayout.pagesFit(odfnode)) {
+                        textLayout.repair(odfnode,
+                            /**@type{!HTMLDivElement}*/(pagesDiv));
+                    }
+                }, 0);
+            });
         }
         /**
          * Draw a text over pages, or as one run of text, which is how it is
@@ -3917,16 +3986,37 @@
             }
         };
         /**
-         * Break the text into columns, one column to a page, rather than
-         * write it as one run of text with the pages floating beside it. A
-         * column is broken by the browser itself, so a paragraph and a table
-         * are cut where a page ends, and the pages stand beside one another
-         * rather than under one another.
-         * @param {!boolean} enable
+         * Whether the first page stands on its own, on the right of the
+         * first row, as the first page of a book does.
+         * @param {!boolean} alone
          * @return {undefined}
          */
-        this.setPagesInColumns = function (enable) {
-            textLayout.setColumns(enable);
+        this.setFirstPageOnItsOwn = function (alone) {
+            textLayout.setFirstPageOnItsOwn(alone);
+            if (paginated && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * How many pages stand side by side on a row, see "TextLayout.js".
+         * @param {!number} pages
+         * @return {undefined}
+         */
+        this.setPagesPerRow = function (pages) {
+            textLayout.setPagesPerRow(pages);
+            if (paginated && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
+         * The way a text is drawn over pages, see "TextLayout.js".
+         * @param {!string} mode
+         * @return {undefined}
+         */
+        this.setPageMode = function (mode) {
+            textLayout.setPageMode(mode);
             if (paginated && odfcontainer
                     && odfcontainer.state === odf.OdfContainer.DONE) {
                 drawPages(odfcontainer, odfcontainer.rootElement);
@@ -4267,6 +4357,13 @@
                 allowAnnotations = allow;
                 showAnnotationRemoveButton = showRemoveButton;
                 if (odfcontainer) {
+                    // The pages are drawn again: a lane is left beside each
+                    // of them for the notes when the pages stand beside one
+                    // another, and it is not left when there are none.
+                    if (paginated
+                            && odfcontainer.state === odf.OdfContainer.DONE) {
+                        drawPages(odfcontainer, odfcontainer.rootElement);
+                    }
                     handleAnnotations(odfcontainer.rootElement);
                 }
             }
@@ -4318,14 +4415,49 @@
             return zoomHelper.getZoomLevel();
         };
         /**
+         * Where the page that holds a place of the drawn document begins and
+         * ends across, in the pixels the document is written in, or nothing
+         * when it is drawn as one run of text: a note of an annotation is
+         * drawn in the lane beside the page it belongs to.
+         * @param {!number} x from the left edge of the window
+         * @return {?{left:!number,right:!number}}
+         */
+        this.pageBoxAt = function (x) {
+            var ground = odfcontainer && odfcontainer.rootElement.body
+                    ? odfcontainer.rootElement.body.getBoundingClientRect()
+                    : null,
+                zoomLevel = zoomHelper.getZoomLevel();
+            if (!ground || !paginated) {
+                return null;
+            }
+            return textLayout.pageAt((x - ground.left) / zoomLevel);
+        };
+        /**
+         * How wide and how tall what a reader is shown at once is, at the
+         * size the document was written at: the whole of the document when
+         * it is drawn as one run of text, and one page when the pages stand
+         * beside one another.
+         * @return {!{width:!number,height:!number}}
+         */
+        function fittingSize() {
+            var zoomLevel = zoomHelper.getZoomLevel(),
+                page = paginated
+                    ? textLayout.pageSize()
+                    : null;
+            return page || {
+                width: element.offsetWidth / zoomLevel,
+                height: element.offsetHeight / zoomLevel
+            };
+        }
+        /**
          * @param {!number} width
          * @param {!number} height
          * @return {undefined}
          */
         this.fitToContainingElement = function (width, height) {
-            var zoomLevel = zoomHelper.getZoomLevel(),
-                realWidth = element.offsetWidth / zoomLevel,
-                realHeight = element.offsetHeight / zoomLevel,
+            var size = fittingSize(),
+                realWidth = size.width,
+                realHeight = size.height,
                 zoom;
 
             zoom = width / realWidth;
@@ -4339,8 +4471,7 @@
          * @return {undefined}
          */
         this.fitToWidth = function (width) {
-            var realWidth = element.offsetWidth / zoomHelper.getZoomLevel();
-            zoomHelper.setZoomLevel(width / realWidth);
+            zoomHelper.setZoomLevel(width / fittingSize().width);
         };
         /**
          * @param {!number} width
@@ -4348,11 +4479,10 @@
          * @return {undefined}
          */
         this.fitSmart = function (width, height) {
-            var realWidth, realHeight, newScale,
-                zoomLevel = zoomHelper.getZoomLevel();
-
-            realWidth = element.offsetWidth / zoomLevel;
-            realHeight = element.offsetHeight / zoomLevel;
+            var size = fittingSize(),
+                realWidth = size.width,
+                realHeight = size.height,
+                newScale;
 
             newScale = width / realWidth;
             if (height !== undefined) {
@@ -4368,8 +4498,7 @@
          * @return {undefined}
          */
         this.fitToHeight = function (height) {
-            var realHeight = element.offsetHeight / zoomHelper.getZoomLevel();
-            zoomHelper.setZoomLevel(height / realHeight);
+            zoomHelper.setZoomLevel(height / fittingSize().height);
         };
         /**
          * @return {undefined}

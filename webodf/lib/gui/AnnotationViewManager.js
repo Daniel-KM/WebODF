@@ -30,7 +30,7 @@
  * This needs to be fixed soon.
  */
 
-/*jslint emptyblock:true*/
+/*jslint emptyblock:true, unparam:true*/
 /**
  * Abstraction of document canvas that can have annotations.
  * @class
@@ -46,7 +46,14 @@ gui.AnnotatableCanvas.prototype.getZoomLevel = function () {"use strict"; };
  * @return {Element}
  */
 gui.AnnotatableCanvas.prototype.getSizer = function () {"use strict"; };
-/*jslint emptyblock:false*/
+/**
+ * Where the page that holds a place of the drawn document begins and ends
+ * across, or nothing when the document is drawn as one run of text.
+ * @param {!number} x from the left edge of the window
+ * @return {?{left:!number,right:!number}}
+ */
+gui.AnnotatableCanvas.prototype.pageBoxAt = function (x) {"use strict"; };
+/*jslint emptyblock:false, unparam:false*/
 
 /**
  * A GUI class for wrapping Annotation nodes inside html wrappers, positioning
@@ -225,12 +232,27 @@ gui.AnnotationViewManager = function AnnotationViewManager(canvas, odfFragment, 
             connectorAngle = 0,
             previousAnnotation = annotations[annotations.indexOf(annotation) - 1],
             previousRect,
+            /**@type{!number}*/
+            laneWidth,
+            /**@type{?{left:!number,right:!number}}*/
+            page,
             zoomLevel = canvas.getZoomLevel();
 
-        annotationNote.style.left =
-            (annotationsPane.getBoundingClientRect().left
-            - annotationWrapper.getBoundingClientRect().left) / zoomLevel + 'px';
-        annotationNote.style.width = annotationsPane.getBoundingClientRect().width / zoomLevel + 'px';
+        laneWidth = annotationsPane.getBoundingClientRect().width / zoomLevel;
+        // The notes stand in one pane beside the whole text, and beside each
+        // page when the pages stand beside one another: the page a note
+        // belongs to is the page the line it is written at stands on.
+        page = canvas.pageBoxAt(
+            annotationWrapper.getBoundingClientRect().left
+        );
+        annotationNote.style.left = page
+            ? page.right - ((annotationWrapper.getBoundingClientRect().left
+                - odfFragment.getBoundingClientRect().left) / zoomLevel)
+                + 'px'
+            : (annotationsPane.getBoundingClientRect().left
+                - annotationWrapper.getBoundingClientRect().left)
+                / zoomLevel + 'px';
+        annotationNote.style.width = laneWidth + 'px';
 
 
         connectorHorizontal.style.width = parseFloat(annotationNote.style.left)

@@ -90,7 +90,7 @@ odf.PageLayoutTests = function PageLayoutTests(runner) {
                 callback();
             });
             t.odfCanvas.setPaginated(true);
-            t.odfCanvas.setPagesInColumns(true);
+            t.odfCanvas.setPageMode("columns");
             t.odfCanvas.setOdfContainer(container);
         });
     }
@@ -237,15 +237,28 @@ odf.PageLayoutTests = function PageLayoutTests(runner) {
         draw(twoPageLayouts(paragraphs("Standard", 40)
                 + "<text:p text:style-name=\"Turn\">On its side.</text:p>"
                 + paragraphs("Standard", 10)), function () {
-            var boxes = sheets();
-            t.pages = boxes.length;
-            r.shouldBe(t, "t.pages", "2");
-            t.first = boxes[0].width + "x" + boxes[0].height;
-            r.shouldBe(t, "t.first", "'768x960'");
-            t.second = boxes[1].width + "x" + boxes[1].height;
-            r.shouldBe(t, "t.second", "'960x768'");
-            t.gap = boxes[1].left - (boxes[0].left + boxes[0].width);
-            r.shouldBe(t, "t.gap", "10");
+            var boxes = sheets(),
+                /**@type{!Array.<!string>}*/
+                sizes = boxes.map(function (box) {
+                    return box.width + "x" + box.height;
+                }),
+                /**@type{!Array.<!number>}*/
+                gaps = boxes.slice(1).map(function (box, index) {
+                    return box.left - (boxes[index].left + boxes[index].width);
+                });
+            // How many pages the text takes is of the machine, as a line of
+            // another width holds another number of words: what is asked
+            // here is that a page is of the size its master page gives it,
+            // upright or laid on its side, and that the pages stand ten
+            // pixels apart whatever their size.
+            t.upright = sizes.indexOf("768x960") !== -1;
+            r.shouldBe(t, "t.upright", "true");
+            t.onItsSide = sizes.indexOf("960x768") !== -1;
+            r.shouldBe(t, "t.onItsSide", "true");
+            t.apart = gaps.length > 0 && gaps.every(function (gap) {
+                return gap === 10;
+            });
+            r.shouldBe(t, "t.apart", "true");
             callback();
         });
     }
