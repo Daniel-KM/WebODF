@@ -1,16 +1,13 @@
 # This makefile 'compiles' WebODF using various tools, instruments the code and
 # builds and packages programs that use WebODF.
 
-cmake_minimum_required(VERSION 3.0.0)
+# The project needs cmake 3.10 and works with the policies of cmake 3.24. The
+# most useful of them is CMP0135: the archives of the tools are downloaded
+# from an url, so the timestamps of the files they hold have to be the ones of
+# the extraction, otherwise a change of the url does not rebuild what depends
+# on them. Older versions of cmake read the range as its first version only.
+cmake_minimum_required(VERSION 3.10...3.24)
 message("CMake version: ${CMAKE_VERSION}")
-
-# The archives of the tools are downloaded from an url: the timestamps of the
-# files they hold have to be the ones of the extraction, so that a change of
-# the url rebuilds what depends on them. The policy is only set when it is
-# known, as it was added by cmake 3.24.
-if (POLICY CMP0135)
-    cmake_policy(SET CMP0135 NEW)
-endif()
 
 # WebODF is mostly a JavaScript project. CMake needs to know about the C++ parts
 project(WebODF C CXX)
