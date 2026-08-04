@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global runtime, odf, xmldom, webodf_css, webodfcore, gui, atob, Uint8Array */
@@ -4072,17 +4072,17 @@
             if (odfcontainer.state === odf.OdfContainer.DONE) {
                 callback();
             } else {
-                // so the ODF is not done yet. take care that we'll
-                // do the work once it is done:
-
-                // FIXME: use callback registry instead of replacing the onchange
-                runtime.log("WARNING: refreshOdf called but ODF was not DONE.");
-
+                // The document is still being read, which is the ordinary
+                // course of things for a document of some size: the drawing
+                // waits for it and asks again, without a word, as a wait is not
+                // a fault. Only a document that never comes is told of.
                 waitingForDoneTimeoutId = runtime.setTimeout(function later_cb() {
                     if (odfcontainer.state === odf.OdfContainer.DONE) {
                         callback();
+                    } else if (odfcontainer.state === odf.OdfContainer.INVALID) {
+                        runtime.log("The document was not read: it is not an "
+                            + "OpenDocument, or it is broken.");
                     } else {
-                        runtime.log("will be back later...");
                         waitingForDoneTimeoutId = runtime.setTimeout(later_cb, 500);
                     }
                 }, 100);

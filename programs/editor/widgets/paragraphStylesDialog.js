@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global define, require, dojo, dijit, runtime */
@@ -239,7 +239,12 @@ function (IdMangler) {
                     dropDown: cloneTooltip,
                     style: "float: right; margin-bottom: 5px;"
                 });
-                topBar.addChild(cloneDropDown, 1);
+                // The widgets are added in the order they are read, without
+                // a place of their own: dojo asks a container for the child
+                // that stands at a place, and a container that holds none
+                // has no such child, which threw and left the editor with a
+                // toolbar of three buttons.
+                topBar.addChild(cloneDropDown);
 
                 deleteButton = new Button({
                     label: tr("Delete"),
@@ -250,7 +255,7 @@ function (IdMangler) {
                         deleteStyle(stylePicker.value());
                     }
                 });
-                topBar.addChild(deleteButton, 2);
+                topBar.addChild(deleteButton);
 
                 // Tab Container
                 tabContainer = new TabContainer({
@@ -285,7 +290,7 @@ function (IdMangler) {
                         stylePicker.widget().domNode.style.float = "left";
                         stylePicker.widget().domNode.style.width = "350px";
                         stylePicker.widget().domNode.style.marginTop = "5px";
-                        topBar.addChild(stylePicker.widget(), 0);
+                        topBar.addChild(stylePicker.widget());
 
                         stylePicker.onRemove = function () {
                             // The style picker automatically falls back

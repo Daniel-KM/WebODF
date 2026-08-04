@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global Wodo, require, navigator, dojo, runtime, document, window, webodfcore, ops, gui, odf*/

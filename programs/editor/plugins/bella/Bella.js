@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global define, window, ops*/
@@ -75,7 +75,7 @@ define("webodf/editor/plugins/bella/Bella", [
          * Workaround a TrivialUndoManager bug with cursor positions not being
          * correctly restored. It's done by adding OpMoveCursors for all cursors
          * with the current cursor state as the very last operations.
-         * (see also https://github.com/kogmbh/WebODF/issues/903)
+         * (see also https://github.com/webodf/WebODF/issues/903)
          * @return {undefined}
          */
         function saveCurrentCursorPositions() {

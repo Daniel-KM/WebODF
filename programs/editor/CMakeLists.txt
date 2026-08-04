@@ -89,6 +89,17 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy dojo-deps/dist/dojo/dojo.js dojo/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo-deps/dist/dojo/resources/ dojo/resources/
 
+    # The words of the languages that dojo gathers into one file by language,
+    # "dojo/nls/dojo_ROOT.js" and its like: the loader asks a server for them
+    # by their own way, that no cache of the layer answers.
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo-deps/dist/dojo/nls/ dojo/nls/
+
+    # The way dojo looks an element up, "dojo/selector/lite", that it asks a
+    # server for the first time a query is made: it is not in the layer, and
+    # without it the widgets that are made from a query are never made, the
+    # picker of the style of a paragraph among them.
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo-deps/dist/dojo/selector/ dojo/selector/
+
     COMMAND ${CMAKE_COMMAND} -E make_directory app/resources/
     COMMAND ${CMAKE_COMMAND} -E copy dojo-deps/dist/app/resources/app.css app/resources/
 
@@ -106,7 +117,14 @@ add_custom_command(
 
     COMMAND ${NODE} ${CMAKE_SOURCE_DIR}/webodf/tools/dojoNlsCompile.js dojo-deps/dist de fr nl it eu > dojobundle.js
 
-    COMMAND ${NODE} ${CMAKE_CURRENT_SOURCE_DIR}/libexec/mergeIntoDojo.js dojobuild=${DOJO_DEPS}/dist/dojo/dojo.js dojobundle.js > dojo-amalgamation.js
+    COMMAND ${NODE} ${CMAKE_CURRENT_SOURCE_DIR}/libexec/mergeIntoDojo.js dojobuild=${DOJO_DEPS}/dist/dojo/dojo.js dojobundle.js > dojo-amalgamation-full.js
+
+    # The layer of dojo is built without a minifier, see the profile beside
+    # this file, and the whole of it is minified here instead, by terser, the
+    # one the library is minified with: it leaves the modules of dojo alone,
+    # where the closure compiler of today writes half of them wrong.
+    COMMAND ${NODE} ${CMAKE_SOURCE_DIR}/node_modules/terser/bin/terser
+        dojo-amalgamation-full.js -c -m -o dojo-amalgamation.js
 
     # cleanup
     # COMMAND ${CMAKE_COMMAND} -E remove_directory dojo-deps/dist
@@ -150,6 +168,8 @@ add_custom_command(
     # more dojo (data) files
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo/resources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/nls ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo/nls
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/selector ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo/selector
     COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/app/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dijit/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojox/
@@ -253,6 +273,8 @@ add_custom_command(
     # more dojo (data) files
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo/resources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/nls ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo/nls
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/selector ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo/selector
     COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/app/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dijit/
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojox/

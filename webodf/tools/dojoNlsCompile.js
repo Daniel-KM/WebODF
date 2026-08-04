@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global require,process */
@@ -141,20 +141,33 @@
 		done: function() {
 			log("finished nls traversal.");
 			file_list.sort();
+			// The translations are handed to the loader as the layer of dojo
+			// hands its own modules over, in a cache of the module that each
+			// one is: a file that is written beside the layer instead is a
+			// module that waits in the queue of the loader, and the first
+			// module of the layer that declares itself without naming itself
+			// is then answered with the first one of that queue, which is a
+			// dictionary of words where a widget was asked for.
+			process.stdout.write("require({cache:{\n");
 			file_list.forEach(
-				function(x) {
-					var data = fs.readFileSync(x);
+				function(x, i) {
+					var data = fs.readFileSync(x),
+						id = x.substr(start.length).replace(/^\//, "")
+							.replace(/\.js$/, "");
 					if (!data) {
 						log("failed to read ["+x+"].");
-						process.stdout.write("/* FAILED TO READ NLS BUNDLE ENTRY ["+x+"] */\n");
-					} else {
-						log("writing: "+x);
-						// process.stdout.write("/* START OF NLS BUNDLE ENTRY ["+x+"] */\n");
-						process.stdout.write(data);
-						// process.stdout.write("\n/* END OF NLS BUNDLE ENTRY ["+x+"] */\n");
+						return;
 					}
+					log("writing: "+x);
+					if (i > 0) {
+						process.stdout.write(",\n");
+					}
+					process.stdout.write(JSON.stringify(id) + ": function(){\n");
+					process.stdout.write(data);
+					process.stdout.write("\n}");
 				}
 			);
+			process.stdout.write("\n}});\n");
 		}
 	});
 

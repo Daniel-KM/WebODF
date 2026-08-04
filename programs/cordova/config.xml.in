@@ -4,7 +4,7 @@
     <description>
         A viewer for OpenDocument Format files.
     </description>
-    <author email="jos.van.den.oever@kogmbh.com" href="http://webodf.org">
+    <author email="jos.van.den.oever@kogmbh.com" href="https://github.com/webodf/WebODF">
         Jos van den Oever
     </author>
     <content src="index.html" />

@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global window, define, require, document, dijit, dojo, runtime, ops*/
@@ -80,14 +80,22 @@ define("webodf/editor/Tools", [
                 var tool = null;
 
                 if (enabled) {
-                    if (config) {
-                        tool = new Tool(config, placeAndStartUpWidget);
-                    } else {
-                        tool = new Tool(placeAndStartUpWidget);
+                    // A tool that fails is a tool that is missing, and not a
+                    // toolbar that is missing: the ones that follow it are
+                    // built all the same.
+                    try {
+                        if (config) {
+                            tool = new Tool(config, placeAndStartUpWidget);
+                        } else {
+                            tool = new Tool(placeAndStartUpWidget);
+                        }
+                        sessionSubscribers.push(tool);
+                        tool.onToolDone = onToolDone;
+                        tool.setEditorSession(editorSession);
+                    } catch (e) {
+                        runtime.log("Could not create a tool: " + e);
+                        tool = null;
                     }
-                    sessionSubscribers.push(tool);
-                    tool.onToolDone = onToolDone;
-                    tool.setEditorSession(editorSession);
                 }
 
                 return tool;
@@ -232,16 +240,22 @@ define("webodf/editor/Tools", [
                     });
                     formatDropDownMenu.addChild(paragraphStylesMenuItem);
 
-                    paragraphStylesDialog = new ParagraphStylesDialog(function (dialog) {
-                        paragraphStylesMenuItem.onClick = function () {
-                            if (editorSession) {
-                                dialog.startup();
-                                dialog.show();
-                            }
-                        };
-                    });
-                    sessionSubscribers.push(paragraphStylesDialog);
-                    paragraphStylesDialog.onToolDone = onToolDone;
+                    // As for a tool, a dialog that fails takes itself away
+                    // and leaves the rest of the toolbar standing.
+                    try {
+                        paragraphStylesDialog = new ParagraphStylesDialog(function (dialog) {
+                            paragraphStylesMenuItem.onClick = function () {
+                                if (editorSession) {
+                                    dialog.startup();
+                                    dialog.show();
+                                }
+                            };
+                        });
+                        sessionSubscribers.push(paragraphStylesDialog);
+                        paragraphStylesDialog.onToolDone = onToolDone;
+                    } catch (e) {
+                        runtime.log("Could not create the dialog of the paragraph styles: " + e);
+                    }
 
                     formatMenuButton = new DropDownButton({
                         dropDown: formatDropDownMenu,

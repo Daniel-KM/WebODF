@@ -19,7 +19,7 @@
  * @licend
  *
  * @source: http://www.webodf.org/
- * @source: https://github.com/kogmbh/WebODF/
+ * @source: https://github.com/webodf/WebODF/
  */
 
 /*global window, document, alert, navigator, require, dojo, runtime, webodfcore, gui, ops, odf, WodoFromSource*/
@@ -634,7 +634,7 @@ window.Wodo = window.Wodo || (function () {
         };
 
         // TODO:
-        // this.openDocumentFromByteArray = openDocumentFromByteArray; see also https://github.com/kogmbh/WebODF/issues/375
+        // this.openDocumentFromByteArray = openDocumentFromByteArray; see also https://github.com/webodf/WebODF/issues/375
         // setReadOnly: setReadOnly,
 
         /**

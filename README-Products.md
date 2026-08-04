@@ -46,7 +46,7 @@ Download the latest officially released version from the [WebODF homepage](http:
 For those who want to get an OpenDocument Text editor with just a few lines of
 JavaScript in their HTML5 app, the component Wodo.TextEditor is the right choice.
 
-This product bundles a [HOWTO](https://github.com/kogmbh/WebODF/blob/master/programs/editor/HOWTO-wodotexteditor.md),
+This product bundles a [HOWTO](https://github.com/webodf/WebODF/blob/master/programs/editor/HOWTO-wodotexteditor.md),
 example files, API documentation and a subdirectory with all files belonging to
 the component in one zip file.
 
