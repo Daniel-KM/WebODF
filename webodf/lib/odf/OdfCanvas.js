@@ -3917,6 +3917,22 @@
             }
         };
         /**
+         * Break the text into columns, one column to a page, rather than
+         * write it as one run of text with the pages floating beside it. A
+         * column is broken by the browser itself, so a paragraph and a table
+         * are cut where a page ends, and the pages stand beside one another
+         * rather than under one another.
+         * @param {!boolean} enable
+         * @return {undefined}
+         */
+        this.setPagesInColumns = function (enable) {
+            textLayout.setColumns(enable);
+            if (paginated && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                drawPages(odfcontainer, odfcontainer.rootElement);
+            }
+        };
+        /**
          * @return {!boolean}
          */
         this.isPaginated = function () {

@@ -90,6 +90,18 @@ odf.TextLayout = function TextLayout() {
          */
         pageColumnWidth = "0.25px",
         /**
+         * Whether the text is broken into columns, one column to a page, or
+         * written as one run of text with the pages floating beside it.
+         * @type{!boolean}
+         */
+        columnsMode = false,
+        /**
+         * How many pages the text was broken into, when it is broken into
+         * columns: there is no chain of boxes to count them there.
+         * @type{!number}
+         */
+        columnPages = 1,
+        /**
          * How many pages are drawn at the most. A document of a thousand pages
          * is already far more than a reader shows at once, and the bound is
          * what keeps a page height read as something absurd, or a text that
@@ -519,7 +531,9 @@ odf.TextLayout = function TextLayout() {
      * @return {!number}
      */
     function countPages(pagesDiv) {
-        return Math.ceil((pagesDiv.childElementCount - 1) / 2);
+        return columnsMode
+            ? columnPages
+            : Math.ceil((pagesDiv.childElementCount - 1) / 2);
     }
     /**
      * @param {!PagePlan} plan
@@ -1413,15 +1427,16 @@ odf.TextLayout = function TextLayout() {
      * @param {!Document} doc
      * @param {?string} htmlns
      * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!number} left where the page begins across
      * @param {!number} top where the page begins
      * @return {!HTMLDivElement}
      */
-    function pageShapesBox(doc, htmlns, dims, top) {
+    function pageShapesBox(doc, htmlns, dims, left, top) {
         var box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
             "div"));
         box.className = "webodf-pageShapes";
         box.style.position = "absolute";
-        box.style.left = 0;
+        box.style.left = left + "px";
         box.style.top = top + "px";
         box.style.width = dims.pageWidth + "px";
         box.style.height = dims.pageHeight + "px";
@@ -1493,7 +1508,11 @@ odf.TextLayout = function TextLayout() {
             dims,
             /**@type{!Array.<!Element>}*/
             drawn = [],
-            top,
+            /**@type{!number}*/
+            left = 0,
+            /**@type{!number}*/
+            top = 0,
+            /**@type{!number}*/
             n;
         removeBoxes(pagesDiv);
         removeBoxes(behind);
@@ -1504,12 +1523,20 @@ odf.TextLayout = function TextLayout() {
         behind.setAttributeNS(webodfhelperns, "paginated", "true");
         for (n = 0; n < pages; n += 1) {
             dims = plan.at(n);
-            top = plan.top(n);
+            // A page stands under the one before it when the text is one run
+            // of text, and beside it when the text is broken into columns,
+            // one column to a page.
+            left = columnsMode
+                ? n * (dims.pageWidth + dims.pageSeparation)
+                : 0;
+            top = columnsMode
+                ? 0
+                : plan.top(n);
             header = pageArea(plan, "header", n + 1);
             footer = pageArea(plan, "footer", n + 1);
             // The sheet of the page, that carries its fill: it is drawn
             // first, and everything of the page is drawn over it.
-            box = pageShapesBox(doc, htmlns, dims, top);
+            box = pageShapesBox(doc, htmlns, dims, left, top);
             box.className = "webodf-pageSheet";
             behind.insertBefore(box, behind.firstChild);
             shapes = plan.furnitureAt(n).shapes;
@@ -1518,10 +1545,10 @@ odf.TextLayout = function TextLayout() {
                 // and the footer do. What is drawn behind it is put in the
                 // body of the document instead: the body carries the fill of
                 // the page, that would otherwise cover the shape.
-                box = pageShapesBox(doc, htmlns, dims, top);
+                box = pageShapesBox(doc, htmlns, dims, left, top);
                 fillPageShapes(shapes.filter(overTheText), box);
                 pagesDiv.appendChild(box);
-                box = pageShapesBox(doc, htmlns, dims, top);
+                box = pageShapesBox(doc, htmlns, dims, left, top);
                 fillPageShapes(shapes.filter(behindTheText), box);
                 behind.insertBefore(box, behind.firstChild);
             }
@@ -1530,8 +1557,9 @@ odf.TextLayout = function TextLayout() {
                     "div"));
                 box.className = "webodf-pageFurniture";
                 box.style.position = "absolute";
-                box.style.left = dims.marginLeft + "px";
-                box.style.right = dims.marginRight + "px";
+                box.style.left = (left + dims.marginLeft) + "px";
+                box.style.width = (dims.pageWidth - dims.marginLeft
+                    - dims.marginRight) + "px";
                 box.style.top = (top + dims.marginTop - dims.header.gap
                     - dims.header.height) + "px";
                 // The height of the style is the least it takes: a header of
@@ -1547,8 +1575,9 @@ odf.TextLayout = function TextLayout() {
                     "div"));
                 box.className = "webodf-pageFurniture";
                 box.style.position = "absolute";
-                box.style.left = dims.marginLeft + "px";
-                box.style.right = dims.marginRight + "px";
+                box.style.left = (left + dims.marginLeft) + "px";
+                box.style.width = (dims.pageWidth - dims.marginLeft
+                    - dims.marginRight) + "px";
                 box.style.top = (top + dims.pageHeight - dims.marginBottom
                     + dims.footer.gap) + "px";
                 box.style.minHeight = dims.footer.height + "px";
@@ -1850,6 +1879,123 @@ odf.TextLayout = function TextLayout() {
         return changed > 0;
     }
     /**
+     * The sheet of styles the layout writes its own rules in.
+     *
+     * The text is broken into columns by rules that are of the reader and
+     * not of the document, so they are kept in a sheet of their own, made
+     * once and written anew at each layout.
+     * @param {!Document} doc
+     * @return {!CSSStyleSheet}
+     */
+    function ownStyleSheet(doc) {
+        var element = doc.getElementById("webodf-pageStyles");
+        if (!element) {
+            element = doc.createElementNS(doc.documentElement.namespaceURI,
+                "style");
+            element.id = "webodf-pageStyles";
+            /**@type{!HTMLStyleElement}*/(element).type = "text/css";
+            doc.head.appendChild(element);
+        }
+        return /**@type{!CSSStyleSheet}*/(
+            /**@type{!HTMLStyleElement}*/(element).sheet
+        );
+    }
+    /**
+     * Break the text into columns, one column to a page.
+     *
+     * A page is a column of the size of what a page holds, and the browser
+     * breaks the text into them itself: a line, a paragraph and a table are
+     * all cut where a page ends, which no box floating beside the text can
+     * do. The columns stand beside one another, and each page is drawn over
+     * the column that carries it.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!odf.TextLayout.PageDimensions} dims
+     * @return {!number} how many pages the text was broken into
+     */
+    function breakIntoColumns(odfroot, dims) {
+        var text = /**@type{!HTMLElement}*/(odfroot.body.lastElementChild),
+            doc = /**@type{!Document}*/(text.ownerDocument),
+            sheet = ownStyleSheet(doc),
+            /**@type{!number}*/
+            width = dims.pageWidth - dims.marginLeft - dims.marginRight,
+            /**@type{!number}*/
+            height = dims.pageHeight - dims.marginTop - dims.marginBottom,
+            /**@type{!number}*/
+            pitch = dims.pageWidth + dims.pageSeparation,
+            /**@type{!number}*/
+            i;
+        for (i = sheet.cssRules.length - 1; i >= 0; i -= 1) {
+            sheet.deleteRule(i);
+        }
+        odf.Namespaces.forEachPrefix(function (prefix, ns) {
+            sheet.insertRule("@namespace " + prefix + " url(" + ns + ");",
+                sheet.cssRules.length);
+        });
+        sheet.insertRule("@namespace webodfhelper url(" + webodfhelperns
+            + ");", sheet.cssRules.length);
+        // The gutter between two columns holds the margins of the two pages
+        // it parts, and the gap the reader sees between them.
+        sheet.insertRule("office|text {"
+            + "column-width:" + width + "px;"
+            + "column-gap:" + (pitch - width) + "px;"
+            + "column-fill:auto;"
+            + "height:" + height + "px;"
+            + "width:auto;"
+            + "margin:" + dims.marginTop + "px 0 0 " + dims.marginLeft
+            + "px;"
+            + "}", sheet.cssRules.length);
+        // What the document asks to be written on a new page begins a new
+        // column, which the browser answers for on its own.
+        sheet.insertRule("*[webodfhelper|breakbefore] {"
+            + "break-before:column;"
+            + "}", sheet.cssRules.length);
+        return Math.max(1, Math.round(text.scrollWidth / pitch));
+    }
+    /**
+     * Tell the browser which paragraphs are written on a new page.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {undefined}
+     */
+    function markPageBreaks(odfroot) {
+        var text = /**@type{!Element}*/(odfroot.body.lastElementChild),
+            /**@type{!Array.<!Element>}*/
+            nodes = [],
+            /**@type{?Element}*/
+            node = text.firstElementChild;
+        while (node) {
+            nodes.push(node);
+            node = node.nextElementSibling;
+        }
+        nodes.forEach(function (element, index) {
+            if (asksForABreak(odfroot, element, "break-before")
+                    || (index > 0 && asksForABreak(odfroot, nodes[index - 1],
+                        "break-after"))) {
+                element.setAttributeNS(webodfhelperns,
+                    "webodfhelper:breakbefore", "true");
+            } else {
+                element.removeAttributeNS(webodfhelperns, "breakbefore");
+            }
+        });
+    }
+    /**
+     * Draw a text over pages, breaking it into columns.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!HTMLDivElement} pagesDiv
+     * @return {undefined}
+     */
+    function layoutInColumns(odfroot, pagesDiv) {
+        var plan = new PagePlan(odfroot),
+            /**@type{!number}*/
+            pages;
+        while (pagesDiv.firstChild) {
+            pagesDiv.removeChild(pagesDiv.firstChild);
+        }
+        markPageBreaks(odfroot);
+        pages = breakIntoColumns(odfroot, plan.at(0));
+        columnPages = Math.min(pages, maxPages);
+        drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
+    }
+    /**
      * Layout the text by resizing frames and updating the numbers of pages.
      * This function runs for the maximum allocated time and returns true if
      * it is done in that time.
@@ -1861,6 +2007,10 @@ odf.TextLayout = function TextLayout() {
     function layout(odfroot, pagesDiv, maxTime) {
         var plan = new PagePlan(odfroot),
             round = 0;
+        if (columnsMode) {
+            layoutInColumns(odfroot, pagesDiv);
+            return true;
+        }
         // The pages are drawn, then it is read from them which page each
         // change of master page falls on, and they are drawn again: a page of
         // another size moves the ones that follow it. Two rounds answer for
@@ -1892,6 +2042,17 @@ odf.TextLayout = function TextLayout() {
         return maxTime > 0;
     }
     this.layout = layout;
+    /**
+     * Break the text into columns, one column to a page, rather than write
+     * it as one run of text with the pages floating beside it. A column is
+     * broken by the browser itself, so a paragraph and a table are cut where
+     * a page ends, which the boxes that float beside a text cannot do.
+     * @param {!boolean} enable
+     * @return {undefined}
+     */
+    this.setColumns = function (enable) {
+        columnsMode = enable;
+    };
 };
 /**@typedef{{
     node:!Element,
