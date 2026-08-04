@@ -22,8 +22,9 @@
  * @source: https://github.com/kogmbh/WebODF/
  */
 
-/*global runtime, odf, xmldom, webodf_css, webodfcore, gui */
-/*jslint sub: true*/
+/*global runtime, odf, xmldom, webodf_css, webodfcore, gui, atob, Uint8Array */
+/*jslint sub: true, bitwise: true, continue: true, regexp: true,
+  unparam: true*/
 
 (function () {
     "use strict";
@@ -175,7 +176,10 @@
         /**@const@type {!string}*/presentationns = odf.Namespaces.presentationns,
         /**@const@type {!string}*/webodfhelperns = "urn:webodf:names:helper",
         xpath = xmldom.XPath,
-        domUtils = webodfcore.DomUtils;
+        domUtils = webodfcore.DomUtils,
+        /**@const@type{!Array.<!string>}*/
+        chartPalette = ["#4f81bd", "#c0504d", "#9bbb59", "#8064a2", "#4bacc6",
+            "#f79646", "#5da5da", "#faa43a", "#60bd68", "#f17cb0"];
 
     /**
      * @param {!HTMLStyleElement} style
@@ -325,8 +329,8 @@
         // origin (top-left, pre-rotation) lands at (x, y) and is rotated about
         // that origin. ODF rotation is counter-clockwise, so negate it for CSS.
         if (!x && !y && transform) {
-            tm = /translate\s*\(\s*([0-9.eE+-]+[a-z%]*)\s+([0-9.eE+-]+[a-z%]*)\s*\)/.exec(transform);
-            angle = /rotate\s*\(\s*([0-9.eE+-]+)\s*\)/.exec(transform);
+            tm = /translate\s*\(\s*([0-9.eE+\-]+[a-z%]*)\s+([0-9.eE+\-]+[a-z%]*)\s*\)/.exec(transform);
+            angle = /rotate\s*\(\s*([0-9.eE+\-]+)\s*\)/.exec(transform);
             if (tm) {
                 tx = tm[1];
                 ty = tm[2];
@@ -495,10 +499,10 @@
          * @return {undefined}
          */
         function addObject(o) {
-            var /**@type{!number}*/i;
-            for (i = 0; i < objects.length; i += 1) {
-                if (!objects[i]) {
-                    objects[i] = o;
+            var /**@type{!number}*/slot;
+            for (slot = 0; slot < objects.length; slot += 1) {
+                if (!objects[slot]) {
+                    objects[slot] = o;
                     return;
                 }
             }
@@ -933,6 +937,15 @@
         return null;
     }
     /**
+     * Parse an ODF length ("7.112cm", "-3pt") into value + unit.
+     * @param {?string} value
+     * @return {!{v: !number, u: !string}}
+     */
+    function parseLength(value) {
+        var m = /^(-?[0-9.]+)([a-z%]*)$/.exec((value || "").trim());
+        return m ? { v: parseFloat(m[1]), u: m[2] || "" } : { v: 0, u: "" };
+    }
+    /**
      * Apply an image crop (fo:clip) to a draw:image. The frame's svg:width/height
      * is the visible (cropped) size; fo:clip gives the inset cut from each edge.
      * Reproduce it with background-size/position so only the kept region shows.
@@ -1064,35 +1077,41 @@
             pages = domUtils.getElementsByTagNameNS(odfbody, drawns, "page"),
             seen = {},
             i;
+        /**
+         * @param {?string} styleName
+         * @return {undefined}
+         */
+        function addBackgroundOfPage(styleName) {
+            var style, props = null, href, repeat;
+            if (!styleName || seen.hasOwnProperty(styleName)) {
+                return;
+            }
+            seen[styleName] = true;
+            // Walk the parent-style chain until a fill is specified.
+            style = findDrawingPageStyle(rootElement, styleName);
+            while (style) {
+                props = domUtils.getDirectChild(style, stylens, "drawing-page-properties");
+                if (props && props.getAttributeNS(drawns, "fill")) {
+                    break;
+                }
+                props = null;
+                style = findDrawingPageStyle(rootElement,
+                    style.getAttributeNS(stylens, "parent-style-name"));
+            }
+            if (!props || props.getAttributeNS(drawns, "fill") !== "bitmap") {
+                return;
+            }
+            href = findFillImageHref(rootElement,
+                props.getAttributeNS(drawns, "fill-image-name"));
+            if (!href) {
+                return;
+            }
+            repeat = props.getAttributeNS(stylens, "repeat");
+            setPageBackground(container, styleName, href, repeat, stylesheet);
+        }
+
         for (i = 0; i < pages.length; i += 1) {
-            (function (styleName) {
-                var style, props = null, href, repeat;
-                if (!styleName || seen.hasOwnProperty(styleName)) {
-                    return;
-                }
-                seen[styleName] = true;
-                // Walk the parent-style chain until a fill is specified.
-                style = findDrawingPageStyle(rootElement, styleName);
-                while (style) {
-                    props = domUtils.getDirectChild(style, stylens, "drawing-page-properties");
-                    if (props && props.getAttributeNS(drawns, "fill")) {
-                        break;
-                    }
-                    props = null;
-                    style = findDrawingPageStyle(rootElement,
-                        style.getAttributeNS(stylens, "parent-style-name"));
-                }
-                if (!props || props.getAttributeNS(drawns, "fill") !== "bitmap") {
-                    return;
-                }
-                href = findFillImageHref(rootElement,
-                    props.getAttributeNS(drawns, "fill-image-name"));
-                if (!href) {
-                    return;
-                }
-                repeat = props.getAttributeNS(stylens, "repeat");
-                setPageBackground(container, styleName, href, repeat, stylesheet);
-            }(pages[i].getAttributeNS(drawns, "style-name")));
+            addBackgroundOfPage(pages[i].getAttributeNS(drawns, "style-name"));
         }
     }
     /**
@@ -1113,41 +1132,49 @@
             masterStyles = rootElement.masterStyles,
             master = masterStyles && masterStyles.firstElementChild,
             selectorPrefix = '#shadowContent draw|page[draw|master-page-name="';
+        /**
+         * @param {?string} name
+         * @param {?string} drawStyleName
+         * @return {undefined}
+         */
+        function addBackgroundOfMasterPage(name, drawStyleName) {
+            var style = findDrawingPageStyle(rootElement, drawStyleName),
+                props = null,
+                fill,
+                color,
+                selector = selectorPrefix + name + '"]';
+            while (style) {
+                props = domUtils.getDirectChild(style, stylens, "drawing-page-properties");
+                if (props && props.getAttributeNS(drawns, "fill")) {
+                    break;
+                }
+                props = null;
+                style = findDrawingPageStyle(rootElement,
+                    style.getAttributeNS(stylens, "parent-style-name"));
+            }
+            if (!props) {
+                return;
+            }
+            fill = props.getAttributeNS(drawns, "fill");
+            if (fill === "solid") {
+                color = props.getAttributeNS(drawns, "fill-color");
+                if (color) {
+                    stylesheet.insertRule(selector + " {background-color: " + color
+                        + "; background-image: none;}", stylesheet.cssRules.length);
+                }
+            } else if (fill === "none") {
+                stylesheet.insertRule(selector + " {background: none;}", stylesheet.cssRules.length);
+            }
+            // Bitmap master fills are intentionally not painted here: the
+            // slide's own draw:page already carries its fill (see
+            // loadPageBackgrounds), and painting the master clone's bitmap
+            // as well makes the two overlap and ghost.
+        }
+
         while (master) {
             if (master.namespaceURI === stylens && master.localName === "master-page") {
-                (function (name, drawStyleName) {
-                    var style = findDrawingPageStyle(rootElement, drawStyleName),
-                        props = null,
-                        fill,
-                        color,
-                        selector = selectorPrefix + name + '"]';
-                    while (style) {
-                        props = domUtils.getDirectChild(style, stylens, "drawing-page-properties");
-                        if (props && props.getAttributeNS(drawns, "fill")) {
-                            break;
-                        }
-                        props = null;
-                        style = findDrawingPageStyle(rootElement,
-                            style.getAttributeNS(stylens, "parent-style-name"));
-                    }
-                    if (!props) {
-                        return;
-                    }
-                    fill = props.getAttributeNS(drawns, "fill");
-                    if (fill === "solid") {
-                        color = props.getAttributeNS(drawns, "fill-color");
-                        if (color) {
-                            stylesheet.insertRule(selector + " {background-color: " + color
-                                + "; background-image: none;}", stylesheet.cssRules.length);
-                        }
-                    } else if (fill === "none") {
-                        stylesheet.insertRule(selector + " {background: none;}", stylesheet.cssRules.length);
-                    }
-                    // Bitmap master fills are intentionally not painted here: the
-                    // slide's own draw:page already carries its fill (see
-                    // loadPageBackgrounds), and painting the master clone's bitmap
-                    // as well makes the two overlap and ghost.
-                }(master.getAttributeNS(stylens, "name"), master.getAttributeNS(drawns, "style-name")));
+                addBackgroundOfMasterPage(master.getAttributeNS(stylens, "name"),
+                    master.getAttributeNS(drawns, "style-name"));
             }
             master = master.nextElementSibling;
         }
@@ -1212,7 +1239,11 @@
                 xstretch: 0, ystretch: 0, hasstroke: 1, hasfill: 1, pi: Math.PI
             },
             node = geometry.firstElementChild,
-            /**@type{!{evaluate:function((!string|undefined)):!number,viewBox:!Array.<!number>,stretchX:!number,stretchY:!number}}*/ctx;
+            /**@type{!{evaluate:function((!string|undefined)):!number,viewBox:!Array.<!number>,stretchX:!number,stretchY:!number}}*/ctx,
+            // An equation may name another one, that names it back, so these
+            // two are declared before the functions that call them.
+            /**@type{!function((!string|undefined)):!number}*/resolve,
+            /**@type{!function(!string):!number}*/evaluateEquation;
 
         while (node) {
             if (node.namespaceURI === drawns && node.localName === "equation") {
@@ -1226,7 +1257,10 @@
          * @return {!number}
          */
         function parseExpression(tokens) {
-            var /**@type{!number}*/pos = 0;
+            // The grammar is recursive: parseAddition is declared here, so that
+            // the functions it calls may call it back in turn.
+            var /**@type{!number}*/pos = 0,
+                /**@type{!function():!number}*/parseAddition;
 
             /**
              * @return {(!string|undefined)}
@@ -1236,31 +1270,6 @@
              * @return {(!string|undefined)}
              */
             function next() { pos += 1; return tokens[pos - 1]; }
-
-            /**
-             * @return {!number}
-             */
-            function parsePrimary() {
-                var /**@type{(!string|undefined)}*/token = next(),
-                    /**@type{!number}*/value;
-                if (token === "(") {
-                    value = parseAddition();
-                    next(); // ")"
-                    return value;
-                }
-                if (token === "-") {
-                    return -parsePrimary();
-                }
-                if (token === "+") {
-                    return parsePrimary();
-                }
-                // function call: identifier followed by "("
-                if (token !== undefined && /^[a-z]+$/.test(token) && peek() === "(") {
-                    next(); // "("
-                    return callFunction(token, parseArguments());
-                }
-                return resolve(token);
-            }
 
             /**
              * Read the arguments of a function call, until the parenthesis.
@@ -1301,6 +1310,31 @@
             /**
              * @return {!number}
              */
+            function parsePrimary() {
+                var /**@type{(!string|undefined)}*/token = next(),
+                    /**@type{!number}*/value;
+                if (token === "(") {
+                    value = parseAddition();
+                    next(); // ")"
+                    return value;
+                }
+                if (token === "-") {
+                    return -parsePrimary();
+                }
+                if (token === "+") {
+                    return parsePrimary();
+                }
+                // function call: identifier followed by "("
+                if (token !== undefined && /^[a-z]+$/.test(token) && peek() === "(") {
+                    next(); // "("
+                    return callFunction(token, parseArguments());
+                }
+                return resolve(token);
+            }
+
+            /**
+             * @return {!number}
+             */
             function parseMultiplication() {
                 var value = parsePrimary(), op;
                 while (peek() === "*" || peek() === "/") {
@@ -1334,7 +1368,7 @@
             /**
              * @return {!number}
              */
-            function parseAddition() { return parseAdditionInner(); }
+            parseAddition = parseAdditionInner;
 
             return parseAddition();
         }
@@ -1344,7 +1378,7 @@
          * @param {(!string|undefined)} token
          * @return {!number}
          */
-        function resolve(token) {
+        resolve = function (token) {
             var /**@type{!number}*/value;
             if (token === undefined) {
                 return 0;
@@ -1361,7 +1395,7 @@
             }
             value = parseFloat(token);
             return isNaN(value) ? 0 : value;
-        }
+        };
 
         /**
          * Tokenize a formula/path value expression.
@@ -1369,7 +1403,7 @@
          * @return {!Array.<!string>}
          */
         function tokenize(expression) {
-            var tokens = expression.match(/\?[a-zA-Z0-9]+|\$[0-9]+|[a-z]+|[0-9]*\.?[0-9]+|[()+\-*/,]/g);
+            var tokens = expression.match(/\?[a-zA-Z0-9]+|\$[0-9]+|[a-z]+|[0-9]*\.?[0-9]+|[()+\-*\/,]/g);
             return tokens || [];
         }
 
@@ -1377,7 +1411,7 @@
          * @param {!string} name
          * @return {!number}
          */
-        function evaluateEquation(name) {
+        evaluateEquation = function (name) {
             var result;
             if (memo.hasOwnProperty(name)) {
                 return memo[name];
@@ -1390,7 +1424,7 @@
             inProgress[name] = false;
             memo[name] = result;
             return result;
-        }
+        };
 
         ctx = {
             evaluate: resolve,
@@ -1430,7 +1464,9 @@
             /**@type{!boolean}*/prevOnPoint = false,
             /**@type{!number}*/offset = targetSize - viewBoxSize,
             /**@type{(!string|undefined)}*/cmd,
-            /**@type{!number}*/coord = 0;
+            /**@type{!number}*/coord = 0,
+            /**@type{!number}*/j = 0,
+            /**@type{!number}*/c = 0;
         while (pos < tokens.length) {
             cmd = tokens[pos];
             if (!commandRe.test(cmd)) { pos += 1; continue; }
@@ -1458,8 +1494,8 @@
                 if (cur === null) {
                     // First point: take the side of the next off-point coordinate.
                     cur = "L";
-                    for (var j = i + 1; j < n; j += 1) {
-                        var c = horizontal ? raw[j].x : raw[j].y;
+                    for (j = i + 1; j < n; j += 1) {
+                        c = horizontal ? raw[j].x : raw[j].y;
                         if (c < stretchPoint - 0.5) { cur = "L"; break; }
                         if (c > stretchPoint + 0.5) { cur = "R"; break; }
                     }
@@ -1641,6 +1677,37 @@
             curY = cy + ry * Math.sin(a1);
         }
 
+        /**
+         * Read the next point and make it the current one.
+         * @return {undefined}
+         */
+        function moveToNextPoint() {
+            var p = nextPoint();
+            curX = p[0];
+            curY = p[1];
+        }
+        /**
+         * Read the next point and draw a quadrant towards it.
+         * @param {!boolean} startAlongX
+         * @return {undefined}
+         */
+        function quadrantToNextPoint(startAlongX) {
+            var p = nextPoint();
+            quadrant(p[0], p[1], startAlongX);
+        }
+        /**
+         * Read an angle-ellipse and append it, from the current command.
+         * @return {undefined}
+         */
+        function appendAngleEllipse() {
+            var ecx = val(), ecy = val(), erx = val(), ery = val(),
+                a0 = val() / 65536 * Math.PI / 180,
+                a1 = val() / 65536 * Math.PI / 180;
+            appendEllipticalArc(d, ecx, ecy, erx, ery, a0, a1, command === "U");
+            curX = ecx + erx * Math.cos(a1);
+            curY = ecy + ery * Math.sin(a1);
+        }
+
         while (pos < tokens.length) {
             command = tokens[pos];
             if (!commandRe.test(command)) {
@@ -1649,16 +1716,16 @@
             pos += 1;
             switch (command) {
             case "M":
-                (function () { var p = nextPoint(); curX = p[0]; curY = p[1]; }());
+                moveToNextPoint();
                 d.push("M" + curX + " " + curY);
                 while (hasValue()) {
-                    (function () { var p = nextPoint(); curX = p[0]; curY = p[1]; }());
+                    moveToNextPoint();
                     d.push("L" + curX + " " + curY);
                 }
                 break;
             case "L":
                 while (hasValue()) {
-                    (function () { var p = nextPoint(); curX = p[0]; curY = p[1]; }());
+                    moveToNextPoint();
                     d.push("L" + curX + " " + curY);
                 }
                 break;
@@ -1678,12 +1745,12 @@
                 break;
             case "X":
                 while (hasValue()) {
-                    (function () { var p = nextPoint(); quadrant(p[0], p[1], true); }());
+                    quadrantToNextPoint(true);
                 }
                 break;
             case "Y":
                 while (hasValue()) {
-                    (function () { var p = nextPoint(); quadrant(p[0], p[1], false); }());
+                    quadrantToNextPoint(false);
                 }
                 break;
             case "A": // arcto, counter-clockwise, connect with line
@@ -1701,14 +1768,7 @@
             case "T": // angle-ellipse-to, connect with line
             case "U": // angle-ellipse, connect with move
                 while (hasValue()) {
-                    (function () {
-                        var ecx = val(), ecy = val(), erx = val(), ery = val(),
-                            a0 = val() / 65536 * Math.PI / 180,
-                            a1 = val() / 65536 * Math.PI / 180;
-                        appendEllipticalArc(d, ecx, ecy, erx, ery, a0, a1, command === "U");
-                        curX = ecx + erx * Math.cos(a1);
-                        curY = ecy + ery * Math.sin(a1);
-                    }());
+                    appendAngleEllipse();
                 }
                 break;
             case "Z":
@@ -2094,9 +2154,6 @@
     // in a local table. We parse that and draw a static SVG (bar/line/pie/ring),
     // which is enough for a preview.
 
-    /**@const@type{!Array.<!string>}*/
-    var chartPalette = ["#4f81bd", "#c0504d", "#9bbb59", "#8064a2", "#4bacc6",
-        "#f79646", "#5da5da", "#faa43a", "#60bd68", "#f17cb0"];
 
     /**
      * @param {!string} s
@@ -2241,27 +2298,6 @@
     }
 
     /**
-     * A "nice" axis maximum and step for a value range 0..maxVal.
-     * @param {!number} maxVal
-     * @param {!boolean} preferExactMax
-     * @return {!{max:!number,step:!number}}
-     */
-    function niceAxis(maxVal, preferExactMax) {
-        var /**@type{?{max:!number,step:!number}}*/exact,
-            target = (maxVal <= 0 ? 1 : maxVal) * (preferExactMax ? 1 : 1.05),
-            rough = target / 5,
-            pow = Math.pow(10, Math.floor(Math.log(rough) / Math.LN10)),
-            n = rough / pow,
-            step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
-        if (preferExactMax) {
-            exact = exactAxis(maxVal);
-            if (exact) {
-                return exact;
-            }
-        }
-        return { max: Math.ceil(target / step) * step, step: step };
-    }
-    /**
      * Prefer the data maximum when it already falls on a readable axis step.
      * @param {!number} maxVal
      * @return {?{max:!number,step:!number}}
@@ -2288,6 +2324,28 @@
             }
         }
         return null;
+    }
+
+    /**
+     * A "nice" axis maximum and step for a value range 0..maxVal.
+     * @param {!number} maxVal
+     * @param {!boolean} preferExactMax
+     * @return {!{max:!number,step:!number}}
+     */
+    function niceAxis(maxVal, preferExactMax) {
+        var /**@type{?{max:!number,step:!number}}*/exact,
+            target = (maxVal <= 0 ? 1 : maxVal) * (preferExactMax ? 1 : 1.05),
+            rough = target / 5,
+            pow = Math.pow(10, Math.floor(Math.log(rough) / Math.LN10)),
+            n = rough / pow,
+            step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
+        if (preferExactMax) {
+            exact = exactAxis(maxVal);
+            if (exact) {
+                return exact;
+            }
+        }
+        return { max: Math.ceil(target / step) * step, step: step };
     }
 
     /**
@@ -2329,6 +2387,26 @@
             return items;
         }
         /**
+         * Legend at the right; returns its width and appends to body.
+         * @param {!Array.<!{label:!string,color:!string}>} items
+         * @param {!number} top
+         * @return {undefined}
+         */
+        function drawLegend(items, top) {
+            var maxLen = 0, k, ly;
+            for (k = 0; k < items.length; k += 1) {
+                maxLen = Math.max(maxLen, items[k].label.length);
+            }
+            legendW = 22 + maxLen * 6.2;
+            for (k = 0; k < items.length; k += 1) {
+                ly = top + k * 18;
+                body += '<rect x="' + (W - legendW) + '" y="' + ly
+                    + '" width="11" height="11" fill="' + items[k].color + '"/>';
+                body += text(W - legendW + 16, ly + 10, items[k].label, "start", 11);
+            }
+        }
+
+        /**
          * Draw the legend of the series and return the maximum value.
          *
          * The legend is drawn only when the chart requires it. The maximum
@@ -2353,26 +2431,6 @@
             }
             return maxVal;
         }
-        /**
-         * Legend at the right; returns its width and appends to body.
-         * @param {!Array.<!{label:!string,color:!string}>} items
-         * @param {!number} top
-         * @return {undefined}
-         */
-        function drawLegend(items, top) {
-            var maxLen = 0, k, ly;
-            for (k = 0; k < items.length; k += 1) {
-                maxLen = Math.max(maxLen, items[k].label.length);
-            }
-            legendW = 22 + maxLen * 6.2;
-            for (k = 0; k < items.length; k += 1) {
-                ly = top + k * 18;
-                body += '<rect x="' + (W - legendW) + '" y="' + ly
-                    + '" width="11" height="11" fill="' + items[k].color + '"/>';
-                body += text(W - legendW + 16, ly + 10, items[k].label, "start", 11);
-            }
-        }
-
         if (c.title) {
             body += text(W / 2, 18, c.title, "middle", 14, "bold");
         }
@@ -2496,15 +2554,6 @@
             + '" preserveAspectRatio="xMidYMid meet">'
             + '<rect width="' + W + '" height="' + H + '" fill="#ffffff"/>'
             + body + '</svg>';
-    }
-    /**
-     * Parse an ODF length ("7.112cm", "-3pt") into value + unit.
-     * @param {?string} value
-     * @return {!{v: !number, u: !string}}
-     */
-    function parseLength(value) {
-        var m = /^(-?[0-9.]+)([a-z%]*)$/.exec((value || "").trim());
-        return m ? { v: parseFloat(m[1]), u: m[2] || "" } : { v: 0, u: "" };
     }
     /**
      * Parse the viewBox of a draw:marker, with the default used by ODF.
@@ -2820,16 +2869,16 @@
             var doc = table.ownerDocument,
                 ncols = domUtils.getElementsByTagNameNS(table, tablens, 'table-column').length,
                 rows,
-                i,
+                row,
                 count,
                 c;
             if (!ncols) {
                 return;
             }
             rows = domUtils.getElementsByTagNameNS(table, tablens, 'table-row');
-            for (i = 0; i < rows.length; i += 1) {
+            for (row = 0; row < rows.length; row += 1) {
                 count = 0;
-                c = rows[i].firstElementChild;
+                c = rows[row].firstElementChild;
                 while (c) {
                     if (c.namespaceURI === tablens
                             && (c.localName === "table-cell"
@@ -2838,8 +2887,9 @@
                     }
                     c = c.nextElementSibling;
                 }
-                for (; count < ncols; count += 1) {
-                    rows[i].appendChild(doc.createElementNS(tablens, 'table:table-cell'));
+                while (count < ncols) {
+                    rows[row].appendChild(doc.createElementNS(tablens, 'table:table-cell'));
+                    count += 1;
                 }
             }
         }
@@ -3362,7 +3412,7 @@
                 }
                 path = href.replace(/^\.?\//, "").replace(/\/$/, "") + "/content.xml";
                 container.getPartData(path, function (err, data) {
-                    var /**@type{?Document}*/doc,
+                    var /**@type{?Document}*/chartDoc,
                         model,
                         /**@type{!string}*/svg,
                         /**@type{!{v: !number, u: !string}}*/w,
@@ -3372,11 +3422,11 @@
                         return;
                     }
                     try {
-                        doc = runtime.parseXML(runtime.byteArrayToString(data, "utf8"));
-                        if (!doc) {
+                        chartDoc = runtime.parseXML(runtime.byteArrayToString(data, "utf8"));
+                        if (!chartDoc) {
                             return;
                         }
-                        model = parseChart(doc);
+                        model = parseChart(chartDoc);
                         if (!model || !model.series.length) {
                             return;
                         }

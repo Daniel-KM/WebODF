@@ -1,7 +1,12 @@
 # This makefile 'compiles' WebODF using various tools, instruments the code and
 # builds and packages programs that use WebODF.
 
-cmake_minimum_required(VERSION 3.0.0)
+# The project needs cmake 3.10 and works with the policies of cmake 3.24. The
+# most useful of them is CMP0135: the archives of the tools are downloaded
+# from an url, so the timestamps of the files they hold have to be the ones of
+# the extraction, otherwise a change of the url does not rebuild what depends
+# on them. Older versions of cmake read the range as its first version only.
+cmake_minimum_required(VERSION 3.10...3.24)
 message("CMake version: ${CMAKE_VERSION}")
 
 # WebODF is mostly a JavaScript project. CMake needs to know about the C++ parts
@@ -39,9 +44,10 @@ else (OVERRULED_WEBODF_VERSION)
     set(WEBODF_VERSION ${CMAKE_MATCH_1})
   else (CMAKE_MATCH_1)
     # get version number from git
-    exec_program(git ${CMAKE_CURRENT_SOURCE_DIR}
-      ARGS describe --tags --dirty --match "v[0-9]*"
-      OUTPUT_VARIABLE GIT_WEBODF_VERSION)
+    execute_process(COMMAND git describe --tags --dirty --match "v[0-9]*"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_WEBODF_VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
     # check version number from git
     string(REGEX MATCH "^v([0-9]+.[0-9]+.[0-9]+((-[0-9]+-[0-9a-z]+)?(-dirty)?)?)$" CHECKED_WEBODF_VERSION "${GIT_WEBODF_VERSION}")
     if (CMAKE_MATCH_1)
@@ -58,24 +64,37 @@ message(STATUS "WebODF version " ${WEBODF_VERSION})
 ## Find installed dependencies
 #########################################################
 
-set(QT_MIN_VERSION "5.1.1")
-find_package(Qt5Network)
-find_package(Qt5Xml)
-find_package(Qt5PrintSupport)
-find_package(Qt5WebKitWidgets)
+# qtjsruntime runs the tests in the webkit of qt, see "webodf/tests". It is
+# opt-in: Qt WebKit was dropped from Qt in 5.6 and is not packaged any more by
+# Debian since 13, and "npm run test:browser" runs the same tests in a browser
+# that is still maintained. Without the option, the modules are not looked for
+# at all, so no warning is reported for something that is not asked for.
+option(WEBODF_QTJSRUNTIME "Build qtjsruntime, that runs the tests in the webkit of qt" OFF)
 
-if (Qt5Network_FOUND AND Qt5Xml_FOUND AND Qt5PrintSupport_FOUND AND Qt5WebKitWidgets_FOUND)
-  set(BUILD_QTJSRUNTIME TRUE)
-else ()
-  message(WARNING "Qt5 with modules Qt5Network Qt5Xmle Qt5PrintSupport Qt5WebKitWidgets was not found. qtjsruntime will no be built.")
-  set(BUILD_QTJSRUNTIME FALSE)
+set(BUILD_QTJSRUNTIME FALSE)
+if (WEBODF_QTJSRUNTIME)
+  set(QT_MIN_VERSION "5.1.1")
+  find_package(Qt5Network)
+  find_package(Qt5Xml)
+  find_package(Qt5PrintSupport)
+  find_package(Qt5WebKitWidgets)
+
+  if (Qt5Network_FOUND AND Qt5Xml_FOUND AND Qt5PrintSupport_FOUND AND Qt5WebKitWidgets_FOUND)
+    set(BUILD_QTJSRUNTIME TRUE)
+  else ()
+    message(FATAL_ERROR "Qt5 with modules Qt5Network Qt5Xml Qt5PrintSupport Qt5WebKitWidgets was not found, so qtjsruntime cannot be built. On Debian 12 and older: apt-get install qtbase5-dev libqt5webkit5-dev")
+  endif ()
 endif ()
 
 # java runtime is needed for Closure Compiler
 find_package(Java COMPONENTS Runtime REQUIRED)
 
 # Node.js will be downloaded on Windows systems, so check for installed version is below
-SET(REQUIRED_NODEJS_VERSION 0.10.5)
+# 22.22.2 is the oldest release of node jsdom runs on, that the tests need.
+# The tools of the build are tested with 24, the release under long term
+# support. The exact range is in the field "engines" of "package.json", that
+# cmake cannot express.
+SET(REQUIRED_NODEJS_VERSION 22.22.2)
 
 
 #########################################################
@@ -97,25 +116,27 @@ MESSAGE ( STATUS "external downloads will be stored/expected in: ${EXTERNALS_DOW
 ExternalProject_Add(
     ClosureCompiler
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-    URL "http://dl.google.com/closure-compiler/compiler-20160911.tar.gz"
-    URL_MD5 7e85253436e492aa580ce3c3b8f585e7
+    URL "https://repo1.maven.org/maven2/com/google/javascript/closure-compiler/v20260804/closure-compiler-v20260804.jar"
+    DOWNLOAD_NO_EXTRACT TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
-set(CLOSURE_JAR ${CMAKE_BINARY_DIR}/ClosureCompiler-prefix/src/ClosureCompiler/closure-compiler-v20160911.jar)
+# Same version as the build with node, see scripts/lib/closure.js.
+set(CLOSURE_JAR ${EXTERNALS_DOWNLOAD_DIR}/closure-compiler-v20260804.jar)
 
 # Rhino
 ExternalProject_Add(
     Rhino
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-    URL "http://ftp.mozilla.org/pub/js/rhino1_7R3.zip"
-    URL_MD5 99d94103662a8d0b571e247a77432ac5
+    URL "https://repo1.maven.org/maven2/org/mozilla/rhino-all/1.9.1/rhino-all-1.9.1.jar"
+    DOWNLOAD_NO_EXTRACT TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
-set(RHINO ${CMAKE_BINARY_DIR}/Rhino-prefix/src/Rhino/js.jar)
+# Same version as the build with node, see scripts/lib/rhino.js.
+set(RHINO ${EXTERNALS_DOWNLOAD_DIR}/rhino-all-1.9.1.jar)
 
 # JSDoc
 ExternalProject_Add(
@@ -129,56 +150,49 @@ ExternalProject_Add(
 )
 set(JSDOCDIR ${CMAKE_BINARY_DIR}/JsDoc-prefix/src/JsDoc/jsdoc-toolkit)
 
-# Node.js
-set(NODEVERSION 0.10.20)
-if(WIN32)
-    # On windows, it is significantly faster and more reliable to download
-    # a pre-built 32-bit binary
-    set(NODE_BIN_URL "http://nodejs.org/dist/v${NODEVERSION}/node.exe")
-    set(NODE_BIN_MD5 "3bc43fbbfcddc376d5769e9757bd0bca")
-    file(DOWNLOAD "${NODE_BIN_URL}" "${EXTERNALS_DOWNLOAD_DIR}/node-download.exe"
-        SHOW_PROGRESS
-        EXPECTED_MD5 ${NODE_BIN_MD5}
-    )
-    set(NODE ${CMAKE_BINARY_DIR}/NodeJS-prefix/bin/node.exe)
-    set(NPM ${CMAKE_BINARY_DIR}/NodeJS-prefix/bin/npm.exe)
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/NodeJS-prefix
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/NodeJS-prefix/bin
-      COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNALS_DOWNLOAD_DIR}/node-download.exe "${NODE}"
-    )
-    add_custom_target(NodeJS DEPENDS "${NODE}")
-else(WIN32)
-    SET(NODEJS_VERSION 0.0.0)
-    # Debian uses nodejs as binary name, due to conflict with node package (Amateur Packet Radio Node Program)
-    # https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager
-    FIND_PROGRAM(NODEJS_EXECUTABLE
-        NAMES nodejs node
-        PATHS ""
-        DOC "Path to Node.js executable"
-    )
-    IF(NODEJS_EXECUTABLE)
-        EXEC_PROGRAM(${NODEJS_EXECUTABLE} ARGS --version OUTPUT_VARIABLE NODEJS_VERSION)
-        string(SUBSTRING ${NODEJS_VERSION} 1 -1 NODEJS_VERSION)
-        MESSAGE (STATUS "Installed Node.js found: ${NODEJS_EXECUTABLE} - ${NODEJS_VERSION}")
-    ELSE(NODEJS_EXECUTABLE)
-        MESSAGE (STATUS "No installed Node.js found. On platforms other than Windows, Node.js is not downloaded, but expected to be installed.")
-    ENDIF(NODEJS_EXECUTABLE)
+# Node.js is expected to be installed, on every platform. Windows used to
+# download a single node.exe, but the build needs npm as well, that comes with
+# the installer only, and the url that binary was at holds the releases of
+# 2013 alone.
+SET(NODEJS_VERSION 0.0.0)
+# Debian uses nodejs as binary name, due to conflict with node package (Amateur Packet Radio Node Program)
+# https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager
+FIND_PROGRAM(NODEJS_EXECUTABLE
+    NAMES nodejs node
+    PATHS ""
+    DOC "Path to Node.js executable"
+)
+IF(NODEJS_EXECUTABLE)
+    execute_process(COMMAND ${NODEJS_EXECUTABLE} --version
+        OUTPUT_VARIABLE NODEJS_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(SUBSTRING ${NODEJS_VERSION} 1 -1 NODEJS_VERSION)
+    MESSAGE (STATUS "Installed Node.js found: ${NODEJS_EXECUTABLE} - ${NODEJS_VERSION}")
+ELSE(NODEJS_EXECUTABLE)
+    MESSAGE (STATUS "No installed Node.js found. Node.js is not downloaded, but expected to be installed.")
+ENDIF(NODEJS_EXECUTABLE)
 
-    # fail if NodeJS version requirement is not satisfied
-    if (${NODEJS_VERSION} VERSION_LESS ${REQUIRED_NODEJS_VERSION})
-        message(FATAL_ERROR "Node.js is required in version " ${REQUIRED_NODEJS_VERSION}  " or later")
-    else()
-        message(STATUS "good Node.js found: " ${NODEJS_VERSION} " (" ${REQUIRED_NODEJS_VERSION} " required.)")
-    endif()
-    set(NODE ${NODEJS_EXECUTABLE})
-    FIND_PROGRAM(NPM
-        NAMES npm
-        PATHS ""
-        DOC "Path to NPM executable"
-    )
-    MESSAGE (STATUS "npm found: " ${NPM})
-    add_custom_target(NodeJS DEPENDS "${NODEJS_EXECUTABLE}")
-endif(WIN32)
+# fail if NodeJS version requirement is not satisfied. find_program() caches
+# what it finds, so a node that was installed later, by nvm for instance, is
+# only seen once the entry is dropped: the path is named here, as it is often
+# an older one that is still in the cache.
+if (${NODEJS_VERSION} VERSION_LESS ${REQUIRED_NODEJS_VERSION})
+    message(FATAL_ERROR "Node.js is required in version "
+        ${REQUIRED_NODEJS_VERSION} " or later, but "
+        ${NODEJS_EXECUTABLE} " is " ${NODEJS_VERSION}
+        ".\nIf a newer node is installed, cmake kept the path it found before:"
+        " run it again with -U NODEJS_EXECUTABLE -U NPM.")
+else()
+    message(STATUS "good Node.js found: " ${NODEJS_VERSION} " (" ${REQUIRED_NODEJS_VERSION} " required.)")
+endif()
+set(NODE ${NODEJS_EXECUTABLE})
+FIND_PROGRAM(NPM
+    NAMES npm
+    PATHS ""
+    DOC "Path to NPM executable"
+)
+MESSAGE (STATUS "npm found: " ${NPM})
+add_custom_target(NodeJS DEPENDS "${NODEJS_EXECUTABLE}")
 
 # copy node_modules directory from source to build
 # (this is needed if a module is required in there)
@@ -191,70 +205,100 @@ add_custom_target(copy_node_modules ALL
     COMMENT copying node_modules from source to build
 )
 
-# Android
-# If android sdk is properly installed, cmake only needs to know where to find
-# the executable 'android'.
-# The variable ANDROID_SDK_DIR can be provided if a specific android sdk version
-# is desired or if the android executable is not in the path.
-if (ANDROID_SDK_DIR)
-  set(ANDROID ${ANDROID_SDK_DIR}/tools/android)
-else (ANDROID_SDK_DIR)
-  find_program(ANDROID NAMES android DOC "Path to the Android executable.")
-endif(ANDROID_SDK_DIR)
-FIND_PROGRAM(ANT NAMES ant DOC "Path to the Ant executable.")
-if(ANDROID AND ANT)
-  set(BUILD_APK TRUE)
-  message(STATUS "Found Android and Ant: building an APK for Android.")
-  message(STATUS "android: ${ANDROID}")
-  message(STATUS "ant: ${ANT}")
-else()
-  message(STATUS "Android was not found: APK will not be built.")
-endif()
+# The coverage is measured by c8, that reads the one V8 records while it runs
+# the tests: it neither parses nor rewrites the sources, so it does not
+# constrain the version of ECMAScript the library is written in. It replaces
+# JSCoverage, whose last release, 0.5.1 of 2010, bundles SpiderMonkey 1.7 and
+# does not build any more with gcc 14 or clang 16.
+#
+# It is a target of its own, never built by "all", as it is only useful to
+# measure the coverage and it runs the whole suite of the tests again.
+add_custom_target(coverage
+    COMMAND ${NPM} run coverage
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Measuring the coverage of the tests with c8"
+    USES_TERMINAL
+)
 
-# JSCoverage
-if(WIN32)
-    # JSCoverage only builds with Cygwin/MiniGW
-    # Rather than force a dependency on a specific compiler, download binaries
-    ExternalProject_Add(
-        JSCoverage
-        DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-        URL "http://siliconforks.com/jscoverage/download/jscoverage-0.5.1-windows.zip"
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        INSTALL_COMMAND ""
-        TEST_COMMAND ""
-    )
-    set(JSCOVERAGE ${CMAKE_BINARY_DIR}/JSCoverage-prefix/src/JSCoverage/jscoverage)
-elseif(APPLE)
-else()
-    ExternalProject_Add(
-        JSCoverage
-        DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-        URL "http://siliconforks.com/jscoverage/download/jscoverage-0.5.1.tar.bz2"
-        URL_MD5 a70d79a6759367fbcc0bcc18d6866ff3
-        PATCH_COMMAND  cat ${CMAKE_CURRENT_SOURCE_DIR}/JSCoverage.patch | patch -p1
-        CONFIGURE_COMMAND "./configure"
-        BUILD_COMMAND make -j${NProcessors}
-        BUILD_IN_SOURCE 1
-        INSTALL_COMMAND ""
-    )
-    set(JSCOVERAGE ${CMAKE_BINARY_DIR}/JSCoverage-prefix/src/JSCoverage/jscoverage)
-endif()
+# The programs, the editors and the extensions, need Dojo, that is downloaded
+# from the registry of npm, see below. They are built only when they are asked
+# for, so that the library builds without them.
+option(WEBODF_PROGRAMS "Build the editors and the extensions of programs/" OFF)
+
+# The apk of android is one more output of programs/cordova, so it is only
+# looked for along with the programs. Nothing of that toolchain is available
+# any more: it drives cordova 3.5, of 2014, that builds android with ant,
+# which google dropped in 2015 for gradle, through the executable "android",
+# that the sdk replaced by "sdkmanager" in 2018. It is kept as it is until
+# programs/ is either brought up to date or dropped.
+if (WEBODF_PROGRAMS)
+  # If android sdk is properly installed, cmake only needs to know where to find
+  # the executable 'android'.
+  # The variable ANDROID_SDK_DIR can be provided if a specific android sdk version
+  # is desired or if the android executable is not in the path.
+  if (ANDROID_SDK_DIR)
+    set(ANDROID ${ANDROID_SDK_DIR}/tools/android)
+  else (ANDROID_SDK_DIR)
+    find_program(ANDROID NAMES android DOC "Path to the Android executable.")
+  endif(ANDROID_SDK_DIR)
+  FIND_PROGRAM(ANT NAMES ant DOC "Path to the Ant executable.")
+  if(ANDROID AND ANT)
+    set(BUILD_APK TRUE)
+    message(STATUS "Found Android and Ant: building an APK for Android.")
+    message(STATUS "android: ${ANDROID}")
+    message(STATUS "ant: ${ANT}")
+  else()
+    message(STATUS "Android was not found: APK will not be built.")
+  endif()
+endif ()
+
 
 # Dojo
+# The source release of dojotoolkit.org is not published any more, so the four
+# packages are taken from the registry of npm, where they are still released.
+set(DOJO_VERSION 1.17.3)
+if (WEBODF_PROGRAMS)
 ExternalProject_Add(
-    Dojo
+    DojoCore
     DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
-    URL "http://download.dojotoolkit.org/release-1.8.1/dojo-release-1.8.1-src.tar.gz"
-    URL_MD5 9b80b9a736b81c336accd832f3c3aea2
+    URL "https://registry.npmjs.org/dojo/-/dojo-${DOJO_VERSION}.tgz"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
-set(DOJO ${CMAKE_BINARY_DIR}/Dojo-prefix/src/Dojo)
+ExternalProject_Add(
+    DojoDijit
+    DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
+    URL "https://registry.npmjs.org/dijit/-/dijit-${DOJO_VERSION}.tgz"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)
+ExternalProject_Add(
+    DojoDojox
+    DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
+    URL "https://registry.npmjs.org/dojox/-/dojox-${DOJO_VERSION}.tgz"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)
+ExternalProject_Add(
+    DojoUtil
+    DOWNLOAD_DIR ${EXTERNALS_DOWNLOAD_DIR}
+    URL "https://registry.npmjs.org/dojo-util/-/dojo-util-${DOJO_VERSION}.tgz"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)
+add_custom_target(Dojo DEPENDS DojoCore DojoDijit DojoDojox DojoUtil)
+set(DOJO_CORE ${CMAKE_BINARY_DIR}/DojoCore-prefix/src/DojoCore)
+set(DOJO_DIJIT ${CMAKE_BINARY_DIR}/DojoDijit-prefix/src/DojoDijit)
+set(DOJO_DOJOX ${CMAKE_BINARY_DIR}/DojoDojox-prefix/src/DojoDojox)
+set(DOJO_UTIL ${CMAKE_BINARY_DIR}/DojoUtil-prefix/src/DojoUtil)
+endif (WEBODF_PROGRAMS)
 
 # Dojo requires a patch on windows
-if(WIN32)
+if(WIN32 AND WEBODF_PROGRAMS)
     set(DOJOPATCH_URL "http://bugs.dojotoolkit.org/raw-attachment/ticket/15413/node-win-1.8.patch")
     set(DOJOPATCH_MD5 "51eae664ddbe919c28c4e3082748cd19")
     set(DOJOPATCH ${EXTERNALS_DOWNLOAD_DIR}/dojo-node.patch)
@@ -269,7 +313,7 @@ if(WIN32)
         COMMAND cat ${DOJOPATCH} | patch -p0 -d ${CMAKE_BINARY_DIR}/Dojo-prefix/src/Dojo/util/
         DEPENDEES build
     )
-endif(WIN32)
+endif(WIN32 AND WEBODF_PROGRAMS)
 
 ##############################
 ## Define custom macros
@@ -354,6 +398,8 @@ endif()
 add_subdirectory(webodf)
 
 # the programs/components
-add_subdirectory(programs)
+if (WEBODF_PROGRAMS)
+    add_subdirectory(programs)
+endif (WEBODF_PROGRAMS)
 
 # vim:expandtab

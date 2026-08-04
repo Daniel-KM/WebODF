@@ -26,7 +26,8 @@
 /*global window, XMLHttpRequest, require, console, DOMParser, document,
   process, __dirname, setTimeout, Packages, print,
   readFile, quit, Buffer, ArrayBuffer, Uint8Array,
-  navigator, VBArray, alert, now, clearTimeout, webodf_version */
+  navigator, VBArray, alert, now, clearTimeout, webodf_version,
+  globalThis */
 
 /**
  * Three implementations of a runtime for browser, node.js and rhino.
@@ -552,9 +553,15 @@ function BrowserRuntime() {
      */
     function handleXHRResult(path, encoding, xhr) {
         var r, d, a,
+            // Reading the text of an answer asked as an array buffer throws,
+            // so the answer itself tells whether the file was empty.
+            isEmpty = xhr.responseType === "arraybuffer"
+                ? !xhr.response
+                    || /**@type{!ArrayBuffer}*/(xhr.response).byteLength === 0
+                : !xhr.responseText,
             /**@type{!Uint8Array|!string}*/
             data;
-        if (xhr.status === 0 && !xhr.responseText) {
+        if (xhr.status === 0 && isEmpty) {
             // for local files there is no difference between missing
             // and empty files, so empty files are considered as errors
             r = {err: "File " + path + " is empty.", data: null};
@@ -584,7 +591,9 @@ function BrowserRuntime() {
             r = {err: null, data: data};
         } else {
             // report error
-            r = {err: xhr.responseText || xhr.statusText, data: null};
+            r = {err: (xhr.responseType === "arraybuffer"
+                ? xhr.statusText
+                : xhr.responseText || xhr.statusText), data: null};
         }
         return r;
     }
@@ -597,7 +606,13 @@ function BrowserRuntime() {
     function createXHR(path, encoding, async) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', path, async);
-        if (xhr.overrideMimeType) {
+        // An array buffer is the reliable way to read the raw bytes: with the
+        // trick of the mime type below, a recent browser decodes the answer as
+        // utf-8 and removes a byte order mark first, which shifts every byte.
+        // It is not allowed on a synchronous request, that keeps the trick.
+        if (encoding === "binary" && async) {
+            xhr.responseType = "arraybuffer";
+        } else if (xhr.overrideMimeType) {
             if (encoding !== "binary") {
                 xhr.overrideMimeType("text/plain; charset=" + encoding);
             } else {
@@ -903,8 +918,8 @@ function BrowserRuntime() {
 function NodeJSRuntime() {
     "use strict";
     var /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/
-        globalScope = /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/(globalThis);
-    var self = this,
+        globalScope = /**@type{!{DOMParser:(!Function|undefined),Node:(!Function|undefined),NodeFilter:(!Object|undefined),Element:(!Function|undefined),window:(!Window|undefined)}}*/(globalThis),
+        self = this,
         fs = require('fs'),
         pathmod = require('path'),
         /**@type{!string}*/
@@ -931,7 +946,7 @@ function NodeJSRuntime() {
      * @return {!Uint8Array}
      */
     this.byteArrayFromString = function (string, encoding) {
-        var buf = new Buffer(string, encoding), i, l = buf.length,
+        var buf = Buffer.from(string, encoding), i, l = buf.length,
             a = new Uint8Array(new ArrayBuffer(l));
         for (i = 0; i < l; i += 1) {
             a[i] = buf[i];
@@ -1021,7 +1036,7 @@ function NodeJSRuntime() {
      * @return {undefined}
      */
     this.writeFile = function (path, data, callback) {
-        var buf = new Buffer(data);
+        var buf = Buffer.from(data);
         path = pathmod.resolve(currentDirectory, path);
         fs.writeFile(path, buf, "binary", function (err) {
             callback(err || null);
@@ -1050,7 +1065,7 @@ function NodeJSRuntime() {
                 callback(err, null);
                 return;
             }
-            var buffer = new Buffer(length);
+            var buffer = Buffer.alloc(length);
             fs.read(fd, buffer, 0, length, offset, function (err) {
                 fs.close(fd);
                 callback(err, bufferToUint8Array(buffer));
@@ -1826,6 +1841,19 @@ var webodf = {};
         }
         e.parentNode.insertBefore(df, e);
     }
+    // The five namespaces of the library are gathered here, so that a class may
+    // be looked up by its name. The compiler reports a partial alias for each
+    // of them, JSC_PARTIAL_NAMESPACE, as it may no longer flatten what they
+    // hold, and any way of reading a namespace as a value does it: a map built
+    // when a class is looked up rather than here, or a function returning them
+    // one by one, are reported the same way. Only dropping the lookup by name
+    // would remove it, that this loader exists for.
+    //
+    // The warning is left, as it only shows in the target "compiled.js" of the
+    // build with cmake, that compiles the library and the tests with
+    // ADVANCED_OPTIMIZATIONS to report more problems, and whose output is never
+    // run. The library that ships is compiled with SIMPLE_OPTIMIZATIONS, that
+    // flattens no namespace, and reports none of it.
     var /**@type{!Object.<string,!{dir:string, deps:!Array.<string>}>}*/
         dependencies,
         packages = {

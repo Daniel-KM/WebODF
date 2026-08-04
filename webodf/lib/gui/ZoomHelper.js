@@ -129,6 +129,7 @@
          * @return {undefined}
          */
         function applyCSSTransform(x, y, scale, is3D) {
+            /*jslint unparam: true*/
             // Scale the page with the CSS `zoom` property rather than a CSS
             // transform. A transform promotes the (very tall) page onto a
             // composited GPU layer, which mobile WebViews rasterise in tiles;
@@ -461,24 +462,6 @@
         };
 
         /**
-         * Enable or disable ZoomHelper's own touch-gesture handling
-         * (pinch-zoom and pan). When disabled, any attached listeners are
-         * removed and none are re-attached on subsequent setZoomableElement
-         * calls, leaving gestures to the host. Programmatic setZoomLevel is
-         * unaffected.
-         * @param {!boolean} enabled
-         * @return {undefined}
-         */
-        this.setGestureSupportEnabled = function (enabled) {
-            gesturesEnabled = enabled;
-            if (enabled) {
-                registerGestureListeners();
-            } else {
-                unregisterGestureListeners();
-            }
-        };
-
-        /**
          * Adds touchstart, touchmove, and touchend
          * event listeners to the element's scrollable
          * container.
@@ -507,6 +490,24 @@
                 offsetParent.removeEventListener('touchend', /**@type{!EventListener}*/(sanitizeGesture), false);
             }
         }
+
+        /**
+         * Enable or disable ZoomHelper's own touch-gesture handling
+         * (pinch-zoom and pan). When disabled, any attached listeners are
+         * removed and none are re-attached on subsequent setZoomableElement
+         * calls, leaving gestures to the host. Programmatic setZoomLevel is
+         * unaffected.
+         * @param {!boolean} enabled
+         * @return {undefined}
+         */
+        this.setGestureSupportEnabled = function (enabled) {
+            gesturesEnabled = enabled;
+            if (enabled) {
+                registerGestureListeners();
+            } else {
+                unregisterGestureListeners();
+            }
+        };
 
         /**
          * @param {!function(!Error=)} callback, passing an error object in case of error

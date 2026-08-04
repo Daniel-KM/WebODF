@@ -857,7 +857,11 @@
          * @return {undefined}
          */
         function removeElements(xmldoc, localName, allowedNamespaces) {
-            var elements = domUtils.getElementsByTagName(xmldoc, localName),
+            // The elements are searched by local name in every namespace: in a
+            // xml document, getElementsByTagName matches the qualified name, so
+            // it would miss an element written with a prefix, like
+            // <xhtml:script/>.
+            var elements = domUtils.getElementsByTagNameNS(xmldoc, "*", localName),
                 element,
                 i;
             for (i = 0; i < elements.length; i += 1) {

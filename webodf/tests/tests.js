@@ -95,7 +95,7 @@ function hasBrowserLikeDom() {
     try {
         // A dom of java throws instead of returning undefined.
         return Boolean(doc.documentElement && doc.documentElement.childNodes[0]);
-    } catch (ignore) {
+    } catch (/**@type{*}*/e) {
         return false;
     }
 }
@@ -113,7 +113,7 @@ function hasLayout() {
     }
     try {
         return typeof window.document.createRange().getClientRects === "function";
-    } catch (ignore) {
+    } catch (/**@type{*}*/e) {
         return false;
     }
 }
@@ -141,7 +141,7 @@ function hasStrictCssParser() {
         count = sheet.cssRules.length;
         sheet.insertRule("text|a > :not(text|b){margin-left:0;}", count);
         return sheet.cssRules.length === count;
-    } catch (ignore) {
+    } catch (/**@type{*}*/e) {
         // The engine refused the rule, as a browser does.
         return true;
     } finally {

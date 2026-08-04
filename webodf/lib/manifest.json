@@ -261,11 +261,11 @@
         "webodfcore.StepIterator"
     ],
     "odf.Style2CSS": [
+        "odf.OdfContainer",
         "odf.OdfUtils",
         "odf.StyleParseUtils",
         "odf.StyleTree",
-        "webodfcore.CSSUnits",
-        "xmldom.XPath"
+        "webodfcore.CSSUnits"
     ],
     "odf.StyleCache": [
         "odf.GraphicProperties",

@@ -72,11 +72,11 @@ add_custom_command(
     # from our sources
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/dojo-deps/ dojo-deps/
 
-    # from dojo download (DEPENDS Dojo)
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO}/dojo/ dojo-deps/src/dojo/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO}/dijit/ dojo-deps/src/dijit/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO}/dojox/ dojo-deps/src/dojox/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO}/util/ dojo-deps/src/util/
+    # from dojo download (DEPENDS Dojo), one package for each directory
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO_CORE}/ dojo-deps/src/dojo/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO_DIJIT}/ dojo-deps/src/dijit/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO_DOJOX}/ dojo-deps/src/dojox/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${DOJO_UTIL}/ dojo-deps/src/util/
 
     # now do the dojo magic...
     COMMAND ${NODE} ${DOJO_DEPS}/src/dojo/dojo.js load=build

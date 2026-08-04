@@ -47,9 +47,9 @@ gui.ImageControllerTests = function ImageControllerTests(runner) {
     /*jslint emptyblock:true*/
     function MockOdfCanvas(node) {
         var self = this;
-        this.odfContainer = function () { return self; };
+        this.odfContainer = function () { return /**@type{?}*/ (self); };
         this.getContentElement = function () { return node.getElementsByTagNameNS(officens, 'text')[0]; };
-        this.getElement = function () { return node; };
+        this.getElement = function () { return /**@type{!HTMLElement}*/ (node); };
         this.rootElement = node;
         this.rootElement.body = node;
         this.rootElement.styles = node;
