@@ -186,6 +186,8 @@ odf.TextLayout = function TextLayout() {
             pageHeight: 1123,
             marginTop: 76,
             marginBottom: 76,
+            columnCount: 1,
+            columnGap: 0,
             marginLeft: 76,
             marginRight: 76,
             pageSeparation: pageSeparation,
@@ -513,6 +515,25 @@ odf.TextLayout = function TextLayout() {
         return null;
     }
     /**
+     * The columns a page or a section is written in.
+     * @param {!Element} properties the properties of the layout or the style
+     * @return {!{count:!number,gap:!number}}
+     */
+    function columnsOf(properties) {
+        var columns = domUtils.getDirectChild(properties, stylens, "columns"),
+            /**@type{!number}*/
+            count = 1;
+        if (!columns) {
+            return {count: 1, gap: 0};
+        }
+        count = parseInt(columns.getAttributeNS(fons, "column-count"), 10)
+            || 1;
+        return {
+            count: Math.max(1, count),
+            gap: lengthInPx(columns, "column-gap", 0)
+        };
+    }
+    /**
      * The size of a page, read from the page layout the first master page
      * names. A text document has one master page in all but the rarest cases,
      * and the pages are all of that size until the layout follows the master
@@ -536,6 +557,8 @@ odf.TextLayout = function TextLayout() {
             layout,
             /**@type{!odf.TextLayout.PageDimensions}*/
             dims,
+            /**@type{!{count:!number,gap:!number}}*/
+            columns,
             /**@type{!number}*/
             i;
         if (masterPage) {
@@ -554,6 +577,7 @@ odf.TextLayout = function TextLayout() {
         if (properties === null) {
             return defaultDimensions;
         }
+        columns = columnsOf(properties);
         dims = {
             pageHeight: lengthInPx(properties, "page-height",
                 defaultDimensions.pageHeight),
@@ -564,6 +588,8 @@ odf.TextLayout = function TextLayout() {
             marginLeft: defaultDimensions.marginLeft,
             marginRight: defaultDimensions.marginRight,
             pageSeparation: pageSeparation,
+            columnCount: columns.count,
+            columnGap: columns.gap,
             header: readPageArea(pageLayout, "header-style", "margin-bottom"),
             footer: readPageArea(pageLayout, "footer-style", "margin-top"),
             firstPage: readFurniture(odfroot, masterPage),
@@ -2672,6 +2698,30 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
+     * Write a page in the columns its layout asks for.
+     * @param {!Element} box the page
+     * @param {!odf.TextLayout.PageDimensions} dims
+     * @return {undefined}
+     */
+    function setColumns(box, dims) {
+        if (dims.columnCount > 1) {
+            /**@type{!HTMLElement}*/(box).style.setProperty("column-count",
+                String(dims.columnCount));
+            /**@type{!HTMLElement}*/(box).style.setProperty("column-gap",
+                dims.columnGap + "px");
+        }
+    }
+    /**
+     * Whether a page is written in more than one column.
+     * @param {!Element} box the page
+     * @return {!boolean}
+     */
+    function holdsColumns(box) {
+        var count = /**@type{!HTMLElement}*/(box).style
+            .getPropertyValue("column-count");
+        return count !== "" && count !== "1" && count !== "auto";
+    }
+    /**
      * Where the text of a page ends.
      *
      * The notes of the foot of a page are drawn in the padding at the foot of
@@ -2683,6 +2733,20 @@ odf.TextLayout = function TextLayout() {
     function edgeOf(box) {
         return box.getBoundingClientRect().bottom
             - (parseFloat(/**@type{!HTMLElement}*/(box).style.paddingBottom)
+                || 0);
+    }
+    /**
+     * Where the last column of a page ends.
+     *
+     * A page written in columns is filled from the foot of one column to the
+     * head of the next, so what does not fit stands to the right of the last
+     * column and not under the text.
+     * @param {!Element} box the page
+     * @return {!number}
+     */
+    function rightEdgeOf(box) {
+        return box.getBoundingClientRect().right
+            - (parseFloat(/**@type{!HTMLElement}*/(box).style.paddingRight)
                 || 0);
     }
     /**
@@ -2851,6 +2915,10 @@ odf.TextLayout = function TextLayout() {
      */
     function firstOverflowing(box) {
         var edge = edgeOf(box),
+            /**@type{!boolean}*/
+            columns = holdsColumns(box),
+            /**@type{!number}*/
+            side = rightEdgeOf(box),
             /**@type{?Element}*/
             node = box.firstElementChild,
             /**@type{!ClientRect}*/
@@ -2859,7 +2927,9 @@ odf.TextLayout = function TextLayout() {
             rect = node.getBoundingClientRect();
             if (node.className !== "webodf-pageNotes"
                     && (rect.height > 0 || rect.width > 0)
-                    && rect.bottom > edge + 1) {
+                    && (columns
+                        ? rect.right > side + 1
+                        : rect.bottom > edge + 1)) {
                 return node;
             }
             node = node.nextElementSibling;
@@ -2925,6 +2995,10 @@ odf.TextLayout = function TextLayout() {
         var doc = /**@type{!Document}*/(box.ownerDocument),
             /**@type{!number}*/
             edge = edgeOf(box),
+            /**@type{!boolean}*/
+            columns = holdsColumns(box),
+            /**@type{!number}*/
+            side = rightEdgeOf(box),
             /**@type{?Node}*/
             last = box.lastElementChild
                 && box.lastElementChild.className === "webodf-pageNotes"
@@ -2958,7 +3032,10 @@ odf.TextLayout = function TextLayout() {
         range.setStartBefore(node);
         range.setEndAfter(last);
         rect = range.getBoundingClientRect();
-        if ((rect.height > 0 || rect.width > 0) && rect.bottom > edge + 1) {
+        if ((rect.height > 0 || rect.width > 0)
+                && (columns
+                    ? rect.right > side + 1
+                    : rect.bottom > edge + 1)) {
             return true;
         }
         // What is drawn out of the flow of the text — a frame set against the
@@ -3409,6 +3486,7 @@ odf.TextLayout = function TextLayout() {
         /**@type{!HTMLElement}*/(box).style.paddingRight =
             dims.marginRight + "px";
         /**@type{!HTMLElement}*/(box).style.width = dims.pageWidth + "px";
+        setColumns(box, dims);
         /**@type{!HTMLElement}*/(box).style.height =
             (dims.pageHeight - dims.marginTop - dims.marginBottom) + "px";
         // A page is set at the place of the page it is, and not left to
@@ -3899,6 +3977,7 @@ odf.TextLayout = function TextLayout() {
                             dims.marginRight + "px";
                         /**@type{!HTMLElement}*/(target).style.width =
                             dims.pageWidth + "px";
+                        setColumns(target, dims);
                         /**@type{!HTMLElement}*/(target).style.height =
                             (dims.pageHeight - dims.marginTop
                                 - dims.marginBottom) + "px";
@@ -4320,6 +4399,8 @@ odf.TextLayout.PageArea;
     marginLeft:!number,
     marginRight:!number,
     pageSeparation:!number,
+    columnCount:!number,
+    columnGap:!number,
     header:!odf.TextLayout.PageArea,
     footer:!odf.TextLayout.PageArea,
     firstPage:!odf.TextLayout.PageFurniture,
