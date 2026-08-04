@@ -38,6 +38,9 @@ add_dependencies(webodf.js-tests test-node)
 # neither. It runs in a directory of its own, as the one of node does, since a
 # test writes files, and it is told where the library is: rhino tells a script
 # no path of its own, see "libraryPaths" in "runtime.js".
+# Rhino is run by java, so a machine without it runs the suite in node and in
+# the webengine of qt alone, see "find_package(Java ...)" in the root.
+if (WEBODF_HAS_JAVA)
 COPY_FILES(tests_rhinotests ${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}/_rhinotest ${TESTS_TESTFILES} )
 
@@ -71,6 +74,7 @@ add_custom_command(
 add_custom_target(test-simplerhino ALL
     DEPENDS _simplerhinotest/simplerhinotest.timestamp)
 add_dependencies(webodf.js-tests test-simplerhino)
+endif ()
 
 if (BUILD_QTJSRUNTIME)
     COPY_FILES(tests_qtjsruntimetest ${CMAKE_CURRENT_SOURCE_DIR}

@@ -118,8 +118,18 @@ if (WEBODF_QTJSRUNTIME OR WEBODF_DESKTOP)
   endif ()
 endif ()
 
-# java runtime is needed for Closure Compiler
-find_package(Java COMPONENTS Runtime REQUIRED)
+# Java runs the closure compiler and rhino, that check the types of the
+# sources and run the tests in a second engine. Neither writes the library:
+# terser does, with node. So java is looked for and not required, and a
+# machine without it builds everything but the checks, which is what a build
+# in a sandbox does, see the flatpak of the viewer.
+find_package(Java COMPONENTS Runtime)
+if (Java_JAVA_EXECUTABLE)
+    set(WEBODF_HAS_JAVA TRUE)
+else ()
+    set(WEBODF_HAS_JAVA FALSE)
+    message(STATUS "No java was found: the types of the sources are not checked, and the tests are not run in rhino.")
+endif ()
 
 # Node.js will be downloaded on Windows systems, so check for installed version is below
 # 22.22.2 is the oldest release of node jsdom runs on, that the tests need.
@@ -143,6 +153,11 @@ else ( IS_DIRECTORY $ENV{WEBODF_DOWNLOAD_DIR} )
     SET ( EXTERNALS_DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/downloads )
 endif ( IS_DIRECTORY $ENV{WEBODF_DOWNLOAD_DIR} )
 MESSAGE ( STATUS "external downloads will be stored/expected in: ${EXTERNALS_DOWNLOAD_DIR}" )
+
+# The two jars are downloaded for java to run them: a build without java, or
+# one that was given a library and checks nothing, asks nothing of the
+# network. A sandbox has no network at all, see the flatpak of the viewer.
+if (WEBODF_HAS_JAVA AND NOT WEBODF_PREBUILT_LIBRARY)
 
 # Closure Compiler
 ExternalProject_Add(
@@ -174,6 +189,8 @@ ExternalProject_Add(
 )
 # Same version as the build with node, see scripts/lib/rhino.js.
 set(RHINO ${EXTERNALS_DOWNLOAD_DIR}/rhino-all-1.9.1.jar)
+
+endif ()
 
 
 # Node.js is expected to be installed, on every platform. Windows used to
