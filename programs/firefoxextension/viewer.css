@@ -25,3 +25,7 @@ div#toolbar > .button {
 div#toolbar > .button:hover {
     background: #CCCCCC;
 }
+/* The label opens the picker, so the input itself is not shown. */
+div#toolbar > #openlabel > input {
+    display: none;
+}

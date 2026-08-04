@@ -23,21 +23,47 @@
  * @source: https://github.com/kogmbh/WebODF/
  */
 
-/*global document, window, browser, odf, URLSearchParams*/
+/*global document, window, browser, odf, URLSearchParams, URL*/
 
 (function () {
     "use strict";
 
-    var url = new URLSearchParams(window.location.search).get("file");
+    var url = new URLSearchParams(window.location.search).get("file"),
+        canvas = new odf.OdfCanvas(document.getElementById("odf")),
+        open = document.getElementById("open");
+
+    /**
+     * @param {!string} name
+     * @return {undefined}
+     */
+    function show(name) {
+        document.title = name;
+        document.getElementById("download").style.display = url
+            ? ""
+            : "none";
+    }
+
+    // A document that is read from the disk is opened here, as the requests of
+    // a file:// url never reach the background script: webRequest only watches
+    // http, https and the web sockets.
+    open.addEventListener("change", function () {
+        var file = open.files[0];
+        if (file) {
+            url = null;
+            show(file.name);
+            canvas.load(URL.createObjectURL(file));
+        }
+    });
 
     if (!url) {
+        show("ODF Viewer");
         return;
     }
-    document.title = decodeURIComponent(url.split("/").pop());
+    show(decodeURIComponent(url.split("/").pop()));
     // The download goes through the background script, as the viewer holds no
     // permission of its own.
     document.getElementById("download").addEventListener("click", function () {
         browser.runtime.sendMessage({action: "download", url: url});
     });
-    new odf.OdfCanvas(document.getElementById("odf")).load(url);
+    canvas.load(url);
 }());
