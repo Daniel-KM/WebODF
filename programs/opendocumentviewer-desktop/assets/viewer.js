@@ -8,6 +8,7 @@
         failure = document.getElementById("failure"),
         ways = document.getElementById("ways"),
         canvas = null,
+        refitting = false,
         translated,
         i;
 
@@ -82,10 +83,15 @@
             ways.hidden = true;
             canvas = new odf.OdfCanvas(container);
             // A row of two pages is twice as wide as one, so the document is
-            // scaled to the window anew every time the pages are drawn: they
-            // are drawn a few at a time, and the last of them says how wide
-            // the document is.
+            // scaled to the window anew when the reader asks for another way
+            // of laying the pages out, and then alone: a document is read at
+            // the size it was written at, and a window that holds a page
+            // whole leaves it at that size.
             canvas.addListener("pagesdrawn", function () {
+                if (!refitting) {
+                    return;
+                }
+                refitting = false;
                 canvas.fitSmart(available());
             });
             // A text is drawn over pages, as it is printed, which the
@@ -170,6 +176,7 @@
          */
         setPages: function (perRow, firstAlone) {
             if (canvas) {
+                refitting = true;
                 canvas.setPagesPerRow(perRow);
                 canvas.setFirstPageOnItsOwn(firstAlone);
             }
