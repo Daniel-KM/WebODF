@@ -3986,32 +3986,20 @@
             }
         };
         /**
-         * Break the text into columns, one column to a page, rather than
-         * write it as one run of text with the pages floating beside it. A
-         * column is broken by the browser itself, so a paragraph and a table
-         * are cut where a page ends, and the pages stand beside one another
-         * rather than under one another.
-         * @param {!boolean} enable
+         * The way a text is drawn over pages.
+         *
+         * "pages", which is what a reader is given, lays them one under
+         * another, each page a box of its own that holds what the page
+         * holds: a paragraph and a table that cross the end of a page are
+         * cut there, as an office cuts them. "columns" lays them beside one
+         * another, each page a column, which is how two pages are read side
+         * by side. "flow" writes the text as one run of text with the pages
+         * floating beside it, where nothing is ever cut where a page ends.
+         * @param {!string} mode
          * @return {undefined}
          */
-        this.setPagesInColumns = function (enable) {
-            textLayout.setColumns(enable);
-            if (paginated && odfcontainer
-                    && odfcontainer.state === odf.OdfContainer.DONE) {
-                drawPages(odfcontainer, odfcontainer.rootElement);
-            }
-        };
-        /**
-         * Lay the pages one under another, as a reader scrolls a document,
-         * rather than beside one another, which is how two pages are shown
-         * side by side. The text is broken into a box for each page either
-         * way, so a paragraph or a table that crosses the end of a page is
-         * cut in two.
-         * @param {!boolean} enable
-         * @return {undefined}
-         */
-        this.setPagesStacked = function (enable) {
-            textLayout.setStacked(enable);
+        this.setPageMode = function (mode) {
+            textLayout.setPageMode(mode);
             if (paginated && odfcontainer
                     && odfcontainer.state === odf.OdfContainer.DONE) {
                 drawPages(odfcontainer, odfcontainer.rootElement);

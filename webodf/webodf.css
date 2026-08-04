@@ -807,15 +807,8 @@ div.webodf-customScrollbars::-webkit-scrollbar-thumb
     font-weight: bold;
 }
 
-/* The gap between two pages of a text, that shows the ground of the reader as
-   the gap between two slides does: each page is painted on its own, so nothing
-   is drawn here, see "TextLayout.js". */
-.webodf-pageSeparator {
-  background: none;
-}
-
-/* The header and the footer of a page, laid over the room the boxes of the
-   pages left between the text and the edge of the sheet, see "TextLayout.js".
+/* The header and the footer of a page, laid in the margins of the sheet the
+   page is drawn on, see "TextLayout.js".
    The nodes are of the document, so the styles of the document draw them. */
 .webodf-pageFurniture {
   position: absolute;

@@ -90,7 +90,7 @@ odf.PageLayoutTests = function PageLayoutTests(runner) {
                 callback();
             });
             t.odfCanvas.setPaginated(true);
-            t.odfCanvas.setPagesInColumns(true);
+            t.odfCanvas.setPageMode("columns");
             t.odfCanvas.setOdfContainer(container);
         });
     }
