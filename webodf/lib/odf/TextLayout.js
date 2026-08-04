@@ -3913,6 +3913,45 @@ odf.TextLayout = function TextLayout() {
         drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
     }
     /**
+     * How far the foot of a page reaches into the text of it.
+     *
+     * The foot is drawn under the text, in the margin: where it is taller
+     * than the margin left for it, it stands over the last lines, and this
+     * says by how much.
+     * @param {!Element} box the page
+     * @param {?Element} furniture what is drawn around the page
+     * @return {!number} nothing where the foot stands clear of the text
+     */
+    function footOver(box, furniture) {
+        var bottom = box.getBoundingClientRect().bottom,
+            /**@type{!number}*/
+            top = 0,
+            /**@type{!NodeList}*/
+            parts,
+            /**@type{!ClientRect}*/
+            rect,
+            /**@type{!number}*/
+            i;
+        if (!furniture) {
+            return 0;
+        }
+        parts = furniture.getElementsByTagName("*");
+        top = bottom;
+        for (i = 0; i < parts.length; i += 1) {
+            rect = /**@type{!Element}*/(parts.item(i))
+                .getBoundingClientRect();
+            // Only what is drawn under the middle of the page is the foot of
+            // it: a header stands over the text and takes nothing from it
+            // here.
+            if (rect.height > 0
+                    && rect.top > bottom - box.getBoundingClientRect().height
+                        / 2) {
+                top = Math.min(top, rect.top);
+            }
+        }
+        return Math.max(0, Math.round(bottom - top));
+    }
+    /**
      * Give every page the size the plan gives it.
      *
      * The room a header and a foot take is known once they are drawn and
@@ -3925,13 +3964,36 @@ odf.TextLayout = function TextLayout() {
      * @return {undefined}
      */
     function resizePages(plan, boxes) {
+        var doc = boxes.length > 0
+                ? /**@type{!Document}*/(boxes[0].ownerDocument)
+                : null,
+            /**@type{?NodeList}*/
+            drawn = doc
+                ? doc.querySelectorAll(".webodf-pageFurniture")
+                : null;
         boxes.forEach(function (box, index) {
             var dims = plan.at(index),
+                /**@type{!HTMLElement}*/
+                page = /**@type{!HTMLElement}*/(box),
                 /**@type{!string}*/
                 tall = (dims.pageHeight - dims.marginTop
-                    - dims.marginBottom) + "px";
-            if (/**@type{!HTMLElement}*/(box).style.height !== tall) {
-                /**@type{!HTMLElement}*/(box).style.height = tall;
+                    - dims.marginBottom) + "px",
+                /**@type{!number}*/
+                room;
+            if (page.style.height !== tall) {
+                page.style.height = tall;
+            }
+            // The foot of the page is drawn in the margin under the text, and
+            // the room it takes was worked out before it was drawn: a foot
+            // taller than that room, of a font the room was not measured
+            // with, would be drawn over the last line of the text. What it
+            // takes of the text is measured and given back to the foot.
+            room = drawn
+                ? footOver(box, /**@type{?Element}*/(drawn.item(index)))
+                : 0;
+            if (room > 0) {
+                page.style.height = (dims.pageHeight - dims.marginTop
+                    - dims.marginBottom - room) + "px";
             }
         });
     }
