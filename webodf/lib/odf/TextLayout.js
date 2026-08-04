@@ -2247,6 +2247,49 @@ odf.TextLayout = function TextLayout() {
      * @param {!odf.ODFDocumentElement} odfroot
      * @return {undefined}
      */
+    /**
+     * The first paragraph a node writes, or the node itself.
+     *
+     * A document holds its appendixes in a list, one to a list, so what asks
+     * for a page of its own is the paragraph inside it and not the list: the
+     * style of a list says nothing of the pages, and a break would be looked
+     * for where none is ever written.
+     * @param {!Element} element
+     * @return {!Element}
+     */
+    function firstWritten(element) {
+        var walk = element;
+        while (walk.namespaceURI === textns
+                && (walk.localName === "list"
+                    || walk.localName === "list-item"
+                    || walk.localName === "section")
+                && walk.firstElementChild) {
+            walk = walk.firstElementChild;
+        }
+        return walk;
+    }
+    /**
+     * The last paragraph a node writes, or the node itself, see
+     * "firstWritten".
+     * @param {!Element} element
+     * @return {!Element}
+     */
+    function lastWritten(element) {
+        var walk = element;
+        while (walk.namespaceURI === textns
+                && (walk.localName === "list"
+                    || walk.localName === "list-item"
+                    || walk.localName === "section")
+                && walk.lastElementChild) {
+            walk = walk.lastElementChild;
+        }
+        return walk;
+    }
+    /**
+     * Tell the browser which paragraphs are written on a new page.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {undefined}
+     */
     function markPageBreaks(odfroot) {
         var text = /**@type{!Element}*/(odfroot.body.lastElementChild),
             /**@type{!Array.<!Element>}*/
@@ -2258,9 +2301,9 @@ odf.TextLayout = function TextLayout() {
             node = node.nextElementSibling;
         }
         nodes.forEach(function (element, index) {
-            if (asksForABreak(odfroot, element, "break-before")
-                    || (index > 0 && asksForABreak(odfroot, nodes[index - 1],
-                        "break-after"))) {
+            if (asksForABreak(odfroot, firstWritten(element), "break-before")
+                    || (index > 0 && asksForABreak(odfroot,
+                        lastWritten(nodes[index - 1]), "break-after"))) {
                 element.setAttributeNS(webodfhelperns,
                     "webodfhelper:breakbefore", "true");
             } else {
