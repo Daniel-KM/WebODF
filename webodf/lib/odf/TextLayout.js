@@ -3256,8 +3256,16 @@ odf.TextLayout = function TextLayout() {
             /**@type{!number}*/
             n;
         box.className = "webodf-pageBox";
-        /**@type{!HTMLElement}*/(box).style.width =
-            (dims.pageWidth - dims.marginLeft - dims.marginRight) + "px";
+        // The box is the whole width of the paper, with the margins of the
+        // page as its padding: a table written for a page of another size is
+        // wider than the text of this one, and runs into the margin, as an
+        // office draws it, rather than being cut off at the edge of the text.
+        /**@type{!HTMLElement}*/(box).style.boxSizing = "border-box";
+        /**@type{!HTMLElement}*/(box).style.paddingLeft =
+            dims.marginLeft + "px";
+        /**@type{!HTMLElement}*/(box).style.paddingRight =
+            dims.marginRight + "px";
+        /**@type{!HTMLElement}*/(box).style.width = dims.pageWidth + "px";
         /**@type{!HTMLElement}*/(box).style.height =
             (dims.pageHeight - dims.marginTop - dims.marginBottom) + "px";
         // A page is set at the place of the page it is, and not left to
@@ -3267,8 +3275,7 @@ odf.TextLayout = function TextLayout() {
         // are drawn on.
         /**@type{!HTMLElement}*/(box).style.position = "absolute";
         place = pagePlace(/**@type{!PagePlan}*/(state.plan), state.page);
-        /**@type{!HTMLElement}*/(box).style.left = (place.left
-            + dims.marginLeft) + "px";
+        /**@type{!HTMLElement}*/(box).style.left = place.left + "px";
         /**@type{!HTMLElement}*/(box).style.top = (place.top
             + dims.marginTop) + "px";
         state.top = place.top + dims.pageHeight + dims.pageSeparation;
