@@ -1085,6 +1085,11 @@ odf.Style2CSS = function Style2CSS() {
                     || props.hasAttributeNS(stylens, 'rel-width'))) {
             rule += 'table-layout:fixed;';
         }
+        // A table wider than the text of the page is drawn to the width of
+        // the text, its columns narrowed by as much, as an office draws it:
+        // a table written for a page of another size would otherwise run
+        // into the margin and be cut off at the edge of the paper.
+        rule += 'max-width:100%;';
         borderModel = props.getAttributeNS(tablens, 'border-model');
 
         if (borderModel === 'collapsing') {

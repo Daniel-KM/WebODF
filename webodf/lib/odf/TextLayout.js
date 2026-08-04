@@ -2750,6 +2750,31 @@ odf.TextLayout = function TextLayout() {
                 || 0);
     }
     /**
+     * Draw a table that is wider than the text to the width of the text.
+     *
+     * A table is written at the width it had on the page it was written for,
+     * and a page of another size is narrower: the table is marked, and the
+     * rule of the mark shares the width of the text between its columns.
+     * @param {!Element} box the page
+     * @return {undefined}
+     */
+    function fitTables(box) {
+        var found = box.getElementsByTagNameNS(tablens, "table"),
+            /**@type{!number}*/
+            side = rightEdgeOf(box),
+            /**@type{!Element}*/
+            table,
+            /**@type{!number}*/
+            i;
+        for (i = 0; i < found.length; i += 1) {
+            table = /**@type{!Element}*/(found.item(i));
+            if (table.getBoundingClientRect().right > side + 1) {
+                table.setAttributeNS(webodfhelperns, "webodfhelper:wide",
+                    "true");
+            }
+        }
+    }
+    /**
      * Take the notes of the foot of a page away, and the room they took.
      * @param {!Element} box the page
      * @return {undefined}
@@ -3649,6 +3674,11 @@ odf.TextLayout = function TextLayout() {
             box.removeChild(keeper);
             keeper = box.lastElementChild;
         }
+        // A table written for a page of another size is drawn to the width
+        // of the text of this one before the notes are drawn: it is taller
+        // for being narrower, and what it pushes past the end of the page is
+        // moved to the page that follows.
+        fitTables(box);
         // The notes called for on the page are drawn at the foot of it, and
         // the text of the page is that much shorter: what no longer fits is
         // moved to the page that follows when the pages are set right, see
@@ -3703,6 +3733,19 @@ odf.TextLayout = function TextLayout() {
         clearOwnRules(sheet);
         sheet.insertRule("office|text {width:auto;margin:0;padding:0;"
             + "position:relative;}", sheet.cssRules.length);
+        // A table wider than the text of the page is drawn to the width of
+        // the text: the widths its columns were written at are dropped and
+        // the browser shares the width of the text between them, as an
+        // office does with a table written for a page of another size.
+        sheet.insertRule("table|table[webodfhelper|wide] {table-layout:auto;"
+            + "width:100%;max-width:100%;}", sheet.cssRules.length);
+        // A word longer than its column — the name of an element of the
+        // standard, that holds no blank — is broken across two lines rather
+        // than pushing the column wider than the text of the page, as an
+        // office breaks it.
+        sheet.insertRule("table|table[webodfhelper|wide] table|table-cell *"
+            + " {overflow-wrap:break-word;word-break:break-all;}",
+            sheet.cssRules.length);
         // A page holds what it holds and is of the size the plan gives it:
         // the browser is told so, so that a page that is filled is laid out
         // on its own and not with the pages that went before it. Without it
@@ -3901,6 +3944,7 @@ odf.TextLayout = function TextLayout() {
                 lines,
                 /**@type{!number}*/
                 n;
+            fitTables(box);
             // The notes are drawn before the page is read: they take the
             // foot of the page, so what they push past the end of it is what
             // is moved to the page that follows, notes and all.
