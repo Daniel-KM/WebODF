@@ -43,7 +43,8 @@
             UNKNOWN = "uncategorized", // Uncategorized element
             // Basic list of containers originally created using tools/odfRng2Config.js
             // List has been hand-updated however, and should not simply be discarded!
-            /**@type{!Array.<!Array.<!string, !string>>}*/
+            // Each entry is a pair: the name of the element and its category.
+            /**@type{!Array.<!Array.<!string>>}*/
             containers = [
                 ["config:config-item"                    , UNKNOWN],
                 ["form:item"                             , OBJECT],

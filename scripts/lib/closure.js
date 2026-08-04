@@ -11,8 +11,7 @@ var fs = require("fs"),
     https = require("https"),
     rootDir = path.resolve(__dirname, "../.."),
     toolsDir = path.join(rootDir, ".tools"),
-    // Version the sources are validated against.
-    version = "v20160911",
+    version = process.env.CLOSURE_VERSION || "v20260804",
     jarName = "closure-compiler-" + version + ".jar",
     jarPath = path.join(toolsDir, jarName),
     jarUrl = "https://repo1.maven.org/maven2/com/google/javascript/closure-compiler/"
@@ -58,6 +57,13 @@ function jar() {
 // ambiguousFunctionDecl, checkEventfulObjectDisposal, es3, fileoverviewTags,
 // internetExplorerChecks, missingGetCssName, newCheckTypes, undefinedNames,
 // unusedPrivateMembers and useOfGoogBase.
+// Groups removed from the compilers newer than 2016.
+var removedGroups = [
+    "ambiguousFunctionDecl", "checkEventfulObjectDisposal", "es3",
+    "fileoverviewTags", "internetExplorerChecks", "missingGetCssName",
+    "newCheckTypes", "undefinedNames", "unusedPrivateMembers", "useOfGoogBase"
+];
+
 var errorGroups = [
     "accessControls", "ambiguousFunctionDecl", "checkEventfulObjectDisposal",
     "checkRegExp", "checkTypes", "checkVars",
@@ -75,6 +81,22 @@ var errorGroups = [
 
 var offGroups = ["missingRequire", "nonStandardJsDocs"];
 
+/**
+ * Groups of checks to report as errors, without the ones the given version of
+ * the compiler does not know any more.
+ * @return {!Array.<string>}
+ */
+function errorGroupsFor(compilerVersion) {
+    if (compilerVersion === "v20160911") {
+        return errorGroups;
+    }
+    return errorGroups.filter(function (group) {
+        return removedGroups.indexOf(group) === -1;
+    });
+}
+
 exports.jar = jar;
+exports.version = version;
+exports.errorGroupsFor = errorGroupsFor;
 exports.errorGroups = errorGroups;
 exports.offGroups = offGroups;

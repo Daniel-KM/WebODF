@@ -72,7 +72,7 @@ function flags(files) {
         "--hide_warnings_for=synthetic",
         "--summary_detail_level", "3"
     ];
-    closure.errorGroups.forEach(function (group) {
+    closure.errorGroupsFor(closure.version).forEach(function (group) {
         list.push("--jscomp_error", group);
     });
     closure.offGroups.forEach(function (group) {

@@ -49,7 +49,9 @@ ops.Operation.prototype.init = function (data) {"use strict"; };
 ops.Operation.prototype.isEdit;
 
 /**
- * @type {string}
+ * Identifier of the group of operations this one belongs to, set by the router
+ * when the operation is queued: it is undefined until then.
+ * @type {(string|undefined)}
  */
 ops.Operation.prototype.group;
 

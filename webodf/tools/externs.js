@@ -118,18 +118,22 @@ NodeJSObject.prototype.close = function (fd, callback) {"use strict"; };
  */
 function XmlDom() {"use strict"; }
 /**
- * @constructor
- * @extends DOMParser
+ * The package exports the constructors of the dom interfaces it implements.
+ * They are not declared as classes extending them, else the compiler sees a
+ * cycle in the inheritance: the name of the property is the name of the type.
+ * @type {function(new:DOMParser)}
  */
-XmlDom.prototype.DOMParser = function () {"use strict"; };
+XmlDom.prototype.DOMParser;
 /**
- * @constructor
- * @extends DOMImplementation
+ * @type {function(new:DOMImplementation)}
  */
-XmlDom.prototype.DOMImplementation = function () {"use strict"; };
+XmlDom.prototype.DOMImplementation;
 /**
+ * The constructor of the nodes of the dom of the package, whose prototype gets
+ * the properties missing outside of a browser. It does not extend Node: the
+ * name of the property is the name of the type, and the compiler would see a
+ * cycle in the inheritance.
  * @constructor
- * @extends Node
  */
 XmlDom.prototype.Node = function () {"use strict"; };
 /**
@@ -657,7 +661,7 @@ var global = {};
 /**
  * The dom interfaces that a browser exposes globally, added to the global
  * object of NodeJS by the runtime.
- * @type {(function(new:Node)|undefined)}
+ * @type {(!Function|undefined)}
  */
 global.Node;
 
