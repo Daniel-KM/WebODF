@@ -7,8 +7,12 @@
 # network, as a document is drawn on the machine and nothing of it is sent.
 app-id: org.webodf.OpenDocumentViewer
 runtime: org.kde.Platform
-runtime-version: '6.8'
+runtime-version: '@VIEWER_FLATPAK_RUNTIME@'
 sdk: org.kde.Sdk
+# The runtime of KDE carries qt, but not its webengine, which the viewer is
+# drawn in: the base app of qt carries that one, and is built into the app.
+base: io.qt.qtwebengine.BaseApp
+base-version: '@VIEWER_FLATPAK_RUNTIME@'
 command: opendocumentviewer-desktop
 finish-args:
   - --share=ipc
@@ -20,6 +24,9 @@ finish-args:
 modules:
   - name: opendocumentviewer
     buildsystem: cmake-ninja
+    # The build stands apart from the sources, which the root of this tree
+    # asks for; the tool builds in the sources themselves without it.
+    builddir: true
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
       - -DWEBODF_DESKTOP=ON

@@ -195,12 +195,94 @@ if (UNIX AND NOT APPLE)
             COMMENT "The AppImage of the viewer of the desktop")
     endif ()
 
-    # The manifest of the flatpak names the runtime of qt, so nothing of qt is
-    # built here: the tool reads it and writes the package.
+    find_program(FLATPAK_BUILDER flatpak-builder)
+    find_program(FLATPAK flatpak)
+
+    # The manifest of the flatpak names the runtime of KDE, which carries qt
+    # and its webengine, so nothing of qt is built here: the tool reads it and
+    # writes the package. The tool alone is not enough, as that runtime is
+    # installed apart and weighs some gigabytes; and a branch of it is
+    # declared end of life as soon as a newer one is out, so the newest branch
+    # this machine has is taken rather than one written here, which would ask
+    # for a version that is old before the next release.
+    #
+    # Whether one is there at all is asked now rather than in the middle of
+    # the build, where the failure reads as a broken build and not as a
+    # missing part of the machine.
+    #
+    # The branch of the runtime is the version of qt it carries, so the least
+    # one that will do is the least version of qt the viewer is built with,
+    # see "find_package(Qt6 ...)" in the root: a machine that kept only an
+    # older branch has nothing to build against, and is told so.
+    set(VIEWER_FLATPAK_RUNTIME_LEAST "6.4")
+    set(WEBODF_FLATPAK_RUNTIME "" CACHE STRING
+        "The branch of org.kde.Sdk the flatpak is built against, the newest installed one by default")
+    set(VIEWER_FLATPAK_RUNTIME "${WEBODF_FLATPAK_RUNTIME}")
+    if (FLATPAK AND NOT VIEWER_FLATPAK_RUNTIME)
+        execute_process(COMMAND ${FLATPAK} list --app=false --columns=application,branch
+            OUTPUT_VARIABLE VIEWER_FLATPAK_LIST
+            RESULT_VARIABLE VIEWER_FLATPAK_LISTED
+            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if (VIEWER_FLATPAK_LISTED EQUAL 0)
+            string(REGEX MATCHALL "org\\.kde\\.Sdk[ \t]+[0-9]+\\.[0-9]+"
+                VIEWER_FLATPAK_SDKS "${VIEWER_FLATPAK_LIST}")
+            set(VIEWER_FLATPAK_BRANCHES "")
+            foreach (VIEWER_FLATPAK_ONE ${VIEWER_FLATPAK_SDKS})
+                string(REGEX REPLACE "^org\\.kde\\.Sdk[ \t]+" ""
+                    VIEWER_FLATPAK_ONE "${VIEWER_FLATPAK_ONE}")
+                # A branch of qt 5, or one older than the viewer asks for,
+                # carries no webengine the viewer can be built against.
+                if (NOT VIEWER_FLATPAK_ONE VERSION_LESS
+                        VIEWER_FLATPAK_RUNTIME_LEAST)
+                    list(APPEND VIEWER_FLATPAK_BRANCHES ${VIEWER_FLATPAK_ONE})
+                endif ()
+            endforeach ()
+            if (VIEWER_FLATPAK_BRANCHES)
+                list(SORT VIEWER_FLATPAK_BRANCHES COMPARE NATURAL ORDER
+                    DESCENDING)
+                list(GET VIEWER_FLATPAK_BRANCHES 0 VIEWER_FLATPAK_RUNTIME)
+            endif ()
+        endif ()
+    endif ()
+    # A branch that is named by hand is taken as it is asked for, but not one
+    # that carries a qt the viewer is not built with: that is a mistake of the
+    # one who asked, and it is told now and not by the compiler.
+    if (WEBODF_FLATPAK_RUNTIME AND WEBODF_FLATPAK_RUNTIME VERSION_LESS
+            VIEWER_FLATPAK_RUNTIME_LEAST)
+        message(FATAL_ERROR
+            "WEBODF_FLATPAK_RUNTIME is ${WEBODF_FLATPAK_RUNTIME}, and the viewer is built with qt ${VIEWER_FLATPAK_RUNTIME_LEAST} or newer, which the runtime of KDE carries under the branch of the same number.")
+    endif ()
+    # What the manifest names when nothing is installed, so that it is written
+    # and read even where no flatpak is built.
+    if (NOT VIEWER_FLATPAK_RUNTIME)
+        set(VIEWER_FLATPAK_RUNTIME "6.9")
+    endif ()
     configure_file(data/org.webodf.OpenDocumentViewer.yml.in
         ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml @ONLY)
-    find_program(FLATPAK_BUILDER flatpak-builder)
-    if (FLATPAK_BUILDER)
+
+    # The runtime of KDE carries qt but not its webengine, which the viewer is
+    # drawn in: that one comes from the base app of qt, built into the app, so
+    # both are asked for here.
+    set(VIEWER_FLATPAK_SDK "org.kde.Sdk//${VIEWER_FLATPAK_RUNTIME}")
+    set(VIEWER_FLATPAK_BASE
+        "io.qt.qtwebengine.BaseApp//${VIEWER_FLATPAK_RUNTIME}")
+    set(VIEWER_HAS_FLATPAK_SDK FALSE)
+    if (FLATPAK_BUILDER AND FLATPAK)
+        execute_process(COMMAND ${FLATPAK} info ${VIEWER_FLATPAK_SDK}
+            RESULT_VARIABLE VIEWER_FLATPAK_SDK_ANSWERED
+            OUTPUT_QUIET ERROR_QUIET)
+        execute_process(COMMAND ${FLATPAK} info ${VIEWER_FLATPAK_BASE}
+            RESULT_VARIABLE VIEWER_FLATPAK_BASE_ANSWERED
+            OUTPUT_QUIET ERROR_QUIET)
+        if (VIEWER_FLATPAK_SDK_ANSWERED EQUAL 0
+                AND VIEWER_FLATPAK_BASE_ANSWERED EQUAL 0)
+            set(VIEWER_HAS_FLATPAK_SDK TRUE)
+        elseif (VIEWER_FLATPAK_SDK_ANSWERED EQUAL 0)
+            set(VIEWER_FLATPAK_SDK ${VIEWER_FLATPAK_BASE})
+        endif ()
+    endif ()
+
+    if (FLATPAK_BUILDER AND VIEWER_HAS_FLATPAK_SDK)
         add_custom_target(package-flatpak
             COMMAND ${CMAKE_COMMAND} -E make_directory ${VIEWER_PRODUCTS}
             COMMAND ${FLATPAK_BUILDER} --force-clean --repo=${CMAKE_CURRENT_BINARY_DIR}/flatpak-repo
@@ -216,10 +298,17 @@ if (UNIX AND NOT APPLE)
         WEBODF_PRODUCT_MADE(package-flatpak
             "${VIEWER_ID}-${WEBODF_VERSION}.flatpak")
     else ()
-        WEBODF_PRODUCT_MISSING("the flatpak" "flatpak-builder")
+        if (FLATPAK_BUILDER)
+            WEBODF_PRODUCT_MISSING("the flatpak" "${VIEWER_FLATPAK_SDK}")
+            set(VIEWER_NO_FLATPAK
+                "${VIEWER_FLATPAK_SDK} is not installed: the flatpak is built against the runtime of KDE, which carries qt, and against the base app of qt, which carries its webengine. Install them with: flatpak install flathub org.kde.Platform//${VIEWER_FLATPAK_RUNTIME} org.kde.Sdk//${VIEWER_FLATPAK_RUNTIME} ${VIEWER_FLATPAK_BASE}")
+        else ()
+            WEBODF_PRODUCT_MISSING("the flatpak" "flatpak-builder")
+            set(VIEWER_NO_FLATPAK
+                "flatpak-builder is not installed: the manifest is written in ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml, see https://docs.flatpak.org/")
+        endif ()
         add_custom_target(package-flatpak
-            COMMAND ${CMAKE_COMMAND} -E echo
-                "flatpak-builder is not installed: the manifest is written in ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml, see https://docs.flatpak.org/"
+            COMMAND ${CMAKE_COMMAND} -E echo "${VIEWER_NO_FLATPAK}"
             COMMAND ${CMAKE_COMMAND} -E false
             COMMENT "The flatpak of the viewer of the desktop")
     endif ()
