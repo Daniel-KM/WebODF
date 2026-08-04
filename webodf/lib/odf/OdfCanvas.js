@@ -138,11 +138,15 @@
             // corresponding to a master page in #shadowContent, and in the same order.
             // So, when showing a page, also make it's master page (behind it) visible.
             sheet.insertRule('#shadowContent draw|page {display:none;}', 0);
-            sheet.insertRule('office|presentation draw|page {display:none;}', 1);
+            // A drawing is a run of pages, as a presentation is, and is
+            // read one page at a time in the same way.
+            sheet.insertRule("office|presentation draw|page,"
+                + " office|drawing draw|page {display:none;}", 1);
             sheet.insertRule("#shadowContent draw|page:nth-of-type(" +
                 position + ") {display:block;}", 2);
-            sheet.insertRule("office|presentation draw|page:nth-of-type(" +
-                position + ") {display:block;}", 3);
+            sheet.insertRule("office|presentation draw|page:nth-of-type("
+                + position + "), office|drawing draw|page:nth-of-type("
+                + position + ") {display:block;}", 3);
         }
         /**
          * @return {undefined}
@@ -216,6 +220,7 @@
         /**@const@type {!string}*/svgns   = odf.Namespaces.svgns,
         /**@const@type {!string}*/tablens = odf.Namespaces.tablens,
         /**@const@type {!string}*/chartns = odf.Namespaces.chartns,
+        /**@const@type {!string}*/mathns  = odf.Namespaces.mathns,
         /**@const@type {!string}*/textns  = odf.Namespaces.textns,
         /**@const@type {!string}*/xlinkns = odf.Namespaces.xlinkns,
         /**@const@type {!string}*/presentationns = odf.Namespaces.presentationns,
@@ -3544,6 +3549,8 @@
             waitingForDoneTimeoutId,
             /**@type{!webodfcore.ScheduledTask}*/redrawContainerTask,
             shouldRefreshCss = false,
+            /**@type{!Object.<string,!Element>}*/
+            formulas = {},
             /**@type{?odf.ListStyleToCss}*/
             numbering = null,
             shouldRerenderAnnotations = false,
@@ -3608,6 +3615,83 @@
                 applyImageClip(node, 'imageclip' + String(i), container, stylesheet);
             }
         }
+        /**
+         * Draw the formulas a text holds.
+         *
+         * A formula is a document of its own inside the package, written in
+         * MathML: it is read and put in the element that stands for it, which
+         * the browser draws, as it draws MathML of its own. An office writes
+         * an image of the formula beside it, under "ObjectReplacements", but
+         * a package need not hold one, and this document holds none.
+         * @param {!odf.OdfContainer} container
+         * @param {!Element} odffragment
+         * @return {undefined}
+         */
+        function loadFormulas(container, odffragment) {
+            var objects = odffragment.getElementsByTagNameNS(drawns, "object"),
+                /**@type{!number}*/
+                i;
+            /**
+             * @param {!Element} object
+             * @return {undefined}
+             */
+            function loadFormula(object) {
+                var href = object.getAttributeNS(xlinkns, "href"),
+                    /**@type{!string}*/
+                    path;
+                if (!href
+                        || object.getElementsByTagNameNS(mathns,
+                            "math").length > 0) {
+                    return;
+                }
+                if (formulas.hasOwnProperty(href)) {
+                    // The formula was read already: a copy of it is put in
+                    // this one too, as an element that was cut in two is
+                    // written on two pages and each holds the formula.
+                    object.appendChild(
+                        object.ownerDocument.importNode(formulas[href], true)
+                    );
+                    return;
+                }
+                path = href.replace(/^\.?\//, "").replace(/\/$/, "")
+                    + "/content.xml";
+                container.getPartData(path, function (err, data) {
+                    var /**@type{?Document}*/
+                        formula = null;
+                    if (err || !data) {
+                        return;
+                    }
+                    try {
+                        formula = runtime.parseXML(
+                            runtime.byteArrayToString(data, "utf8")
+                        );
+                    } catch (e) {
+                        formula = null;
+                    }
+                    if (!formula || !formula.documentElement
+                            || formula.documentElement.namespaceURI
+                                !== mathns) {
+                        return;
+                    }
+                    formulas[href] = formula.documentElement;
+                    while (object.firstChild) {
+                        object.removeChild(object.firstChild);
+                    }
+                    object.appendChild(
+                        object.ownerDocument.importNode(
+                            formula.documentElement,
+                            true
+                        )
+                    );
+                    object.setAttributeNS(webodfhelperns,
+                        "webodfhelper:formula", "true");
+                });
+            }
+            for (i = 0; i < objects.length; i += 1) {
+                loadFormula(/**@type{!Element}*/(objects.item(i)));
+            }
+        }
+
         /**
          * Render embedded chart objects (draw:object -> chart sub-document) as
          * static SVG backgrounds on the object element.
@@ -4052,32 +4136,12 @@
                 );
             }
             if (fonts && fonts.ready) {
+                // A font that lands after the pages are broken, which an
+                // engine may do whatever it was asked: the pages already
+                // drawn are set right as the next slice of them is drawn,
+                // see "TextLayout.js".
                 fonts.ready.then(function () {
-                    var tries = 20;
-                    // The pages that were broken with the letters of another
-                    // font are set right as the next slice is drawn, and not
-                    // at the end of the whole text.
                     textLayout.fontsChanged();
-                    /**
-                     * @return {undefined}
-                     */
-                    function whenBroken() {
-                        if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
-                            return;
-                        }
-                        if (textLayout.isBreaking()) {
-                            tries -= 1;
-                            if (tries > 0) {
-                                runtime.setTimeout(whenBroken, 250);
-                            }
-                            return;
-                        }
-                        if (!textLayout.pagesFit(odfnode)) {
-                            textLayout.repair(odfnode,
-                                /**@type{!HTMLDivElement}*/(pagesDiv));
-                        }
-                    }
-                    whenBroken();
                 });
             }
             /**
@@ -4291,6 +4355,7 @@
             textLayout.layOutTabs(odfnode);
             loadImages(container, odfnode.body, css);
             loadCharts(container, odfnode.body, css);
+            loadFormulas(container, odfnode.body);
             loadVideos(container, odfnode.body);
             // WebODF's default graphic style lists "page" among its tags, so it
             // leaks a fill/border onto every draw:page. Reset it (low specificity)
@@ -4315,6 +4380,13 @@
             // scale the document anew: a row of two pages is twice as wide as
             // one, and is only that wide once the last page is drawn.
             textLayout.whenDrawn(function () {
+                // An element that was cut in two is written on two pages,
+                // and the copy of it that holds a formula may have been made
+                // before the formula was read: what is empty is filled from
+                // what was read already.
+                if (odfcontainer) {
+                    loadFormulas(odfcontainer, odfnode.body);
+                }
                 fireEvent("pagesdrawn", []);
             });
 

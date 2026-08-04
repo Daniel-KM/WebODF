@@ -38,7 +38,7 @@
     "use strict";
 
     var /**@const@type{!string}*/
-        extensions = "odt|fodt|ott|odp|fodp|otp|ods|fods|ots",
+        extensions = "odt|fodt|ott|odp|fodp|otp|ods|fods|ots|odg|fodg|otg|odf",
         /**@const@type{!number}*/
         ruleId = 1;
 

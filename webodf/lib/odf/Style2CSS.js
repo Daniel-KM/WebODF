@@ -1270,6 +1270,42 @@ odf.Style2CSS = function Style2CSS() {
     }
 
     /**
+     * Give a page of a slide or of a drawing the size of A4, where the
+     * document says none.
+     *
+     * A master page names the layout that gives its pages their size, and a
+     * document need not write either: the standard names no size to fall
+     * back on, and an office draws such a page at the size of the paper of
+     * the place it is used in. A4 is taken here, which is the paper of every
+     * place but a handful, and the pages are drawn rather than left of no
+     * size at all.
+     * @param {!CSSStyleSheet} sheet
+     * @param {!odf.ODFDocumentElement} rootNode
+     * @return {undefined}
+     */
+    function addPageSizeOfLastResort(sheet, rootNode) {
+        var masterStyles = rootNode.masterStyles,
+            /**@type{?Element}*/
+            page,
+            /**@type{!string}*/
+            name;
+        if (!masterStyles) {
+            return;
+        }
+        page = masterStyles.firstElementChild;
+        while (page) {
+            if (page.namespaceURI === stylens
+                    && page.localName === "master-page"
+                    && !page.getAttributeNS(stylens, "page-layout-name")) {
+                name = page.getAttributeNS(stylens, "name") || "";
+                sheet.insertRule('draw|page[draw|master-page-name="' + name
+                    + '"] {width:21.001cm;height:29.7cm;}',
+                    sheet.cssRules.length);
+            }
+            page = page.nextElementSibling;
+        }
+    }
+    /**
      * @param {!CSSStyleSheet} sheet
      * @param {!Element} node <style:page-layout/>/<style:default-page-layout/>
      * @return {undefined}
@@ -1300,7 +1336,9 @@ odf.Style2CSS = function Style2CSS() {
             }
         }
 
-        if (documentType === 'presentation') {
+        // A drawing is a run of pages, as a presentation is, and its pages are
+        // of the size their master page gives them in the same way.
+        if (documentType === 'presentation' || documentType === 'drawing') {
             masterStyles = domUtils.getDirectChild(/**@type{!Element}*/(node.parentNode.parentNode), officens, 'master-styles');
             e = masterStyles && masterStyles.firstElementChild;
             while (e) {
@@ -1461,6 +1499,12 @@ odf.Style2CSS = function Style2CSS() {
         fontFaceDeclsMap = fontFaceMap;
         documentType = doctype;
         defaultFontSize = runtime.getWindow().getComputedStyle(document.body, null).getPropertyValue('font-size') || '12pt';
+
+        // A page of a slide or of a drawing whose master page names no layout
+        // is drawn at the size of A4, or it would be drawn of no size at all.
+        if (doctype === "presentation" || doctype === "drawing") {
+            addPageSizeOfLastResort(stylesheet, rootNode);
+        }
 
         // add the various styles
         for (family in familynamespaceprefixes) {

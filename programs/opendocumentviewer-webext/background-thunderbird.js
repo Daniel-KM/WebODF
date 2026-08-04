@@ -54,9 +54,13 @@
             "application/vnd.oasis.opendocument.spreadsheet-flat-xml",
             "application/vnd.oasis.opendocument.presentation",
             "application/vnd.oasis.opendocument.presentation-template",
-            "application/vnd.oasis.opendocument.presentation-flat-xml"
+            "application/vnd.oasis.opendocument.presentation-flat-xml",
+            "application/vnd.oasis.opendocument.graphics",
+            "application/vnd.oasis.opendocument.graphics-template",
+            "application/vnd.oasis.opendocument.graphics-flat-xml",
+            "application/vnd.oasis.opendocument.formula"
         ],
-        EXTENSIONS = /\.(odt|ott|fodt|ods|ots|fods|odp|otp|fodp)$/i,
+        EXTENSIONS = /\.(odt|ott|fodt|ods|ots|fods|odp|otp|fodp|odg|otg|fodg|odf)$/i,
         // The languages the page of the welcome is written in, beside the
         // English one every other language falls on.
         LANGUAGES = ["en", "fr"],
