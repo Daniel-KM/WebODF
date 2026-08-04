@@ -221,6 +221,10 @@ add_custom_target(build-opendocumenttexteditor DEPENDS ${OPENDOCUMENTTEXTEDITOR_
 add_custom_target(test-opendocumenttexteditor DEPENDS webodf.js-tests)
 
 add_custom_target(product-opendocumenttexteditor DEPENDS build-opendocumenttexteditor test-opendocumenttexteditor)
+# The zip is named without a path, so it is written where the build was
+# started from, which is the root of the build and not this directory.
+WEBODF_PRODUCT(product-opendocumenttexteditor
+    ${CMAKE_BINARY_DIR}/${OPENDOCUMENTTEXTEDITOR_ZIP})
 
 
 ###########################
@@ -292,6 +296,8 @@ add_custom_target(build-opendocumenttextcollab DEPENDS ${OPENDOCUMENTTEXTCOLLAB_
 add_custom_target(test-opendocumenttextcollab DEPENDS webodf.js-tests)
 
 add_custom_target(product-opendocumenttextcollab DEPENDS build-opendocumenttextcollab test-opendocumenttextcollab)
+# This one is named with the path of the root of the build already.
+WEBODF_PRODUCT(product-opendocumenttextcollab ${OPENDOCUMENTTEXTCOLLAB_ZIP})
 
 
 ################

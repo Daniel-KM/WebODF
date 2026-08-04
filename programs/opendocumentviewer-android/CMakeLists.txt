@@ -124,5 +124,7 @@ if (WEBODF_ANDROID)
     BUILD_OPENDOCUMENTVIEWER_ANDROID(${OPENDOCUMENTVIEWER_ANDROID_APK_DEBUG} assembleDebug)
 
     add_custom_target(product-opendocumentviewer-android DEPENDS ${OPENDOCUMENTVIEWER_ANDROID_APK})
+    WEBODF_PRODUCT(product-opendocumentviewer-android
+        ${OPENDOCUMENTVIEWER_ANDROID_APK})
     add_custom_target(opendocumentviewer-android-debug DEPENDS ${OPENDOCUMENTVIEWER_ANDROID_APK_DEBUG})
 endif ()

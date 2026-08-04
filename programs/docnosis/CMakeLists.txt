@@ -38,3 +38,5 @@ add_custom_command(
 )
 add_custom_target(product-docnosis
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/docnosis-${WEBODF_VERSION}.zip)
+WEBODF_PRODUCT(product-docnosis
+    ${CMAKE_CURRENT_BINARY_DIR}/docnosis-${WEBODF_VERSION}.zip)

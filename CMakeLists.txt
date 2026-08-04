@@ -440,6 +440,24 @@ else()
 endif()
 
 
+
+#############################
+## The products of the build
+#############################
+
+# A product is a file someone is given: an add-on, a zip of the library, an
+# apk. Each one is written where the target that packs it stands, so the list
+# is kept here: the target "products" packs them all and tells where each one
+# was written, as the paths are of no help to remember. The target is named
+# beside the path, so that the list follows the targets and not the files,
+# whose names hold the version of the build.
+set_property(GLOBAL PROPERTY WEBODF_PRODUCTS "")
+set_property(GLOBAL PROPERTY WEBODF_PRODUCT_TARGETS "")
+macro(WEBODF_PRODUCT target path)
+    set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCTS ${path})
+    set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCT_TARGETS ${target})
+endmacro(WEBODF_PRODUCT)
+
 #############################
 ## Build Library and programs
 #############################
@@ -460,6 +478,52 @@ else ()
     if (BUILD_DESKTOP)
         add_subdirectory(programs/opendocumentviewer-desktop)
     endif ()
+endif ()
+
+# The target that runs every test of this build, beside "products" that packs
+# every product: the tests of the library, in each engine the build has, and
+# the ones of the programs that carry some.
+add_custom_target(tests
+    COMMAND ${CMAKE_COMMAND} -E echo ""
+    COMMAND ${CMAKE_COMMAND} -E echo "Every test of this build has run.")
+add_dependencies(tests webodf.js-tests)
+foreach (WEBODF_TEST_TARGET
+        test-opendocumenttexteditor
+        test-opendocumenttextcollab
+        test-opendocumentviewer-webext
+        test-opendocumentviewer-thunderbird)
+    if (TARGET ${WEBODF_TEST_TARGET})
+        add_dependencies(tests ${WEBODF_TEST_TARGET})
+    endif ()
+endforeach ()
+
+# The target that packs every product of this build and gathers them in one
+# place. Each product is written where the target that packs it stands, deep
+# in the tree of the build, so "make products" or "ninja products" copies them
+# all into "products/" and tells what is there: no one has to remember where
+# an add-on or an apk was written.
+get_property(WEBODF_PRODUCT_FILES GLOBAL PROPERTY WEBODF_PRODUCTS)
+get_property(WEBODF_PRODUCT_TARGET_LIST GLOBAL PROPERTY WEBODF_PRODUCT_TARGETS)
+if (WEBODF_PRODUCT_FILES)
+    set(WEBODF_PRODUCTS_DIR ${CMAKE_BINARY_DIR}/products)
+    set(WEBODF_PRODUCT_STEPS
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${WEBODF_PRODUCTS_DIR})
+    foreach (WEBODF_PRODUCT_FILE ${WEBODF_PRODUCT_FILES})
+        list(APPEND WEBODF_PRODUCT_STEPS
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${WEBODF_PRODUCT_FILE} ${WEBODF_PRODUCTS_DIR})
+    endforeach ()
+    list(APPEND WEBODF_PRODUCT_STEPS
+        COMMAND ${CMAKE_COMMAND} -E echo ""
+        COMMAND ${CMAKE_COMMAND} -E echo
+            "The products of this build are in ${WEBODF_PRODUCTS_DIR}:")
+    foreach (WEBODF_PRODUCT_FILE ${WEBODF_PRODUCT_FILES})
+        get_filename_component(WEBODF_PRODUCT_NAME ${WEBODF_PRODUCT_FILE} NAME)
+        list(APPEND WEBODF_PRODUCT_STEPS
+            COMMAND ${CMAKE_COMMAND} -E echo "  ${WEBODF_PRODUCT_NAME}")
+    endforeach ()
+    add_custom_target(products ${WEBODF_PRODUCT_STEPS})
+    add_dependencies(products ${WEBODF_PRODUCT_TARGET_LIST})
 endif ()
 
 # vim:expandtab
