@@ -892,19 +892,24 @@ odf.StyleInfo = function StyleInfo() {
      * @return {!string|undefined}
      */
     function getStyleName(family, element) {
-        var stylename, i,
-            map = elements[element.localName];
-        if (map) {
-            map = map[element.namespaceURI];
-            if (map) {
-                for (i = 0; i < map.length; i += 1) {
-                    if (map[i].keyname === family) {
-                        map = map[i];
-                        if (element.hasAttributeNS(map.ns, map.localname)) {
-                            stylename = element.getAttributeNS(map.ns, map.localname);
-                            break;
-                        }
-                    }
+        var /**@type{(!string|undefined)}*/stylename,
+            /**@type{!number}*/i,
+            /**@type{(!Object.<!string,!Array.<!{keyname:!string,ns:!string,localname:!string}>>|undefined)}*/
+            namespaces = elements[element.localName],
+            /**@type{(!Array.<!{keyname:!string,ns:!string,localname:!string}>|undefined)}*/
+            attributes,
+            /**@type{!{keyname:!string,ns:!string,localname:!string}}*/
+            attribute;
+        if (namespaces) {
+            attributes = namespaces[element.namespaceURI];
+        }
+        if (attributes) {
+            for (i = 0; i < attributes.length; i += 1) {
+                attribute = attributes[i];
+                if (attribute.keyname === family
+                        && element.hasAttributeNS(attribute.ns, attribute.localname)) {
+                    stylename = element.getAttributeNS(attribute.ns, attribute.localname);
+                    break;
                 }
             }
         }
