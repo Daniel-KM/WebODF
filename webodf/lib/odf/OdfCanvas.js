@@ -138,11 +138,15 @@
             // corresponding to a master page in #shadowContent, and in the same order.
             // So, when showing a page, also make it's master page (behind it) visible.
             sheet.insertRule('#shadowContent draw|page {display:none;}', 0);
-            sheet.insertRule('office|presentation draw|page {display:none;}', 1);
+            // A drawing is a run of pages, as a presentation is, and is
+            // read one page at a time in the same way.
+            sheet.insertRule("office|presentation draw|page,"
+                + " office|drawing draw|page {display:none;}", 1);
             sheet.insertRule("#shadowContent draw|page:nth-of-type(" +
                 position + ") {display:block;}", 2);
-            sheet.insertRule("office|presentation draw|page:nth-of-type(" +
-                position + ") {display:block;}", 3);
+            sheet.insertRule("office|presentation draw|page:nth-of-type("
+                + position + "), office|drawing draw|page:nth-of-type("
+                + position + ") {display:block;}", 3);
         }
         /**
          * @return {undefined}

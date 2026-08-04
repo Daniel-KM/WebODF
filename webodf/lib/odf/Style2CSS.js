@@ -1300,7 +1300,9 @@ odf.Style2CSS = function Style2CSS() {
             }
         }
 
-        if (documentType === 'presentation') {
+        // A drawing is a run of pages, as a presentation is, and its pages are
+        // of the size their master page gives them in the same way.
+        if (documentType === 'presentation' || documentType === 'drawing') {
             masterStyles = domUtils.getDirectChild(/**@type{!Element}*/(node.parentNode.parentNode), officens, 'master-styles');
             e = masterStyles && masterStyles.firstElementChild;
             while (e) {

@@ -170,7 +170,8 @@ office|spreadsheet {
   page-break-inside: avoid;
   overflow: hidden;
 }
-office|presentation {
+office|presentation,
+office|drawing {
   display: inline-block;
   text-align: left;
 }
