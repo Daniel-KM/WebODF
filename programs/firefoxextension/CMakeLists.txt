@@ -2,7 +2,7 @@
 # from the build and the manifest carries the version, see below.
 set(FIREFOXEXTENSIONFILES
     background.js
-    rules.json
+    background-chrome.js
     viewer.html
     viewer.css
     viewer.js
@@ -52,7 +52,7 @@ PACK_FIREFOX_EXTENSION(${FIREFOX_EXTENSION_ODFVIEWER}
 PACK_FIREFOX_EXTENSION(${FIREFOX_EXTENSION_ODFVIEWER_MV2}
     ${FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR} manifest-v2.json background.js)
 PACK_FIREFOX_EXTENSION(${CHROME_EXTENSION_ODFVIEWER}
-    ${CHROME_EXTENSION_ODFVIEWER_DIR} manifest-chrome.json rules.json)
+    ${CHROME_EXTENSION_ODFVIEWER_DIR} manifest-chrome.json background-chrome.js)
 
 add_custom_target(build-firefoxextension
     DEPENDS ${FIREFOX_EXTENSION_ODFVIEWER} ${FIREFOX_EXTENSION_ODFVIEWER_MV2}
