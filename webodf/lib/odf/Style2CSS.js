@@ -1028,6 +1028,14 @@ odf.Style2CSS = function Style2CSS() {
     function getTableProperties(props) {
         var rule = '', borderModel;
         rule += applySimpleMapping(props, tablePropertySimpleMapping);
+        // A table of a width the document wrote keeps that width: the
+        // browser lays a table out from what is written in it unless it is
+        // told otherwise, and a long address in a cell made the table wider
+        // than the page, with a bar to scroll under it.
+        if (props.hasAttributeNS(stylens, 'width')
+                || props.hasAttributeNS(stylens, 'rel-width')) {
+            rule += 'table-layout:fixed;';
+        }
         borderModel = props.getAttributeNS(tablens, 'border-model');
 
         if (borderModel === 'collapsing') {
