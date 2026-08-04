@@ -1,0 +1,111 @@
+# Builds the viewer of OpenDocument for the desktop on the three systems it
+# runs on, and runs the tests of the library in the webengine of qt on each of
+# them. Two of those systems are ones no one of this project owns, which is
+# what this is for: the branches "if (WIN32)" and "if (APPLE)" of the build are
+# never run anywhere else.
+name: The viewer of the desktop
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  desktop:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: ubuntu-latest
+            qt: linux_gcc_64
+          - name: Windows
+            runner: windows-latest
+            qt: win64_msvc2022_64
+          - name: macOS
+            runner: macos-latest
+            qt: clang_64
+
+    steps:
+      # The whole history: the version of the build comes from "git describe",
+      # which a shallow checkout gives nothing to describe.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # A java runtime runs the closure compiler and rhino.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Qt WebEngine is an extension since 6.8, in a repository of its own; the
+      # action asks for it as a module, and webchannel and positioning come
+      # with it.
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.8.2
+          arch: ${{ matrix.qt }}
+          modules: qtwebengine qtwebchannel qtpositioning
+          cache: true
+
+      # Qt WebEngine does not compile with MinGW, so the compiler of microsoft
+      # is put in the environment of the following steps.
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+
+      # The webengine reads these on linux, where a runner carries no desktop.
+      - name: The libraries the engine reads
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+              libnss3 libxkbcommon-x11-0 libxcomposite1 libxdamage1 \
+              libxrandr2 libxtst6 libasound2t64 fonts-dejavu-core
+
+      - name: The dependencies of the build
+        run: npm ci
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DWEBODF_DESKTOP=ON
+          -DWEBODF_QTJSRUNTIME=ON
+          -DCMAKE_BUILD_TYPE=Release
+
+      # The library first: a viewer built on a library that fails its tests is
+      # worth nothing. The target runs every suite, in node, in rhino, on the
+      # sources and on the file the compiler wrote, and in the webengine of qt.
+      - name: The tests of the library
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu --no-sandbox
+        run: cmake --build build --target webodf.js-tests
+
+      - name: The viewer
+        run: cmake --build build --target product-opendocumentviewer-desktop
+
+      # What the tools of the platform gather beside the program: the whole of
+      # it runs on a machine where qt is not installed.
+      - name: Install what is deployed
+        run: cmake --install build --prefix build/dist
+
+      # An archive rather than the files: a bundle of macos holds symbolic
+      # links, that an artifact of loose files loses.
+      - name: Gather what was installed
+        run: cmake -E tar czf ../opendocumentviewer.tar.gz .
+        working-directory: build/dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opendocumentviewer-${{ matrix.name }}
+          path: build/opendocumentviewer.tar.gz
+          if-no-files-found: error

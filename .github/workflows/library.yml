@@ -1,0 +1,57 @@
+# Builds the library the way "README-Building.md" calls the simplest one, with
+# node alone, and runs what that build runs: the tests in node, the same ones
+# in rhino, and the check of the types. It is the short one, that answers on
+# every push, where the build of the viewers is the long one.
+name: The library
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  library:
+    name: The library, with node
+    runs-on: ubuntu-latest
+
+    steps:
+      # The whole history: the version of the build comes from "git describe",
+      # which a shallow checkout gives nothing to describe.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # A java runtime runs the closure compiler and rhino.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: The dependencies of the build
+        run: npm ci
+
+      - name: The types of the library and of the tests
+        run: |
+          npm run check
+          npm run check:tests
+
+      - name: The tests, in node
+        run: npm test
+
+      - name: The tests, in rhino
+        run: npm run test:rhino
+
+      - name: The library
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webodf.js
+          path: dist/webodf.js
+          if-no-files-found: error
