@@ -255,7 +255,13 @@
                 // lists that actually have list items will all start with the counter value of 2 which is not desirable.
                 // To fix this we apply another CSS rule here that overrides the counter increment rule above and
                 // prevents incrementing the counter on the FIRST list item that has content (AKA a visible list label).
-                newRule = 'text|list[webodfhelper|counter-id="' + newListSelectorId + '"]';
+                // A list that was cut where a page ends is written again on
+                // the page that follows, and what follows the cut is no
+                // first item of a list: the counter is held back on the
+                // first item of a list, and never on the first item of what
+                // is left of one, see "webodfhelper:continued" in
+                // "TextLayout.js".
+                newRule = 'text|list[webodfhelper|counter-id="' + newListSelectorId + '"]:not([webodfhelper|continued])';
                 newRule += ' > text|list-item:first-child > :not(text|list):first-child:before';
                 newRule += '{';
                 // Due to https://bugs.webkit.org/show_bug.cgi?id=84985 a value of "none" is ignored by some version of WebKit
@@ -413,6 +419,39 @@
         }
 
         /**
+         * The way the numbers of one level of a list are written.
+         *
+         * A label that shows more than one level shows each of them as its
+         * own level is written: the levels of a list are named beside one
+         * another in the style of the list, so the one that is asked for is
+         * read there.
+         * @param {!Element} node the level the label belongs to
+         * @param {!number} level the level the number belongs to
+         * @param {!string} fallback what to write where that level says
+         *                  nothing, the format of the label itself
+         * @return {!string}
+         */
+        function formatOfLevel(node, level, fallback) {
+            var /**@type{?Element}*/
+                walk = node.parentNode
+                    ? /**@type{!Element}*/(node.parentNode).firstElementChild
+                    : null,
+                /**@type{!string}*/
+                format;
+            while (walk) {
+                if (walk.namespaceURI === textns
+                        && String(walk.getAttributeNS(textns, "level"))
+                            === String(level)) {
+                    format = walk.getAttributeNS(stylens, "num-format") || "";
+                    return stylemap.hasOwnProperty(format)
+                        ? stylemap[format]
+                        : fallback;
+                }
+                walk = walk.nextElementSibling;
+            }
+            return fallback;
+        }
+        /**
          * Gets the CSS content for a numbered list
          * @param {!Element} node
          * @return {!string}
@@ -426,7 +465,9 @@
                 /**@type{!string}*/
                 content = "",
                 textLevel = node.getAttributeNS(textns, "level"),
-                displayLevels = node.getAttributeNS(textns, "display-levels");
+                displayLevels = node.getAttributeNS(textns, "display-levels"),
+                /**@type{!number}*/
+                shown;
             if (prefix) {
                 // Content needs to be on a new line if it contains slashes due to a bug in older versions of webkit
                 // E.g., the one used in the qt runtime tests - https://bugs.webkit.org/show_bug.cgi?id=35010
@@ -440,8 +481,15 @@
                 // we assume a different counter for each list level
                 // and concatenate them for multi level lists
                 // https://wiki.openoffice.org/wiki/Number_labels
+                // Each level of the label is written in the format of its
+                // own level and not in the format of the last of them: a
+                // level of letters under which the levels are numbered
+                // gives "F.2", where the format of the second level alone
+                // gave "1.1" for it.
                 while (displayLevels > 0) {
-                    content += " counter(" + (textLevel - displayLevels + 1) + listCounterIdSuffix + "," + stylemap[style] + ")";
+                    shown = textLevel - displayLevels + 1;
+                    content += " counter(" + shown + listCounterIdSuffix + ","
+                        + formatOfLevel(node, shown, stylemap[style]) + ")";
                     if (displayLevels > 1) {
                         content += '"."';
                     }
@@ -730,7 +778,16 @@
             var lists = odfBody.getElementsByTagNameNS(textns, "list"),
                 listCounter = new UniqueListCounter(styleSheet),
                 list,
-                previousList,
+                /**
+                 * The last list of each style, that a list which continues
+                 * the numbering carries on from: the standard says the list
+                 * that goes before it, and what goes before it is the last
+                 * list written in the same style and not whatever list was
+                 * written last, which is another list of another style as
+                 * often as not.
+                 * @type{!Object.<string,!Element>}
+                 */
+                previousOfStyle = {},
                 continueNumbering,
                 continueListXmlId,
                 xmlId,
@@ -773,14 +830,16 @@
 
                     // lists with different styles cannot be continued
                     // https://tools.oasis-open.org/issues/browse/OFFICE-3558
-                    if (continueNumbering && !continueListXmlId && isMatchingListStyle(previousList, styleName)) {
-                        listCounter.createCounterRules(contentRules, list, previousList);
+                    if (continueNumbering && !continueListXmlId
+                            && previousOfStyle.hasOwnProperty(styleName)) {
+                        listCounter.createCounterRules(contentRules, list,
+                            previousOfStyle[styleName]);
                     } else if (continueListXmlId && isMatchingListStyle(listsWithXmlId[continueListXmlId], styleName)) {
                         listCounter.createCounterRules(contentRules, list, listsWithXmlId[continueListXmlId]);
                     } else {
                         listCounter.createCounterRules(contentRules, list);
                     }
-                    previousList = list;
+                    previousOfStyle[styleName] = list;
                 }
             }
 

@@ -2802,6 +2802,7 @@ odf.TextLayout = function TextLayout() {
             inner,
             /**@type{?Node}*/
             next;
+        tail.setAttributeNS(webodfhelperns, "webodfhelper:continued", "true");
         while (node && count < bound) {
             count += nodesIn(node, bound - count);
             if (count >= bound && node.firstChild
@@ -2910,6 +2911,11 @@ odf.TextLayout = function TextLayout() {
         // of the child that crossed the end of the page, and everything that
         // follows that child.
         tail = /**@type{!Element}*/(element.cloneNode(false));
+        // What is left of an element that was cut is no new element of the
+        // document: a list that goes on over a page holds no first item of
+        // its own, and its numbers go on where the page before them left,
+        // see "ListStylesToCss.js".
+        tail.setAttributeNS(webodfhelperns, "webodfhelper:continued", "true");
         // A table that is cut in two writes the rows of its head again at
         // the top of what follows, as an office does.
         if (element.namespaceURI === tablens) {
