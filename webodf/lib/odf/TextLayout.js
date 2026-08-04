@@ -3813,9 +3813,19 @@ odf.TextLayout = function TextLayout() {
         // added, as an office adds them, and not folded into one as the
         // browser folds the margins of two elements that follow one another:
         // a box that lays its children in a column keeps them apart.
+
         sheet.insertRule(".webodf-pageBox, office|text, text|section,"
-            + " text|table-of-content, text|index-body, text|index-title"
+            + " text|table-of-content, text|index-body"
             + " {display:flex;flex-direction:column;align-items:stretch;}",
+            sheet.cssRules.length);
+        // The spacing under the last child of such a box is not folded into
+        // the edge of the box, as it is in a box that lays its children one
+        // under another: a page that ends on it would be one spacing too
+        // full, and the line above it moved to the next page for nothing.
+        sheet.insertRule(".webodf-pageBox > :last-child,"
+            + " office|text > :last-child, text|section > :last-child,"
+            + " text|table-of-content > :last-child,"
+            + " text|index-body > :last-child {margin-bottom:0;}",
             sheet.cssRules.length);
         sheet.insertRule(".webodf-pageBox {overflow:hidden;contain:strict;}",
             sheet.cssRules.length);
