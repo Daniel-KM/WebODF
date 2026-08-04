@@ -174,6 +174,16 @@ endforeach(JSFILE ${TESTJSFILES})
 # -XX:+TieredCompilation reduces compilation time by about 30%
 set(SHARED_CLOSURE_ARGS -XX:+TieredCompilation -jar ${CLOSURE_JAR})
 
+# What the closure compiler writes is written by java alone: a machine
+# without it builds the library and every product, and only the checks of the
+# types are left out, see "find_package(Java ...)" in the root.
+if (WEBODF_HAS_JAVA)
+    set(WEBODF_TYPE_CHECK webodf-compiled.js)
+else ()
+    set(WEBODF_TYPE_CHECK "")
+endif ()
+if (WEBODF_HAS_JAVA)
+
 # Do quick syntax check on javascript files of webodf lib and webodf tests.
 # This compile uses no optimization and runs simple syntax tests. That is why
 # this target is mentioned early in the list of dependencies.
@@ -233,6 +243,8 @@ add_custom_command(
     DEPENDS ClosureCompiler ${LIBJSFILES} tools/externs.js
         webodf.css.js-target
 )
+endif ()
+
 # The library is written by the build with node, so that both builds produce
 # the same file. The closure compiler still reads the sources, in
 # "webodf-compiled.js" above, but only to check their types: it compiles with
@@ -245,7 +257,7 @@ add_custom_command(
     COMMAND ${NODE} ARGS ${CMAKE_SOURCE_DIR}/scripts/build.js
         --output ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
         --header ${HEADERCOMPILED_FILE}
-    DEPENDS ${NODE} webodf-compiled.js manifest.json-target
+    DEPENDS ${NODE} ${WEBODF_TYPE_CHECK} manifest.json-target
         ${CMAKE_SOURCE_DIR}/scripts/build.js
         ${CMAKE_SOURCE_DIR}/scripts/lib/bundle.js
         ${CMAKE_SOURCE_DIR}/scripts/lib/sources.js
@@ -260,6 +272,7 @@ add_custom_command(
 )
 add_custom_target(webodf.js-target DEPENDS webodf.js)
 
+if (WEBODF_HAS_JAVA)
 # Compile the debug version of WebODF. This is also published as a product.
 add_custom_command(
     OUTPUT webodf-debug-compiled.js
@@ -293,10 +306,16 @@ add_custom_command(
 )
 add_custom_target(webodf-debug.js-target DEPENDS webodf-debug.js)
 
-add_custom_target(syntaxcheck ALL
-    DEPENDS simplecompiled.js-target webodf.js-target
-        compiled.js-target
-)
+endif ()
+
+if (WEBODF_HAS_JAVA)
+    add_custom_target(syntaxcheck ALL
+        DEPENDS simplecompiled.js-target webodf.js-target
+            compiled.js-target
+    )
+else ()
+    add_custom_target(syntaxcheck ALL DEPENDS webodf.js-target)
+endif ()
 
 
 # The documentation is written by the build with node, with jsdoc 4, as the
@@ -311,16 +330,22 @@ add_custom_command(
 )
 add_custom_target(doc DEPENDS docs/index.html)
 
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp
-    COMMAND ${NODE} ${CMAKE_CURRENT_BINARY_DIR}/simplecompiled.js
-    COMMAND ${TOUCHFILE} ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp
-    DEPENDS ${NODE} simplecompiled.js copy_node_modules
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
-)
-add_custom_target(test-simplenode ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp)
-
-add_custom_target(webodf.js-tests DEPENDS syntaxcheck test-simplenode)
+# The suite is run from the file the compiler wrote, which java writes: a
+# machine without java runs the suite from the sources alone, in node and in
+# the webengine of qt.
+if (WEBODF_HAS_JAVA)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp
+        COMMAND ${NODE} ${CMAKE_CURRENT_BINARY_DIR}/simplecompiled.js
+        COMMAND ${TOUCHFILE} ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp
+        DEPENDS ${NODE} simplecompiled.js copy_node_modules
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+    add_custom_target(test-simplenode ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp)
+    add_custom_target(webodf.js-tests DEPENDS syntaxcheck test-simplenode)
+else ()
+    add_custom_target(webodf.js-tests DEPENDS syntaxcheck)
+endif ()
 
 add_custom_command(
     OUTPUT ${WEBODFJS_DIR}

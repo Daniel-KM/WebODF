@@ -118,8 +118,29 @@ if (WEBODF_QTJSRUNTIME OR WEBODF_DESKTOP)
   endif ()
 endif ()
 
-# java runtime is needed for Closure Compiler
-find_package(Java COMPONENTS Runtime REQUIRED)
+# Java runs the closure compiler and rhino, that check the types of the
+# sources and run the tests in a second engine. Neither writes the library:
+# terser does, with node. So java is looked for and not required, and a
+# machine without it builds everything but the checks, which is what a build
+# in a sandbox does, see the flatpak of the viewer.
+find_package(Java COMPONENTS Runtime)
+if (Java_JAVA_EXECUTABLE)
+    set(WEBODF_HAS_JAVA TRUE)
+else ()
+    set(WEBODF_HAS_JAVA FALSE)
+    message(STATUS "No java was found: the types of the sources are not checked, and the tests are not run in rhino.")
+endif ()
+
+# A build that is given a library that was built already builds nothing of it:
+# it neither runs node nor asks for it. That is what a build in a sandbox
+# does, where there is neither node nor a network to install its tools from,
+# see the flatpak of the viewer of the desktop.
+set(WEBODF_PREBUILT_LIBRARY "" CACHE FILEPATH
+    "A webodf.js that was built already, to be used instead of building one")
+if (WEBODF_PREBUILT_LIBRARY AND NOT EXISTS "${WEBODF_PREBUILT_LIBRARY}")
+    message(FATAL_ERROR
+        "WEBODF_PREBUILT_LIBRARY names ${WEBODF_PREBUILT_LIBRARY}, which is not there.")
+endif ()
 
 # Node.js will be downloaded on Windows systems, so check for installed version is below
 # 22.22.2 is the oldest release of node jsdom runs on, that the tests need.
@@ -143,6 +164,11 @@ else ( IS_DIRECTORY $ENV{WEBODF_DOWNLOAD_DIR} )
     SET ( EXTERNALS_DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/downloads )
 endif ( IS_DIRECTORY $ENV{WEBODF_DOWNLOAD_DIR} )
 MESSAGE ( STATUS "external downloads will be stored/expected in: ${EXTERNALS_DOWNLOAD_DIR}" )
+
+# The two jars are downloaded for java to run them: a build without java, or
+# one that was given a library and checks nothing, asks nothing of the
+# network. A sandbox has no network at all, see the flatpak of the viewer.
+if (WEBODF_HAS_JAVA AND NOT WEBODF_PREBUILT_LIBRARY)
 
 # Closure Compiler
 ExternalProject_Add(
@@ -175,6 +201,8 @@ ExternalProject_Add(
 # Same version as the build with node, see scripts/lib/rhino.js.
 set(RHINO ${EXTERNALS_DOWNLOAD_DIR}/rhino-all-1.9.1.jar)
 
+endif ()
+
 
 # Node.js is expected to be installed, on every platform. Windows used to
 # download a single node.exe, but the build needs npm as well, that comes with
@@ -191,8 +219,22 @@ FIND_PROGRAM(NODEJS_EXECUTABLE
 IF(NODEJS_EXECUTABLE)
     execute_process(COMMAND ${NODEJS_EXECUTABLE} --version
         OUTPUT_VARIABLE NODEJS_VERSION
+        ERROR_VARIABLE NODEJS_SAID
+        RESULT_VARIABLE NODEJS_ANSWERED
         OUTPUT_STRIP_TRAILING_WHITESPACE)
-    string(SUBSTRING ${NODEJS_VERSION} 1 -1 NODEJS_VERSION)
+    # A node that is there and answers nothing is a node that cannot be used,
+    # and it is said as much: the version was read as it stood, so an answer
+    # of nothing ended the build on "string sub-command SUBSTRING requires
+    # four arguments", which tells a reader nothing of node.
+    if (NOT NODEJS_ANSWERED EQUAL 0 OR NODEJS_VERSION STREQUAL "")
+        message(FATAL_ERROR "Node.js was found at " ${NODEJS_EXECUTABLE}
+            " but it answered nothing when asked for its version"
+            " (\"${NODEJS_EXECUTABLE} --version\" said \"${NODEJS_SAID}\")."
+            "\nThe path may be one that cmake kept from a build that went"
+            " before, of a node that is no longer installed: run it again"
+            " with -U NODEJS_EXECUTABLE -U NPM.")
+    endif ()
+    string(SUBSTRING "${NODEJS_VERSION}" 1 -1 NODEJS_VERSION)
     MESSAGE (STATUS "Installed Node.js found: ${NODEJS_EXECUTABLE} - ${NODEJS_VERSION}")
 ELSE(NODEJS_EXECUTABLE)
     MESSAGE (STATUS "No installed Node.js found. Node.js is not downloaded, but expected to be installed.")
@@ -202,7 +244,9 @@ ENDIF(NODEJS_EXECUTABLE)
 # what it finds, so a node that was installed later, by nvm for instance, is
 # only seen once the entry is dropped: the path is named here, as it is often
 # an older one that is still in the cache.
-if (${NODEJS_VERSION} VERSION_LESS ${REQUIRED_NODEJS_VERSION})
+if (WEBODF_PREBUILT_LIBRARY)
+    message(STATUS "The library is taken from ${WEBODF_PREBUILT_LIBRARY}: node is not needed.")
+elseif (NODEJS_VERSION VERSION_LESS REQUIRED_NODEJS_VERSION)
     message(FATAL_ERROR "Node.js is required in version "
         ${REQUIRED_NODEJS_VERSION} " or later, but "
         ${NODEJS_EXECUTABLE} " is " ${NODEJS_VERSION}
@@ -484,7 +528,22 @@ endmacro(WEBODF_PRODUCT_MISSING)
 #############################
 
 # the lib
-add_subdirectory(webodf)
+if (WEBODF_PREBUILT_LIBRARY)
+    # The library was built already and is taken as it is: nothing of it is
+    # read, checked or written here, and neither node nor java is asked for.
+    # A program of this build reads it where it would have been written.
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/webodf/webodf.js
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/webodf
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${WEBODF_PREBUILT_LIBRARY} ${CMAKE_BINARY_DIR}/webodf/webodf.js
+        DEPENDS ${WEBODF_PREBUILT_LIBRARY}
+        COMMENT "The library, taken from ${WEBODF_PREBUILT_LIBRARY}")
+    add_custom_target(webodf.js-target
+        DEPENDS ${CMAKE_BINARY_DIR}/webodf/webodf.js)
+else ()
+    add_subdirectory(webodf)
+endif ()
 
 # the programs/components
 if (WEBODF_PROGRAMS)
@@ -507,7 +566,11 @@ endif ()
 add_custom_target(tests
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "Every test of this build has run.")
-add_dependencies(tests webodf.js-tests)
+# A build that was given a library reads none of its sources, so there is
+# nothing of the library to test here: only the programs are.
+if (TARGET webodf.js-tests)
+    add_dependencies(tests webodf.js-tests)
+endif ()
 foreach (WEBODF_TEST_TARGET
         test-opendocumenttexteditor
         test-opendocumenttextcollab

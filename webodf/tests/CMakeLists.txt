@@ -38,6 +38,9 @@ add_dependencies(webodf.js-tests test-node)
 # neither. It runs in a directory of its own, as the one of node does, since a
 # test writes files, and it is told where the library is: rhino tells a script
 # no path of its own, see "libraryPaths" in "runtime.js".
+# Rhino is run by java, so a machine without it runs the suite in node and in
+# the webengine of qt alone, see "find_package(Java ...)" in the root.
+if (WEBODF_HAS_JAVA)
 COPY_FILES(tests_rhinotests ${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}/_rhinotest ${TESTS_TESTFILES} )
 
@@ -71,6 +74,7 @@ add_custom_command(
 add_custom_target(test-simplerhino ALL
     DEPENDS _simplerhinotest/simplerhinotest.timestamp)
 add_dependencies(webodf.js-tests test-simplerhino)
+endif ()
 
 if (BUILD_QTJSRUNTIME)
     COPY_FILES(tests_qtjsruntimetest ${CMAKE_CURRENT_SOURCE_DIR}
@@ -78,9 +82,23 @@ if (BUILD_QTJSRUNTIME)
     COPY_FILES(tests_qtjsruntimetest2 ${CMAKE_CURRENT_SOURCE_DIR}/..
         ${CMAKE_CURRENT_BINARY_DIR} webodf.css)
 
+    # The tests are run without a screen: the runtime shows its window, as
+    # chromium slows the timers of a page that is not seen, and a window that
+    # opens and shuts at each build is a window in the face of whoever is
+    # working. Under the platform of no screen it costs nothing and is seen by
+    # no one. A reader who wants to watch the tests run asks for it with
+    # -DWEBODF_TESTS_ON_SCREEN=ON.
+    option(WEBODF_TESTS_ON_SCREEN
+        "Show the window of the runtime while the tests run" OFF)
+    if (WEBODF_TESTS_ON_SCREEN)
+        set(TESTS_PLATFORM "")
+    else ()
+        set(TESTS_PLATFORM ${CMAKE_COMMAND} -E env QT_QPA_PLATFORM=offscreen)
+    endif ()
+
     add_custom_command(
         OUTPUT _qtjsruntimetest/qtjsruntimetest.timestamp
-        COMMAND qtjsruntime ${RUNTIMEJS} tests.js
+        COMMAND ${TESTS_PLATFORM} $<TARGET_FILE:qtjsruntime> ${RUNTIMEJS} tests.js
         COMMAND ${TOUCHFILE} qtjsruntimetest.timestamp
         WORKING_DIRECTORY _qtjsruntimetest
         DEPENDS
