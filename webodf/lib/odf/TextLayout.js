@@ -2150,6 +2150,16 @@ odf.TextLayout = function TextLayout() {
             : Math.max(1, low));
     }
     /**
+     * Whether a node is the rows of the head of a table.
+     * @param {!Node} node
+     * @return {!boolean}
+     */
+    function isHeaderRows(node) {
+        return node.nodeType === Node.ELEMENT_NODE
+            && node.namespaceURI === tablens
+            && node.localName === "table-header-rows";
+    }
+    /**
      * Whether a node is a row of a table, of the kind that is written whole
      * on one page.
      * @param {!Node} node
@@ -2159,8 +2169,7 @@ odf.TextLayout = function TextLayout() {
         return node.nodeType === Node.ELEMENT_NODE
             && node.namespaceURI === tablens
             && (node.localName === "table-row"
-                || node.localName === "table-rows"
-                || node.localName === "table-header-rows");
+                || node.localName === "table-rows");
     }
     /**
      * Cut an element where the page ends, and answer what is left of it: a
@@ -2200,7 +2209,14 @@ odf.TextLayout = function TextLayout() {
             rect = node.nodeType === Node.TEXT_NODE
                 ? rangeOf(doc, node).getBoundingClientRect()
                 : /**@type{!Element}*/(node).getBoundingClientRect();
-            if (rect.bottom > bottom) {
+            if (isHeaderRows(node) && node === element.firstElementChild) {
+                // The rows of the head of a table belong to the head of it
+                // and are never moved: they are written again at the top of
+                // what follows, see below. A document that writes such rows
+                // further down, where it broke the table itself, writes rows
+                // like any other there, and they are moved like any other.
+                node = node.nextSibling;
+            } else if (rect.bottom > bottom) {
                 if (node.nodeType === Node.TEXT_NODE) {
                     from = cutText(box, /**@type{!Text}*/(node), alone)
                         || node;
@@ -2235,7 +2251,8 @@ odf.TextLayout = function TextLayout() {
         // A table that is cut in two writes the rows of its head again at
         // the top of what follows, as an office does.
         head = domUtils.getDirectChild(element, tablens, "table-header-rows");
-        if (head && element.namespaceURI === tablens) {
+        if (head && element.namespaceURI === tablens
+                && !(from && isHeaderRows(from))) {
             tail.appendChild(head.cloneNode(true));
         }
         if (inner) {
@@ -2751,11 +2768,18 @@ odf.TextLayout = function TextLayout() {
         // that follows it.
         filling = null;
         runtime.setTimeout(function () {
-            if (round === fillingRound && fillingRoot && fillingDiv
-                    && !pagesHold(fillingRoot)) {
+            var /**@type{!number}*/
+                round2 = 0;
+            // Setting a page right moves what it could not hold to the next
+            // page, which may then hold one line too many in its turn: it is
+            // done until every page holds what was written on it, twice at
+            // the most.
+            while (round2 < 2 && round === fillingRound && fillingRoot
+                    && fillingDiv && !pagesHold(fillingRoot)) {
                 trimPages(fillingRoot, plan);
                 drawPageFurniture(fillingRoot, plan, fillingDiv,
                     readMeta(fillingRoot), 0);
+                round2 += 1;
             }
         }, 0);
     }
