@@ -302,6 +302,32 @@ endif(WIN32 AND WEBODF_PROGRAMS)
 ## Define custom macros
 ##############################
 
+# The pages of the products tell what the OpenDocument format is worth, and they
+# tell it in the same words: the text is written once, in "programs/text", and
+# inserted where a page names it, "@FORMAT_TEXT@". A page is a template,
+# "*.html.in", and the page itself is written into the build directory.
+#
+# The text is read here, and it is named as a dependency of the configuration,
+# so that cmake runs itself again when it is revised: the pages then follow
+# without anything to remember.
+set(TEXT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/programs/text)
+foreach (LANGUAGE en fr)
+  file(READ ${TEXT_DIR}/format.${LANGUAGE}.html FORMAT_TEXT_${LANGUAGE})
+  # The newline an editor writes at the end of a file would become a blank line
+  # in every page, so the text is taken without what closes it.
+  string(REGEX REPLACE "[ \t\r\n]+$" "" FORMAT_TEXT_${LANGUAGE}
+      "${FORMAT_TEXT_${LANGUAGE}}")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      ${TEXT_DIR}/format.${LANGUAGE}.html)
+endforeach ()
+
+# INSERT_TEXT (template output language)
+# Writes the page of a product, with the text of the format in it.
+macro(INSERT_TEXT _template _output _language)
+  set(FORMAT_TEXT "${FORMAT_TEXT_${_language}}")
+  configure_file(${_template} ${_output} @ONLY)
+endmacro(INSERT_TEXT)
+
 # COPY_FILES (varname srcdir tgtdir files)
 # Creates a target that copies the listed files from the srcdir to the tgtdir,
 # preserving their relative path.

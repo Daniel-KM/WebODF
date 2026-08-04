@@ -291,6 +291,27 @@ It replaces the product of "programs/cordova", that drove cordova 3.5, of 2014,
 and built android with ant, which google dropped in 2015 for gradle, through the
 executable "android", that the sdk replaced by "sdkmanager" in 2018.
 
+### One text for every product
+
+The pages of the products tell what the OpenDocument format is worth, and they
+tell it in the same words: the text is written once, in
+"programs/text/format.en.html" and "programs/text/format.fr.html", and nowhere
+else.
+
+A page that shows it is a template, "*.html.in", that names it where it goes:
+
+```html
+@FORMAT_TEXT@
+```
+
+Cmake reads the text and writes the page, see the macro INSERT_TEXT in the
+CMakeLists of the root. The page of a product is written where that product
+reads it, and it is not in the repository: only its template and the text are.
+
+The text is named as a dependency of the configuration, so cmake runs itself
+again as soon as it is revised, and every product follows. A revision is
+therefore made in one file, and it cannot be forgotten in another.
+
 ### Products that are not built any more
 
 One product of "programs/cordova" is still declared, and no version of its
