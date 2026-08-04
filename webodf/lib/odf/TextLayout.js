@@ -1021,10 +1021,30 @@ odf.TextLayout = function TextLayout() {
             var /**@type{?odf.TextLayout.TabStop}*/
                 stop = index === 0
                     ? null
-                    : stops[Math.min(index, stops.length) - 1];
+                    : stops[Math.min(index, stops.length) - 1],
+                /**@type{?odf.TextLayout.TabStop}*/
+                before = index > 1
+                    ? stops[Math.min(index - 1, stops.length) - 1]
+                    : null;
             if (!stop) {
                 // The first part is written as the text is: it holds the
                 // height of the line and wraps where the page ends.
+                line.appendChild(piece);
+                return;
+            }
+            if (stop.type === "left" || stop.type === "char") {
+                // A part that begins at a stop on the left is written in the
+                // flow of the line, and what stands before it is held to the
+                // width of its own slot: a label longer than its slot pushes
+                // what follows to the right, as a tab of a text does, where
+                // a part laid against the stop would be written over it.
+                /**@type{!HTMLElement}*/(parts[index - 1]).style.display =
+                    "inline-block";
+                /**@type{!HTMLElement}*/(parts[index - 1]).style.minWidth =
+                    Math.max(0, stop.at - (before
+                        ? before.at
+                        : 0)) + "px";
+                piece.style.whiteSpace = "pre-wrap";
                 line.appendChild(piece);
                 return;
             }
@@ -1034,7 +1054,7 @@ odf.TextLayout = function TextLayout() {
             piece.style.left = "min(" + stop.at + "px, 100%)";
             if (stop.type === "center") {
                 piece.style.transform = "translateX(-50%)";
-            } else if (stop.type === "right") {
+            } else {
                 piece.style.transform = "translateX(-100%)";
             }
             line.appendChild(piece);
