@@ -1,5 +1,3 @@
-add_subdirectory(touchui)
-
 if(BUILD_QTJSRUNTIME)
   add_subdirectory(qtjsruntime)
 endif(BUILD_QTJSRUNTIME)
