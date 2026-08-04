@@ -1,0 +1,3 @@
+First release of the viewer for Android: it shows the texts, the spreadsheets
+and the presentations of the OpenDocument format, from a file manager, a mail
+or the picker of the system.

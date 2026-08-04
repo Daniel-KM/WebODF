@@ -1,0 +1,28 @@
+{
+    "manifest_version": 3,
+    "name": "OpenDocument Viewer",
+    "version": "@WEBODF_MANIFEST_VERSION@",
+    "description": "Light reader for .odt, .ods and .odp documents of LibreOffice, OpenOffice and Office 365, without an office suite.",
+    "author": "Daniel Berthereau",
+    "homepage_url": "http://webodf.org/",
+    "minimum_chrome_version": "88",
+    "icons": {
+        "128": "skin/default/icon.png"
+    },
+    "permissions": [
+        "declarativeNetRequest",
+        "downloads"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background-chrome.js"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": ["viewer.html"],
+            "matches": ["<all_urls>"]
+        }
+    ]
+}

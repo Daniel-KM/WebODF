@@ -1,0 +1,1 @@
+Reads the .odt, .ods and .odp documents without an office suite.

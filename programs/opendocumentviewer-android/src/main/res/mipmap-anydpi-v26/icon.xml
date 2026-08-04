@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From Android 8, the launcher masks the icon into the shape of the system,
+     so the drawing sits in the 72dp of the 108dp that are always shown. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/icon_background"/>
+    <foreground android:drawable="@mipmap/icon_foreground"/>
+</adaptive-icon>

@@ -128,40 +128,40 @@ add_custom_target(more-common-editorfiles-target
 ## Wodo.TextEditor
 ##################
 
-set(WODOTEXTEDITORDOC_BUILDDIR  ${WODOTEXTEDITORBUILDDIR}/docs)
-set(WODOTEXTEDITORCODE_BUILDDIR ${WODOTEXTEDITORBUILDDIR}/wodotexteditor)
+set(OPENDOCUMENTTEXTEDITORDOC_BUILDDIR  ${OPENDOCUMENTTEXTEDITORBUILDDIR}/docs)
+set(OPENDOCUMENTTEXTEDITORCODE_BUILDDIR ${OPENDOCUMENTTEXTEDITORBUILDDIR}/wodotexteditor)
 
 add_custom_command(
-    OUTPUT ${WODOTEXTEDITORBUILDDIR}
+    OUTPUT ${OPENDOCUMENTTEXTEDITORBUILDDIR}
     # clean up output dir
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${WODOTEXTEDITORBUILDDIR}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WODOTEXTEDITORBUILDDIR}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WODOTEXTEDITORCODE_BUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${OPENDOCUMENTTEXTEDITORBUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTEDITORBUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}
 
-    COMMAND ${CMAKE_COMMAND} -E copy webodf.js ${WODOTEXTEDITORCODE_BUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E copy webodf.js ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}
 
-    COMMAND ${CMAKE_COMMAND} -E copy_directory resources/ ${WODOTEXTEDITORCODE_BUILDDIR}/resources/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory translations/ ${WODOTEXTEDITORCODE_BUILDDIR}/translations/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory widgets/ ${WODOTEXTEDITORCODE_BUILDDIR}/widgets/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory resources/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/resources/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory translations/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/translations/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory widgets/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/widgets/
 
     # dojo compiled
-    COMMAND ${CMAKE_COMMAND} -E copy dojo-amalgamation.js ${WODOTEXTEDITORCODE_BUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E copy dojo-amalgamation.js ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}
 
     # more dojo (data) files
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WODOTEXTEDITORCODE_BUILDDIR}/dojo
-    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${WODOTEXTEDITORCODE_BUILDDIR}/dojo/resources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${WODOTEXTEDITORCODE_BUILDDIR}/app/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${WODOTEXTEDITORCODE_BUILDDIR}/dijit/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${WODOTEXTEDITORCODE_BUILDDIR}/dojox/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojo/resources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/app/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dijit/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/dojox/
 
-    COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${WODOTEXTEDITORBUILDDIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/HOWTO-wodotexteditor.md  ${WODOTEXTEDITORBUILDDIR}/HOWTO.md
+    COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/HOWTO-wodotexteditor.md  ${OPENDOCUMENTTEXTEDITORBUILDDIR}/HOWTO.md
 
     DEPENDS dojo-amalgamation.js editor-webodf.js-target more-common-editorfiles-target
 )
 
 foreach(AE_FILE ${ALONE_EDITOR_FILES})
-    set(AE_BUILDFILE ${WODOTEXTEDITORCODE_BUILDDIR}/${AE_FILE})
+    set(AE_BUILDFILE ${OPENDOCUMENTTEXTEDITORCODE_BUILDDIR}/${AE_FILE})
     set(AE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${AE_FILE})
     add_custom_command(
       OUTPUT ${AE_BUILDFILE}
@@ -169,13 +169,13 @@ foreach(AE_FILE ${ALONE_EDITOR_FILES})
         ${AE_FILE}
         ${AE_BUILDFILE}
       DEPENDS
-        ${AE_FILE} ${WODOTEXTEDITORBUILDDIR}
+        ${AE_FILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}
     )
-    list(APPEND WODOTEXTEDITOR_BUILDFILES ${AE_BUILDFILE})
+    list(APPEND OPENDOCUMENTTEXTEDITOR_BUILDFILES ${AE_BUILDFILE})
 endforeach(AE_FILE)
 
 foreach(AE_FILE ${ALONE_EDITOR_EXAMPLE_FILES})
-    set(AE_BUILDFILE ${WODOTEXTEDITORBUILDDIR}/${AE_FILE})
+    set(AE_BUILDFILE ${OPENDOCUMENTTEXTEDITORBUILDDIR}/${AE_FILE})
     set(AE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${AE_FILE})
     add_custom_command(
       OUTPUT ${AE_BUILDFILE}
@@ -183,44 +183,44 @@ foreach(AE_FILE ${ALONE_EDITOR_EXAMPLE_FILES})
         ${AE_FILE}
         ${AE_BUILDFILE}
       DEPENDS
-        ${AE_FILE} ${WODOTEXTEDITORBUILDDIR}
+        ${AE_FILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}
     )
-    list(APPEND WODOTEXTEDITOR_BUILDFILES ${AE_BUILDFILE})
+    list(APPEND OPENDOCUMENTTEXTEDITOR_BUILDFILES ${AE_BUILDFILE})
 endforeach(AE_FILE)
 
-add_custom_target(wodotexteditorbuilddir-target DEPENDS ${WODOTEXTEDITORBUILDDIR} ${WODOTEXTEDITOR_BUILDFILES})
+add_custom_target(opendocumenttexteditorbuilddir-target DEPENDS ${OPENDOCUMENTTEXTEDITORBUILDDIR} ${OPENDOCUMENTTEXTEDITOR_BUILDFILES})
 
 add_custom_command(
-    OUTPUT ${WODOTEXTEDITORDOC_BUILDDIR}/index.html
+    OUTPUT ${OPENDOCUMENTTEXTEDITORDOC_BUILDDIR}/index.html
     COMMAND ${NODE} ARGS ${CMAKE_SOURCE_DIR}/scripts/doc.js
-        --output ${WODOTEXTEDITORDOC_BUILDDIR}
+        --output ${OPENDOCUMENTTEXTEDITORDOC_BUILDDIR}
         --source ${CMAKE_CURRENT_SOURCE_DIR}/wodotexteditor.js
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS ${NODE} wodotexteditorbuilddir-target
+    DEPENDS ${NODE} opendocumenttexteditorbuilddir-target
         ${CMAKE_SOURCE_DIR}/scripts/doc.js
 )
-add_custom_target(wodotexteditor-doc DEPENDS ${WODOTEXTEDITORDOC_BUILDDIR}/index.html)
+add_custom_target(opendocumenttexteditor-doc DEPENDS ${OPENDOCUMENTTEXTEDITORDOC_BUILDDIR}/index.html)
 
-# package wodotexteditor
-set(WODOTEXTEDITOR_ZIP wodotexteditor-${WEBODF_VERSION}.zip)
+# package opendocumenttexteditor
+set(OPENDOCUMENTTEXTEDITOR_ZIP opendocumenttexteditor-${WEBODF_VERSION}.zip)
 add_custom_command(
-    OUTPUT ${WODOTEXTEDITOR_ZIP}
+    OUTPUT ${OPENDOCUMENTTEXTEDITOR_ZIP}
     # zip using javascript code running in node.js
     COMMAND ${NODE} ARGS ${RUNTIMEJS} ${TOOLS_DIR}/zipdir.js
-        ${WODOTEXTEDITORBUILDDIR}
-        ${CMAKE_BINARY_DIR}/${WODOTEXTEDITOR_ZIP}
+        ${OPENDOCUMENTTEXTEDITORBUILDDIR}
+        ${CMAKE_BINARY_DIR}/${OPENDOCUMENTTEXTEDITOR_ZIP}
         notopdir
-        wodotexteditor-${WEBODF_VERSION}
+        opendocumenttexteditor-${WEBODF_VERSION}
     DEPENDS
-        wodotexteditorbuilddir-target
-        wodotexteditor-doc
+        opendocumenttexteditorbuilddir-target
+        opendocumenttexteditor-doc
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-add_custom_target(build-wodotexteditor DEPENDS ${WODOTEXTEDITOR_ZIP})
+add_custom_target(build-opendocumenttexteditor DEPENDS ${OPENDOCUMENTTEXTEDITOR_ZIP})
 
-add_custom_target(test-wodotexteditor DEPENDS webodf.js-tests)
+add_custom_target(test-opendocumenttexteditor DEPENDS webodf.js-tests)
 
-add_custom_target(product-wodotexteditor DEPENDS build-wodotexteditor test-wodotexteditor)
+add_custom_target(product-opendocumenttexteditor DEPENDS build-opendocumenttexteditor test-opendocumenttexteditor)
 
 
 ###########################
@@ -228,38 +228,38 @@ add_custom_target(product-wodotexteditor DEPENDS build-wodotexteditor test-wodot
 ###########################
 # Needs more thinking still, interface not yet done
 
-set(WODOCOLLABTEXTEDITORCODE_BUILDDIR ${WODOCOLLABTEXTEDITORBUILDDIR}/wodo)
+set(OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR ${OPENDOCUMENTTEXTCOLLABBUILDDIR}/wodo)
 
 add_custom_command(
-    OUTPUT ${WODOCOLLABTEXTEDITORBUILDDIR}
+    OUTPUT ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
     # clean up output dir
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${WODOCOLLABTEXTEDITORBUILDDIR}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WODOCOLLABTEXTEDITORBUILDDIR}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}
 
-    COMMAND ${CMAKE_COMMAND} -E copy webodf.js ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E copy webodf.js ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}
 
-    COMMAND ${CMAKE_COMMAND} -E copy_directory resources/ ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/resources/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory translations/ ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/translations/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory widgets/ ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/widgets/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory resources/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/resources/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory translations/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/translations/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory widgets/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/widgets/
 
     # dojo compiled
-    COMMAND ${CMAKE_COMMAND} -E copy dojo-amalgamation.js ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E copy dojo-amalgamation.js ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}
 
     # more dojo (data) files
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/dojo
-    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/dojo/resources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/app/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/dijit/
-    COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/dojox/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojo/resources ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojo/resources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory app/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/app/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dijit/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dijit/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojox/
 
-    COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${WODOCOLLABTEXTEDITORBUILDDIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
 
     DEPENDS dojo-amalgamation.js editor-webodf.js-target more-common-editorfiles-target
 )
 
 foreach(CE_FILE ${COMMON_COLLAB_FILES} ${COMMON_EDITOR_FILES})
-    set(CE_BUILDFILE ${WODOCOLLABTEXTEDITORCODE_BUILDDIR}/${CE_FILE})
+    set(CE_BUILDFILE ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/${CE_FILE})
     set(CE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${CE_FILE})
     add_custom_command(
       OUTPUT ${CE_BUILDFILE}
@@ -267,31 +267,31 @@ foreach(CE_FILE ${COMMON_COLLAB_FILES} ${COMMON_EDITOR_FILES})
         ${CE_FILE}
         ${CE_BUILDFILE}
       DEPENDS
-        ${CE_FILE} ${WODOCOLLABTEXTEDITORBUILDDIR}
+        ${CE_FILE} ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
     )
-    list(APPEND WODOCOLLABTEXTEDITOR_BUILDFILES ${CE_BUILDFILE})
+    list(APPEND OPENDOCUMENTTEXTCOLLAB_BUILDFILES ${CE_BUILDFILE})
 endforeach(CE_FILE)
 
-add_custom_target(wodocollabtexteditorbuilddir-target DEPENDS ${WODOCOLLABTEXTEDITORBUILDDIR} ${WODOCOLLABTEXTEDITOR_BUILDFILES})
+add_custom_target(opendocumenttextcollabbuilddir-target DEPENDS ${OPENDOCUMENTTEXTCOLLABBUILDDIR} ${OPENDOCUMENTTEXTCOLLAB_BUILDFILES})
 
-# package wodotexteditor
+# package opendocumenttexteditor
 add_custom_command(
-    OUTPUT ${WODOCOLLABTEXTEDITOR_ZIP}
+    OUTPUT ${OPENDOCUMENTTEXTCOLLAB_ZIP}
     # zip using javascript code running in node.js
     COMMAND ${NODE} ARGS ${RUNTIMEJS} ${TOOLS_DIR}/zipdir.js
-        ${WODOCOLLABTEXTEDITORBUILDDIR}
-        ${WODOCOLLABTEXTEDITOR_ZIP}
+        ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
+        ${OPENDOCUMENTTEXTCOLLAB_ZIP}
         notopdir
-        wodocollabtexteditor-${WEBODF_VERSION}
+        opendocumenttextcollab-${WEBODF_VERSION}
     DEPENDS
-        wodocollabtexteditorbuilddir-target
+        opendocumenttextcollabbuilddir-target
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-add_custom_target(build-wodocollabtexteditor DEPENDS ${WODOCOLLABTEXTEDITOR_ZIP})
+add_custom_target(build-opendocumenttextcollab DEPENDS ${OPENDOCUMENTTEXTCOLLAB_ZIP})
 
-add_custom_target(test-wodocollabtexteditor DEPENDS webodf.js-tests)
+add_custom_target(test-opendocumenttextcollab DEPENDS webodf.js-tests)
 
-add_custom_target(product-wodocollabtexteditor DEPENDS build-wodocollabtexteditor test-wodocollabtexteditor)
+add_custom_target(product-opendocumenttextcollab DEPENDS build-opendocumenttextcollab test-opendocumenttextcollab)
 
 
 ################

@@ -59,6 +59,18 @@ else (OVERRULED_WEBODF_VERSION)
 endif (OVERRULED_WEBODF_VERSION)
 message(STATUS "WebODF version " ${WEBODF_VERSION})
 
+# The version is read once, when the build is configured, and it names the
+# packages, so a build made after a commit would keep the version of the one
+# before. Reading these two files here ties the configuration to them: cmake
+# runs itself again, before make, as soon as a commit or a checkout writes
+# them, and the version follows the sources without anything to remember.
+foreach (GIT_FILE .git/HEAD .git/index)
+    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${GIT_FILE})
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${GIT_FILE}
+            ${CMAKE_CURRENT_BINARY_DIR}/git-watch/${GIT_FILE} COPYONLY)
+    endif()
+endforeach()
+
 # The manifest of an add-on only takes up to four numbers separated by dots,
 # where git describe adds the number of commits and the hash of the last one:
 # "0.5.10-161-gc2572a4a" is written "0.5.10.161", so that the builds between
@@ -339,22 +351,22 @@ set(LIBJSLICENSEFILE ${CMAKE_CURRENT_SOURCE_DIR}/AGPL-3.0.txt)
 set(WEBODFJS_DIR ${CMAKE_CURRENT_BINARY_DIR}/webodf.js-${WEBODF_VERSION})
 set(WEBODFJS_ZIP webodf.js-${WEBODF_VERSION}.zip)
 
-set(WODOTEXTEDITORBUILDDIR ${CMAKE_CURRENT_BINARY_DIR}/wodotexteditor)
+set(OPENDOCUMENTTEXTEDITORBUILDDIR ${CMAKE_CURRENT_BINARY_DIR}/opendocumenttexteditor)
 
-set(WODOCOLLABTEXTEDITORBUILDDIR ${CMAKE_BINARY_DIR}/wodocollabtexteditor)
-set(WODOCOLLABTEXTEDITOR_ZIP ${CMAKE_CURRENT_BINARY_DIR}/wodocollabtexteditor-${WEBODF_VERSION}.zip)
+set(OPENDOCUMENTTEXTCOLLABBUILDDIR ${CMAKE_BINARY_DIR}/opendocumenttextcollab)
+set(OPENDOCUMENTTEXTCOLLAB_ZIP ${CMAKE_CURRENT_BINARY_DIR}/opendocumenttextcollab-${WEBODF_VERSION}.zip)
 
 # The add-on is packed twice, from the same scripts: the manifest version 3
 # needs Firefox 109, of 2023, and the version 2 reaches back to Firefox 48, of
 # 2016. See "README-Products.md".
-set(FIREFOX_EXTENSION_ODFVIEWER_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extension-odfviewer-${WEBODF_VERSION})
-set(FIREFOX_EXTENSION_ODFVIEWER ${FIREFOX_EXTENSION_ODFVIEWER_DIR}.xpi)
-set(FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extension-odfviewer-mv2-${WEBODF_VERSION})
-set(FIREFOX_EXTENSION_ODFVIEWER_MV2 ${FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR}.xpi)
+set(OPENDOCUMENTVIEWER_FIREFOX_DIR ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer-firefox-${WEBODF_VERSION})
+set(OPENDOCUMENTVIEWER_FIREFOX ${OPENDOCUMENTVIEWER_FIREFOX_DIR}.xpi)
+set(OPENDOCUMENTVIEWER_FIREFOX_MV2_DIR ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer-firefox-mv2-${WEBODF_VERSION})
+set(OPENDOCUMENTVIEWER_FIREFOX_MV2 ${OPENDOCUMENTVIEWER_FIREFOX_MV2_DIR}.xpi)
 # Chrome takes a zip, and a file of rules rather than a script: it dropped the
 # blocking webRequest the two others redirect with.
-set(CHROME_EXTENSION_ODFVIEWER_DIR ${CMAKE_CURRENT_BINARY_DIR}/chrome-extension-odfviewer-${WEBODF_VERSION})
-set(CHROME_EXTENSION_ODFVIEWER ${CHROME_EXTENSION_ODFVIEWER_DIR}.zip)
+set(OPENDOCUMENTVIEWER_CHROME_DIR ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer-chrome-${WEBODF_VERSION})
+set(OPENDOCUMENTVIEWER_CHROME ${OPENDOCUMENTVIEWER_CHROME_DIR}.zip)
 
 
 ####################

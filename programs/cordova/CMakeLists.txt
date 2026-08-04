@@ -4,14 +4,14 @@
 # or dropped: cordova only wraps "webodf.js" in a web view, so what has to be
 # written again is the packaging, not anything of WebODF.
 #
-# product-firefoxosviewer packs the viewer for Firefox OS, that Mozilla
+# product-opendocumentviewer-firefoxos packs the viewer for Firefox OS, that Mozilla
 # abandoned in 2016, but that lives on through its forks, B2G OS, KaiOS and
 # Capyloon. It does not build any more: cordova 3.5, of 2014, is asked for
 # below.
 #
-# The apk of android was packed here as well. It is built by
-# programs/odfviewer-android now, without cordova, so the platform of android
-# is not added here any more and the files it needed are gone.
+# The apk of android was packed here as well. It is built by programs/opendocumentviewer-android
+# now, without cordova, so the platform of android is not added here any more
+# and the files it needed are gone.
 
 configure_file(config.xml.in config.xml)
 configure_file(manifest.webapp.in manifest.webapp)
@@ -78,4 +78,4 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/WebODF
 )
 
-add_custom_target(product-firefoxosviewer DEPENDS WebODF/platforms/firefoxos/build/package.zip)
+add_custom_target(product-opendocumentviewer-firefoxos DEPENDS WebODF/platforms/firefoxos/build/package.zip)

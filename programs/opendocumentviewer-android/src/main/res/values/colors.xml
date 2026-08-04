@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The ground of the icon, that the drawing is read on whatever the
+         theme of the launcher is. -->
+    <color name="icon_background">#FFFFFF</color>
+</resources>
