@@ -3972,7 +3972,9 @@
          */
         function drawPages(container, odfnode) {
             var /**@type{?FontFaceSet}*/
-                fonts;
+                fonts,
+                /**@type{!Array.<!Promise>}*/
+                askedFonts = [];
             if (pagesDiv && pagesDiv.parentNode) {
                 pagesDiv.parentNode.removeChild(pagesDiv);
             }
@@ -4032,6 +4034,23 @@
             // another font and hold a line too many, which is only seen when
             // the pages are all broken. The pages are set right as soon as
             // the fonts have truly landed, and not at the end of the whole.
+            // The engine is asked to load the fonts the document names, and
+            // not only to say when the ones it knows of are ready: an engine
+            // may hold a font ready before it draws with it, and the pages
+            // would be broken with the letters of another font. A font that
+            // never comes is waited on for a moment and no longer, as a
+            // document is better drawn late than never.
+            if (fonts && fonts.load) {
+                askedFonts = Object.keys(formatting.getFontMap()).map(
+                    function (name) {
+                        var family = formatting.getFontMap()[name];
+                        return fonts.load("12px " + (family || name))
+                            .then(null, function () {
+                                return null;
+                            });
+                    }
+                );
+            }
             if (fonts && fonts.ready) {
                 fonts.ready.then(function () {
                     var tries = 20;
@@ -4061,7 +4080,12 @@
                     whenBroken();
                 });
             }
-            loadingQueue.whenDrained(function () {
+            /**
+             * Break the text into pages, once what it is drawn with is
+             * there.
+             * @return {undefined}
+             */
+            function breakPages() {
                 if (!paginated || !pagesDiv || !pagesDiv.parentNode) {
                     return;
                 }
@@ -4080,6 +4104,29 @@
                             /**@type{!HTMLDivElement}*/(pagesDiv));
                     }
                 }, 0);
+            }
+            // The text is broken once the fonts it is written in are loaded:
+            // a line is of another width until then, and the pages would be
+            // broken twice. A font that never comes is waited on for three
+            // seconds and no longer.
+            loadingQueue.whenDrained(function () {
+                var waited = false;
+                /**
+                 * @return {undefined}
+                 */
+                function once() {
+                    if (!waited) {
+                        waited = true;
+                        breakPages();
+                    }
+                }
+                if (askedFonts.length > 0 && runtime.getWindow().Promise) {
+                    runtime.setTimeout(once, 3000);
+                    runtime.getWindow().Promise.all(askedFonts).then(once,
+                        once);
+                    return;
+                }
+                once();
             });
         }
         /**
