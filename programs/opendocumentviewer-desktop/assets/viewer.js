@@ -81,6 +81,13 @@
             failure.hidden = true;
             ways.hidden = true;
             canvas = new odf.OdfCanvas(container);
+            // A row of two pages is twice as wide as one, so the document is
+            // scaled to the window anew every time the pages are drawn: they
+            // are drawn a few at a time, and the last of them says how wide
+            // the document is.
+            canvas.addListener("pagesdrawn", function () {
+                canvas.fitSmart(available());
+            });
             // A text is drawn over pages, as it is printed, which the
             // library does not do on its own.
             canvas.setPaginated(true);

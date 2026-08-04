@@ -103,6 +103,8 @@ odf.TextLayout = function TextLayout() {
          * @type{!number}
          */
         pagesPerRow = 1,
+        /**@type{?function():undefined}*/
+        drawnHandler = null,
         /**
          * Whether the first page stands on its own, on the right of the
          * first row, as the first page of a book does.
@@ -3791,6 +3793,27 @@ odf.TextLayout = function TextLayout() {
         return fits;
     }
     /**
+     * Make the box that holds the document as wide as a row of pages.
+     *
+     * The elements of the document are of no namespace of html, where a
+     * "style" attribute is left alone by the browser, so the width is written
+     * on the first element of html above them: the box the reader draws in,
+     * which is shrunk to the document and put in the middle by the reader.
+     * @param {!Element} from the box that holds the pages
+     * @param {!number} width
+     * @return {undefined}
+     */
+    function widen(from, width) {
+        var html = "http://www.w3.org/1999/xhtml",
+            node = /**@type{?Element}*/(from.parentElement);
+        while (node && node.namespaceURI !== html) {
+            node = node.parentElement;
+        }
+        if (node) {
+            /**@type{!HTMLElement}*/(node).style.width = width + "px";
+        }
+    }
+    /**
      * Break a few pages, draw them, and take up the rest later.
      * @param {!number} round the layout this belongs to, so that a layout
      *                  that went before does not go on drawing
@@ -3800,6 +3823,8 @@ odf.TextLayout = function TextLayout() {
         var end,
             /**@type{!PagePlan}*/
             plan,
+            /**@type{!number}*/
+            rowWidth,
             /**@type{!number}*/
             from;
         if (round !== fillingRound || !filling || !fillingRoot
@@ -3830,11 +3855,20 @@ odf.TextLayout = function TextLayout() {
         // away and written anew at every turn tells the browser that every
         // style of the document is to be worked out again, and a document of
         // eight hundred pages is worked out anew eight hundred times.
+        rowWidth = pagesPerRow
+            * (plan.at(0).pageWidth + plan.at(0).pageSeparation)
+            - plan.at(0).pageSeparation;
         filling.text.setAttribute("style", "height:" + Math.max(0,
             filling.top - plan.at(Math.max(0, filling.page - 1))
-                .pageSeparation) + "px;width:" + (pagesPerRow
-            * (plan.at(0).pageWidth + plan.at(0).pageSeparation)
-            - plan.at(0).pageSeparation) + "px;");
+                .pageSeparation) + "px;width:" + rowWidth + "px;");
+        // The box that holds the pages is as wide as a row of them, and not
+        // as wide as the text of one page: a reader that puts the document
+        // in the middle then puts the whole row in the middle.
+        fillingDiv.style.width = rowWidth + "px";
+        // The document itself is as wide as the row too, as what holds it is
+        // shrunk to the width of the document, and a row that is wider than
+        // it would hang out of the reader instead of standing in the middle.
+        widen(fillingDiv, rowWidth);
         drawPageFurniture(fillingRoot, plan, fillingDiv,
             readMeta(fillingRoot), from);
         if (filling.waiting.length > 0 && filling.page < maxPages) {
@@ -3865,6 +3899,9 @@ odf.TextLayout = function TextLayout() {
                 tellPageCount(
                     /**@type{!odf.ODFDocumentElement}*/(fillingRoot),
                     fillingDiv, countPages(fillingDiv));
+                if (drawnHandler) {
+                    drawnHandler();
+                }
             }
         }, 0);
     }
@@ -3922,6 +3959,18 @@ odf.TextLayout = function TextLayout() {
         return maxTime > 0;
     }
     this.layout = layout;
+    /**
+     * Be told when the pages are all drawn.
+     *
+     * A text is broken into pages a few at a time, so what holds the pages is
+     * of its last width only once the last of them is drawn: a reader that
+     * scales the document to its window scales it again then.
+     * @param {?function():undefined} handler
+     * @return {undefined}
+     */
+    this.whenDrawn = function (handler) {
+        drawnHandler = handler;
+    };
     /**
      * Lay the tabs of every paragraph of a text at their stops.
      *

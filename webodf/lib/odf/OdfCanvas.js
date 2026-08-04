@@ -4202,6 +4202,12 @@
 
             sizer.insertBefore(shadowContent, sizer.firstChild);
             zoomHelper.setZoomableElement(sizer);
+            // A reader is told when the pages are all drawn, so that it can
+            // scale the document anew: a row of two pages is twice as wide as
+            // one, and is only that wide once the last page is drawn.
+            textLayout.whenDrawn(function () {
+                fireEvent("pagesdrawn", []);
+            });
 
             // Once the slide is laid out, shrink any overflowing autofit text.
             shrinkAutofitText(odfnode.body, container, css);
