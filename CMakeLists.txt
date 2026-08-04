@@ -527,8 +527,18 @@ get_property(WEBODF_PRODUCT_FILES GLOBAL PROPERTY WEBODF_PRODUCTS)
 get_property(WEBODF_PRODUCT_TARGET_LIST GLOBAL PROPERTY WEBODF_PRODUCT_TARGETS)
 if (WEBODF_PRODUCT_FILES)
     set(WEBODF_PRODUCTS_DIR ${CMAKE_BINARY_DIR}/products)
+    get_property(WEBODF_PRODUCT_NAME_LIST GLOBAL PROPERTY WEBODF_PRODUCT_NAMES)
+    string(REPLACE ";" "," WEBODF_PRODUCT_NAMES_ARG "${WEBODF_PRODUCT_NAME_LIST}")
+    # What a build that went before left in the directory is taken away: the
+    # products carry the version they were built from, so they would pile up
+    # under names of their own, and a reader would not know which build a
+    # product is of.
     set(WEBODF_PRODUCT_STEPS
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${WEBODF_PRODUCTS_DIR})
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${WEBODF_PRODUCTS_DIR}
+        COMMAND ${CMAKE_COMMAND}
+            -DDIR=${WEBODF_PRODUCTS_DIR}
+            "-DKEEP=${WEBODF_PRODUCT_NAMES_ARG}"
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake/keep-products.cmake)
     foreach (WEBODF_PRODUCT_FILE ${WEBODF_PRODUCT_FILES})
         list(APPEND WEBODF_PRODUCT_STEPS
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -538,7 +548,6 @@ if (WEBODF_PRODUCT_FILES)
         COMMAND ${CMAKE_COMMAND} -E echo ""
         COMMAND ${CMAKE_COMMAND} -E echo
             "The products of this build are in ${WEBODF_PRODUCTS_DIR}:")
-    get_property(WEBODF_PRODUCT_NAME_LIST GLOBAL PROPERTY WEBODF_PRODUCT_NAMES)
     foreach (WEBODF_PRODUCT_NAME ${WEBODF_PRODUCT_NAME_LIST})
         list(APPEND WEBODF_PRODUCT_STEPS
             COMMAND ${CMAKE_COMMAND} -E echo "  ${WEBODF_PRODUCT_NAME}")
