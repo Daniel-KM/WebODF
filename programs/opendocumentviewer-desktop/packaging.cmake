@@ -98,8 +98,11 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
 set(CPACK_PACKAGE_VENDOR "webodf.org")
 set(CPACK_PACKAGE_CONTACT "webodf@nlnet.nl")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://webodf.org/")
-set(CPACK_PACKAGE_FILE_NAME
-    "opendocumentviewer-${WEBODF_VERSION}-${VIEWER_ARCH}")
+# The name is kept apart as well: "include(CPack)" sets the variable of CPack
+# back to the name of a package of the sources, so what is read after it is
+# not what the package was named.
+set(VIEWER_PACKAGE_NAME "opendocumentviewer-${WEBODF_VERSION}-${VIEWER_ARCH}")
+set(CPACK_PACKAGE_FILE_NAME ${VIEWER_PACKAGE_NAME})
 # CPack leaves a directory of its own beside what it writes, so it writes
 # aside and the package alone is copied among the products.
 set(VIEWER_CPACK_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages)
@@ -123,7 +126,7 @@ if (DPKG_DEB)
             --config ${CMAKE_BINARY_DIR}/CPackConfig.cmake
         COMMAND ${CMAKE_COMMAND} -DDIR=${VIEWER_CPACK_DIR}
             -DDEST=${VIEWER_PRODUCTS} -DEXT=deb
-            -DNAME=${CPACK_PACKAGE_FILE_NAME}
+            -DNAME=${VIEWER_PACKAGE_NAME}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/data/copy-packages.cmake
         DEPENDS opendocumentviewer-desktop
         COMMENT "The package of debian of the viewer of the desktop")
@@ -141,7 +144,7 @@ if (RPMBUILD)
             --config ${CMAKE_BINARY_DIR}/CPackConfig.cmake
         COMMAND ${CMAKE_COMMAND} -DDIR=${VIEWER_CPACK_DIR}
             -DDEST=${VIEWER_PRODUCTS} -DEXT=rpm
-            -DNAME=${CPACK_PACKAGE_FILE_NAME}
+            -DNAME=${VIEWER_PACKAGE_NAME}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/data/copy-packages.cmake
         DEPENDS opendocumentviewer-desktop
         COMMENT "The package of fedora of the viewer of the desktop")
