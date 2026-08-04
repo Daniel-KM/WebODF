@@ -1,3 +1,6 @@
+# What a test writes goes to "out/" of the directory it runs in, and never
+# beside the documents it reads: a test that saves a document and reads it
+# back left it among the sources before, where the next build found it.
 # The documents the tests read are gathered in "documents/", beside the
 # tests that read them and not among them: what is code is told from what
 # is read, and the licence each document is under is written in one place,
@@ -28,6 +31,7 @@ endforeach(JSFILE ${LIBJSFILES})
 
 add_custom_command(
     OUTPUT _nodetest/nodetest.timestamp
+    COMMAND ${CMAKE_COMMAND} -E make_directory out
     COMMAND ${NODE} ${RUNTIMEJS} tests.js
     COMMAND ${TOUCHFILE} nodetest.timestamp
     WORKING_DIRECTORY _nodetest
@@ -49,6 +53,7 @@ COPY_FILES(tests_rhinotests ${CMAKE_CURRENT_SOURCE_DIR}
 
 add_custom_command(
     OUTPUT _rhinotest/rhinotest.timestamp
+    COMMAND ${CMAKE_COMMAND} -E make_directory out
     COMMAND ${Java_JAVA_EXECUTABLE}
         -Dwebodf.lib=${CMAKE_CURRENT_SOURCE_DIR}/../lib
         -jar ${RHINO} ${RUNTIMEJS} tests.js
@@ -68,6 +73,7 @@ COPY_FILES(tests_simplerhinotests ${CMAKE_CURRENT_SOURCE_DIR}
 
 add_custom_command(
     OUTPUT _simplerhinotest/simplerhinotest.timestamp
+    COMMAND ${CMAKE_COMMAND} -E make_directory out
     COMMAND ${Java_JAVA_EXECUTABLE} -jar ${RHINO}
         ${CMAKE_CURRENT_BINARY_DIR}/../simplecompiled.js
     COMMAND ${TOUCHFILE} simplerhinotest.timestamp
@@ -101,6 +107,7 @@ if (BUILD_QTJSRUNTIME)
 
     add_custom_command(
         OUTPUT _qtjsruntimetest/qtjsruntimetest.timestamp
+        COMMAND ${CMAKE_COMMAND} -E make_directory out
         COMMAND ${TESTS_PLATFORM} $<TARGET_FILE:qtjsruntime> ${RUNTIMEJS} tests.js
         COMMAND ${TOUCHFILE} qtjsruntimetest.timestamp
         WORKING_DIRECTORY _qtjsruntimetest

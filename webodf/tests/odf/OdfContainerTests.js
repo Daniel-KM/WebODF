@@ -172,7 +172,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
     function createNewSaveAsAndLoad(callback) {
         t.odf = new odf.OdfContainer(odf.OdfContainer.DocumentType.TEXT, null);
         r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
-        var path = "test.odt";
+        var path = "out/test.odt";
         t.odf.saveAs(path, function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
@@ -188,8 +188,8 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         t.odf = new odf.OdfContainer(odf.OdfContainer.DocumentType.TEXT, null);
         r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
         t.odf.rootElement.settings = null;
-        var path = "test.odt";
-        t.odf.saveAs("test.odt", function (err) {
+        var path = "out/test.odt";
+        t.odf.saveAs("out/test.odt", function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
             r.shouldBeNull(t, "t.odf.rootElement.settings");
@@ -206,7 +206,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         t.odf = new odf.OdfContainer(odf.OdfContainer.DocumentType.TEXT, null);
         r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
         t.odf.rootElement.meta = null;
-        var path = "test.odt";
+        var path = "out/test.odt";
         t.odf.saveAs(path, function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
@@ -228,7 +228,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         appendXmlsToNode(t.odf.rootElement.styles,          args.styles);
         appendXmlsToNode(t.odf.rootElement.automaticStyles, args.automaticStyles);
 
-        var path = r.resourcePrefix() + "fontFaceDeclsTest.odt";
+        var path = r.resourcePrefix() + "out/fontFaceDeclsTest.odt";
         t.odf.saveAs(path, function (err) {
             t.err = err;
             r.shouldBeNull(t, "t.err");
@@ -364,7 +364,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
     }
     function loadAndSave(callback) {
         var path = "documents/loadsave.odt",
-            newpath = "documents/newloadsave.odt";
+            newpath = "out/newloadsave.odt";
         t.odf = new odf.OdfContainer(path, function (o1) {
             t.odf = o1;
             r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");

@@ -337,6 +337,11 @@ add_custom_target(doc DEPENDS docs/index.html)
 if (WEBODF_HAS_JAVA)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp
+        # This suite alone runs in the sources, as it reads the library the
+        # compiler wrote and the documents the sources hold: what it writes
+        # goes to "tests/out/", that the sources ignore.
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/out
         COMMAND ${NODE} ${CMAKE_CURRENT_BINARY_DIR}/simplecompiled.js
         COMMAND ${TOUCHFILE} ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp
         DEPENDS ${NODE} simplecompiled.js copy_node_modules

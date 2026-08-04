@@ -85,7 +85,7 @@ odf.PageLayoutTests = function PageLayoutTests(runner) {
         fill(root.automaticStyles, "automatic-styles");
         fill(root.masterStyles, "master-styles");
         fill(root.body.getElementsByTagNameNS(officens, "text")[0], "text");
-        container.saveAs("pagelayouttests.odt", function () {
+        container.saveAs("out/pagelayouttests.odt", function () {
             t.odfCanvas.addListener("statereadychange", function () {
                 callback();
             });

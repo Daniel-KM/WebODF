@@ -187,7 +187,7 @@ odf.LayoutTests = function LayoutTests(runner) {
             root = odfContainer.rootElement,
             oldContent = root.body.getElementsByTagNameNS(officens, tag)[0],
             extension = isText ? ".odt" : ".odp",
-            path = test.name + extension;
+            path = "out/" + test.name + extension;
         replaceChildren(root.styles,
             input.getElementsByTagNameNS(officens, "styles"));
         replaceChildren(root.automaticStyles,

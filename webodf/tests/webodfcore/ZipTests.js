@@ -87,7 +87,7 @@ webodfcore.ZipTests = function ZipTests(runner) {
     }
 
     function testCreateZip(callback) {
-        var filename = r.resourcePrefix() + "writetest.zip",
+        var filename = r.resourcePrefix() + "out/writetest.zip",
             zip = new webodfcore.Zip(filename, null),
             data = runtime.byteArrayFromString(
                 "application/vnd.oasis.opendocument.text",
@@ -111,7 +111,7 @@ webodfcore.ZipTests = function ZipTests(runner) {
     }
 
     function testSave() {
-        var zip = new webodfcore.Zip("savetest.zip", null),
+        var zip = new webodfcore.Zip("out/savetest.zip", null),
             data = runtime.byteArrayFromString("hello", "utf8");
         zip.save("a", data, false, new Date());
         zip.save("b", data, false, new Date());
@@ -124,7 +124,7 @@ webodfcore.ZipTests = function ZipTests(runner) {
     }
 
     function testRemove() {
-        var zip = new webodfcore.Zip("savetest.zip", null),
+        var zip = new webodfcore.Zip("out/savetest.zip", null),
             data = runtime.byteArrayFromString("hello", "utf8");
         zip.save("a", data, false, new Date());
         zip.save("b", data, false, new Date());

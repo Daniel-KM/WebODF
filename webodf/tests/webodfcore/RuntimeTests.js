@@ -63,7 +63,7 @@ webodfcore.RuntimeTests = function RuntimeTests(runner) {
             clean.push(content[i] & 0xff);
         }
 
-        filename = pre + "tmp" + Math.random();
+        filename = pre + "out/tmp" + Math.random();
         // now content has content different from what is on the server
         runtime.writeFile(filename, new Uint8Array(content), function (err) {
             t.err = err;

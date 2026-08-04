@@ -29,10 +29,12 @@ node_modules/*
 webodf/webodf.css.js
 
 # The documents the tests write beside the ones they read.
-webodf/tests/test.odt
-webodf/tests/fontFaceDeclsTest.odt
-webodf/tests/simple_slide.odp
-webodf/tests/odf/newloadsave.odt
+# What an office leaves beside a document it has open.
+.~lock.*#
+
+# What a test writes, that goes to a directory of its own, see
+# "webodf/tests/CMakeLists.txt".
+webodf/tests/out/
 
 # The library is copied into the assets of the viewer of android.
 programs/opendocumentviewer-android/src/main/assets/webodf.js
