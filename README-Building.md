@@ -16,26 +16,26 @@ Both produce the same file, byte for byte: the build with cmake writes the
 library by running "scripts/build.js" as well. It still compiles the sources
 with the closure compiler, but only to check their types, as it compiles with
 SIMPLE_OPTIMIZATIONS, which neither folds the definition IS_COMPILED_CODE nor
-drops what it makes unreachable: the loader of the classes and the runner of
-the scripts stayed in a library that never calls them, with the eval() they
-read a file with.
+drops what it makes unreachable: the loader of the classes and the runner of the
+scripts stayed in a library that never calls them, with the eval() they read a
+file with.
 
-So "npm install" is needed for the build with cmake too, as terser minifies
-the library.
+So "npm install" is needed for the build with cmake too, as terser minifies the
+library.
 
-Two parts of the build with cmake are opt-in, so that a plain build stays
-short and needs nothing but node, java and cmake:
+Two parts of the build with cmake are opt-in, so that a plain build stays short
+and needs nothing but node, java and cmake:
 
 | Option             | What it adds                                          |
 |--------------------|-------------------------------------------------------|
 | WEBODF_PROGRAMS    | The editors and the extensions of "programs/"         |
 | WEBODF_QTJSRUNTIME | qtjsruntime, that runs the tests in the webkit of qt  |
 
-The apk of android is one more output of "programs/cordova", so android and
-ant are only looked for along with the programs. That toolchain is out of
-reach as well: it drives cordova 3.5, of 2014, that builds android with ant,
-which google dropped in 2015 for gradle, through the executable "android",
-that the sdk replaced by "sdkmanager" in 2018.
+The apk of android is one more output of "programs/cordova", so android and ant
+are only looked for along with the programs. That toolchain is out of reach as
+well: it drives cordova 3.5, of 2014, that builds android with ant, which google
+dropped in 2015 for gradle, through the executable "android", that the sdk
+replaced by "sdkmanager" in 2018.
 
 WEBODF_QTJSRUNTIME needs Qt5Network, Qt5Xml, Qt5PrintSupport and
 Qt5WebKitWidgets, that Debian 12 and older install with:
@@ -45,9 +45,9 @@ apt-get install qtbase5-dev libqt5webkit5-dev
 ```
 
 Qt WebKit was dropped from Qt in 5.6, kept alive as a separate project, and is
-not packaged any more by Debian since 13, so the modules are out of reach
-there. The suite it runs is the same as the one "npm run test:browser" runs,
-in a browser that is still maintained, which is the reason this option is off.
+not packaged any more by Debian since 13, so the modules are out of reach there.
+The suite it runs is the same as the one "npm run test:browser" runs, in a
+browser that is still maintained, which is the reason this option is off.
 
 
 ## Coverage
@@ -59,8 +59,8 @@ npm run coverage
 make coverage
 ```
 
-By default it writes a table on the terminal and a report to browse in
-"coverage/index.html". Another reporter is chosen by passing it through:
+By default it writes a table on the terminal and a report to browse in "coverage/index.html".
+Another reporter is chosen by passing it through:
 
 ```sh
 node scripts/coverage.js --reporter=lcov
@@ -68,14 +68,14 @@ node scripts/coverage.js --reporter=lcov
 
 c8 reads the coverage V8 records while it runs, so it neither parses nor
 rewrites the sources: the version of ECMAScript the library is written in does
-not matter to it. The tests run on the bundle, that is written with a source
-map so that the coverage is reported on the files of "webodf/lib".
+not matter to it. The tests run on the bundle, that is written with a source map
+so that the coverage is reported on the files of "webodf/lib".
 
 It replaces JSCoverage, that instrumented the sources for the target
 "instrumented" of the original build. Its last release, 0.5.1 of 2010, bundles
 SpiderMonkey 1.7, whose autoconf 2.13 probe declares "main()" without a return
-type: gcc 14 and clang 16 reject it, as -Wimplicit-int is an error in C23, so
-it does not build any more on a recent distribution.
+type: gcc 14 and clang 16 reject it, as -Wimplicit-int is an error in C23, so it
+does not build any more on a recent distribution.
 [c8]: https://github.com/bcoe/c8
 
 
@@ -123,9 +123,9 @@ A successful run will yield the file "webodf.js" in the subfolder "build/webodf/
 among other things, from where you can then copy it and use for your website.
 
 CMake keeps the paths of the programs it finds in "build/CMakeCache.txt", so a
-node that is installed afterwards, with nvm for instance, is not seen: it
-keeps using the one it found the first time, and reports it as too old. The
-entries are dropped with:
+node that is installed afterwards, with nvm for instance, is not seen: it keeps
+using the one it found the first time, and reports it as too old. The entries
+are dropped with:
 
 ```sh
 cmake -S ../webodf -U NODEJS_EXECUTABLE -U NPM
@@ -140,13 +140,14 @@ The build needs cmake, a java runtime and node, that is installed apart, see
 apt-get install cmake default-jre
 ```
 
-The modules of Qt are only needed by the option WEBODF_QTJSRUNTIME, see "Two
-ways to build" above.
+The modules of Qt are only needed by the option WEBODF_QTJSRUNTIME, see "Two ways to build"
+above.
 
 ## Building WebODF on Windows
 
 The following steps have been tested with the Microsoft C\C++ compilers that are
-installed with Visual Studio 2010. It may be possible to use MinGW but it has not been verified.
+installed with Visual Studio 2010. It may be possible to use MinGW but it has
+not been verified.
 
 * Visual Studio 2010 (or [Visual Studio 2010 Express][] works as well)
 * [Visual Studio 2010 Service Pack 1][]
@@ -215,20 +216,20 @@ ulimit -n 8192
 
 ## Javascript dependencies
 
-Unlike most node projects, the runtime dependency "@xmldom/xmldom" (about
-400 kB) is versioned inside the directory "node_modules", and it has been so
-since 2012 (commit "include node_modules directory with xmldom"), so that
-WebODF can be run from a simple checkout, without npm and without network
-access. The tools of the build (terser, jsdoc) are not versioned: they are
-installed with "npm install" and the file ".gitignore" keeps only "@xmldom".
+Unlike most node projects, the runtime dependency "@xmldom/xmldom" (about 400 kB)
+is versioned inside the directory "node_modules", and it has been so since 2012
+(commit "include node_modules directory with xmldom"), so that WebODF can be run
+from a simple checkout, without npm and without network access. The tools of the
+build (terser, jsdoc) are not versioned: they are installed with "npm install"
+and the file ".gitignore" keeps only "@xmldom".
 
 This dependency is used by the file "webodf/lib/runtime.js", that needs a
 DOMParser when WebODF runs inside node, for example for the command line tools.
 A browser uses its own native parser, so this dependency is never included in
 the compiled file "webodf.js".
 
-As a consequence, an update of a dependency must commit the versioned copy
-along with the file "package.json":
+As a consequence, an update of a dependency must commit the versioned copy along
+with the file "package.json":
 
 ```sh
 npm install
@@ -249,10 +250,10 @@ call to new Buffer() of its module "nodeBuffer" is patched as well, as node
 deprecated it.
 
 The version in use is JSZip 2.6.1, the last of its line. JSZip 3 is not used
-yet, for two reasons only: its api is asynchronous, so the three calls of
-Zip.js would go through the promises it ships with, and it weighs 17 kB more
-once minified, since it added a layer of streams. Both versions run on the
-same browsers, IE 6 included.
+yet, for two reasons only: its api is asynchronous, so the three calls of Zip.js
+would go through the promises it ships with, and it weighs 17 kB more once
+minified, since it added a layer of streams. Both versions run on the same
+browsers, IE 6 included.
 
 ## Building with node
 
@@ -261,12 +262,12 @@ is the simplest way to get "webodf.js", and it does not download anything but
 the packages of npm.
 
 Node 22.22.2 or later is needed, both here and for the build with cmake: 22 is
-the oldest release that is still maintained, and jsdom, that the tests use,
-runs on none of its earlier ones. The exact range is in the field "engines" of
+the oldest release that is still maintained, and jsdom, that the tests use, runs
+on none of its earlier ones. The exact range is in the field "engines" of
 "package.json"; the tools are tested with node 24, the release under long term
-support. Node is expected to be installed, on every platform, npm along with
-it: it used to be downloaded on Windows, but only the binary of node, without
-the npm the build needs.
+support. Node is expected to be installed, on every platform, npm along with it:
+it used to be downloaded on Windows, but only the binary of node, without the
+npm the build needs.
 
 ```sh
 npm install
@@ -318,8 +319,8 @@ used until now, does not check the sources any more: they use globalThis, that
 it does not know.
 
 The configuration for karma, in "webodf/tools/karma.conf.js", is kept and is
-still generated by "webodf/tools/updateJS.js" during a build with cmake, but
-the command "npm run test:browser" replaces it and needs no extra package.
+still generated by "webodf/tools/updateJS.js" during a build with cmake, but the
+command "npm run test:browser" replaces it and needs no extra package.
 
 ### Running with Rhino
 
@@ -381,16 +382,16 @@ and the css are generated in memory, not in files. The build with cmake writes
 in the directory given to cmake, usually "build", next to the sources, and
 keeps its downloads there.
 
-Both libraries are the same file, byte for byte: the sources concatenated in
-the order of their dependencies, with IS_COMPILED_CODE set to true so that the
+Both libraries are the same file, byte for byte: the sources concatenated in the
+order of their dependencies, with IS_COMPILED_CODE set to true so that the
 runtime does not load the classes one by one, minified by terser. The build
 with cmake runs "scripts/build.js" as well, see "Two ways to build" above.
 
 ### Running the add-ons without installing them
 
-The three packages of "programs/firefoxextension", see "README-Products.md",
-are loaded from their directory, with a profile of their own, so that nothing
-has to be clicked and nothing is kept:
+The three packages of "programs/odfviewer-webext", see "README-Products.md", are
+loaded from their directory, with a profile of their own, so that nothing has to
+be clicked and nothing is kept:
 
 ```sh
 npx web-ext run --source-dir build/firefox-extension-odfviewer-mv2-x.y.z/
@@ -399,11 +400,11 @@ chromium --user-data-dir=$(mktemp -d) --no-first-run \
 ```
 
 web-ext writes a temporary profile, installs the add-on in it and follows the
-changes of the files; "--firefox" chooses the binary and "--url" opens a page
-at once. Open the page after the add-on is installed, not with it:
-a page that is asked for while Firefox is still starting is not redirected,
-and the add-on looks broken when it is not. Firefox refuses an unsigned xpi, but not a directory loaded this way,
-which is what "about:debugging" does by hand.
+changes of the files; "--firefox" chooses the binary and "--url" opens a page at
+once. Open the page after the add-on is installed, not with it:
+a page that is asked for while Firefox is still starting is not redirected, and
+the add-on looks broken when it is not. Firefox refuses an unsigned xpi, but not
+a directory loaded this way, which is what "about:debugging" does by hand.
 
 Chrome keeps the profile of "--user-data-dir", hence the temporary directory,
 and "--load-extension" only takes a directory, never a zip.
@@ -414,9 +415,9 @@ checks that the viewer of the add-on drew it. It needs a chromium, like
 "npm run test:browser", and the library of "dist".
 
 It is worth running: a rule Chrome refuses is dropped without a word, and the
-documents are downloaded as if the add-on were not installed. Neither the
-linter of addons.mozilla.org nor the closure compiler sees it. Firefox is not
-driven, as web-ext is not a dependency of this project.
+documents are downloaded as if the add-on were not installed. Neither the linter
+of addons.mozilla.org nor the closure compiler sees it. Firefox is not driven,
+as web-ext is not a dependency of this project.
 
 ### What the closure compiler is used for
 

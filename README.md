@@ -54,7 +54,7 @@ webodf.js-target             | webodf/webodf.js                      | the libra
 product-library              | webodf.js-x.y.z.zip                   | zip file with library and API docs | [WebODF homepage](http://webodf.org/download)
 product-wodotexteditor       | wodotexteditor-x.y.z.zip              | simple to use editor component     | [WebODF homepage](http://webodf.org/download)
 product-wodocollabtexteditor | wodocollabtexteditor-x.y.z.zip        | collaborative editor component     | [WebODF homepage](http://webodf.org/download)
-product-firefoxextension     | firefox-extension-odfviewer-x.y.z.xpi | ODF viewer Firefox add-on          | [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/)
+product-odfviewer-webext     | firefox-extension-odfviewer-x.y.z.xpi | ODF viewer Firefox add-on          | [Mozilla's Add-on website](https://addons.mozilla.org/firefox/addon/webodf/)
 
 ("x.y.z" is a placeholder for the actual version number)
 
