@@ -203,6 +203,17 @@ function Buffer(arg1, encoding) {"use strict"; }
  */
 Buffer.prototype.length = 0;
 /**
+ * @param {!Array.<!number>|!string|!Uint8Array} source
+ * @param {!string=} encoding
+ * @return {!Buffer}
+ */
+Buffer.from = function (source, encoding) {"use strict"; };
+/**
+ * @param {!number} size
+ * @return {!Buffer}
+ */
+Buffer.alloc = function (size) {"use strict"; };
+/**
  * @param {!string} msg
  * @return {undefined}
  */

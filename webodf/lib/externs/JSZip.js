@@ -595,7 +595,14 @@ module.exports = function(data, options) {
 (function (Buffer){
 'use strict';
 module.exports = function(data, encoding){
-    return new Buffer(data, encoding);
+    // Patched: new Buffer() is deprecated since node 10. The callers only pass
+    // a string or an array, never a size, so from() always applies.
+    // Patched: new Buffer() is deprecated since node 10. A number is a size
+    // to allocate, that alloc() also fills with zeroes, anything else is the
+    // content to copy.
+    return typeof data === "number"
+        ? Buffer.alloc(data)
+        : Buffer.from(data, encoding);
 };
 module.exports.test = function(b){
     return Buffer.isBuffer(b);

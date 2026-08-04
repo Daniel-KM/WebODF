@@ -4,6 +4,14 @@
 cmake_minimum_required(VERSION 3.0.0)
 message("CMake version: ${CMAKE_VERSION}")
 
+# The archives of the tools are downloaded from an url: the timestamps of the
+# files they hold have to be the ones of the extraction, so that a change of
+# the url rebuilds what depends on them. The policy is only set when it is
+# known, as it was added by cmake 3.24.
+if (POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 # WebODF is mostly a JavaScript project. CMake needs to know about the C++ parts
 project(WebODF C CXX)
 
@@ -39,9 +47,10 @@ else (OVERRULED_WEBODF_VERSION)
     set(WEBODF_VERSION ${CMAKE_MATCH_1})
   else (CMAKE_MATCH_1)
     # get version number from git
-    exec_program(git ${CMAKE_CURRENT_SOURCE_DIR}
-      ARGS describe --tags --dirty --match "v[0-9]*"
-      OUTPUT_VARIABLE GIT_WEBODF_VERSION)
+    execute_process(COMMAND git describe --tags --dirty --match "v[0-9]*"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_WEBODF_VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
     # check version number from git
     string(REGEX MATCH "^v([0-9]+.[0-9]+.[0-9]+((-[0-9]+-[0-9a-z]+)?(-dirty)?)?)$" CHECKED_WEBODF_VERSION "${GIT_WEBODF_VERSION}")
     if (CMAKE_MATCH_1)
@@ -159,7 +168,9 @@ else(WIN32)
         DOC "Path to Node.js executable"
     )
     IF(NODEJS_EXECUTABLE)
-        EXEC_PROGRAM(${NODEJS_EXECUTABLE} ARGS --version OUTPUT_VARIABLE NODEJS_VERSION)
+        execute_process(COMMAND ${NODEJS_EXECUTABLE} --version
+            OUTPUT_VARIABLE NODEJS_VERSION
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
         string(SUBSTRING ${NODEJS_VERSION} 1 -1 NODEJS_VERSION)
         MESSAGE (STATUS "Installed Node.js found: ${NODEJS_EXECUTABLE} - ${NODEJS_VERSION}")
     ELSE(NODEJS_EXECUTABLE)

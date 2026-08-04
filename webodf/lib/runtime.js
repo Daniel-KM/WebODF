@@ -946,7 +946,7 @@ function NodeJSRuntime() {
      * @return {!Uint8Array}
      */
     this.byteArrayFromString = function (string, encoding) {
-        var buf = new Buffer(string, encoding), i, l = buf.length,
+        var buf = Buffer.from(string, encoding), i, l = buf.length,
             a = new Uint8Array(new ArrayBuffer(l));
         for (i = 0; i < l; i += 1) {
             a[i] = buf[i];
@@ -1036,7 +1036,7 @@ function NodeJSRuntime() {
      * @return {undefined}
      */
     this.writeFile = function (path, data, callback) {
-        var buf = new Buffer(data);
+        var buf = Buffer.from(data);
         path = pathmod.resolve(currentDirectory, path);
         fs.writeFile(path, buf, "binary", function (err) {
             callback(err || null);
@@ -1065,7 +1065,7 @@ function NodeJSRuntime() {
                 callback(err, null);
                 return;
             }
-            var buffer = new Buffer(length);
+            var buffer = Buffer.alloc(length);
             fs.read(fd, buffer, 0, length, offset, function (err) {
                 fs.close(fd);
                 callback(err, bufferToUint8Array(buffer));
