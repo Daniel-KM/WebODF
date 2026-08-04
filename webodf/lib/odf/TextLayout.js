@@ -2274,6 +2274,44 @@ odf.TextLayout = function TextLayout() {
             : false;
     }
     /**
+     * Whether anything that is seen is written on a page before a node.
+     * @param {!Element} box
+     * @param {!Node} node
+     * @return {!boolean}
+     */
+    function anythingBefore(box, node) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            range;
+        if (!box.firstChild || box.firstChild === node) {
+            return false;
+        }
+        range = doc.createRange();
+        range.setStartBefore(/**@type{!Node}*/(box.firstChild));
+        range.setEndBefore(node);
+        return range.getBoundingClientRect().height > 1;
+    }
+    /**
+     * Whether a page holds anything that is seen.
+     *
+     * A page may hold the leftover of what was cut at the end of the page
+     * before it and draw nothing of it — an empty table of contents, a
+     * section that holds no more text: what asks to be written on a new page
+     * is written on this one all the same, as the page is empty to a reader.
+     * @param {!Element} box
+     * @return {!boolean}
+     */
+    function holdsSomething(box) {
+        var doc = /**@type{!Document}*/(box.ownerDocument),
+            range;
+        if (!box.firstChild) {
+            return false;
+        }
+        range = doc.createRange();
+        range.setStartBefore(/**@type{!Node}*/(box.firstChild));
+        range.setEndAfter(/**@type{!Node}*/(box.lastChild));
+        return range.getBoundingClientRect().height > 1;
+    }
+    /**
      * Whether a node was marked as beginning a page of its own.
      * @param {!Node} node
      * @return {!boolean}
@@ -2559,11 +2597,23 @@ odf.TextLayout = function TextLayout() {
             return node.splitText(0);
         }
         // The cut is made at the last blank before the letter, so that a
-        // word is not written half on one page and half on the next.
+        // word is not written half on one page and half on the next. Where
+        // there is no blank to cut at, the whole of it is written on the
+        // page that follows: a page that ended with the "A" of "Appendix"
+        // and gave "ppendix" to the next is no page of a document. A page
+        // that holds nothing else cuts all the same, or the text would be
+        // sent from page to page for ever.
         middle = String(node.data).lastIndexOf(" ", low);
-        return node.splitText(middle > 0
-            ? middle + 1
-            : Math.max(1, low));
+        if (middle <= 0) {
+            // Nothing of the word fits: the whole of it is written on the
+            // page that follows, unless the page holds nothing that is seen
+            // before it, where a page would else be left empty and the word
+            // sent on for ever.
+            return anythingBefore(box, node)
+                ? node.splitText(0)
+                : node.splitText(Math.max(1, low));
+        }
+        return node.splitText(middle + 1);
     }
     /**
      * Whether a node is the rows of the head of a table.
@@ -2897,7 +2947,7 @@ odf.TextLayout = function TextLayout() {
                 // thing on it: a break before the first node would leave an
                 // empty page behind, and the browser is asked for the same
                 // where the pages are broken into columns.
-                if (asksForANewPage(node) && box.firstChild) {
+                if (asksForANewPage(node) && holdsSomething(box)) {
                     break;
                 }
                 // An element of thousands of nodes — a table of contents,
@@ -3155,6 +3205,33 @@ odf.TextLayout = function TextLayout() {
         drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
     }
     /**
+     * Set every page from one of them onwards at the place of its number.
+     *
+     * A page that is made between two others moves the ones that follow it
+     * down by one: each is drawn where its number says, and the number of
+     * each of them has changed.
+     * @param {!PagePlan} plan
+     * @param {!Array.<!Element>} boxes
+     * @param {!number} from the first page to set, from zero
+     * @return {undefined}
+     */
+    function placePages(plan, boxes, from) {
+        var /**@type{!number}*/
+            i,
+            /**@type{!odf.TextLayout.PageDimensions}*/
+            dims,
+            /**@type{!{left:!number,top:!number}}*/
+            place;
+        for (i = from; i < boxes.length; i += 1) {
+            dims = plan.at(i);
+            place = pagePlace(plan, i);
+            /**@type{!HTMLElement}*/(boxes[i]).style.left = (place.left
+                + dims.marginLeft) + "px";
+            /**@type{!HTMLElement}*/(boxes[i]).style.top = (place.top
+                + dims.marginTop) + "px";
+        }
+    }
+    /**
      * Move to the next page what crosses the end of a page.
      *
      * The pages are filled by measuring them, and what is drawn after them —
@@ -3191,6 +3268,8 @@ odf.TextLayout = function TextLayout() {
         function trimOne(box, index) {
             var /**@type{!number}*/
                 guard = 4,
+                /**@type{!boolean}*/
+                fresh,
                 /**@type{?Element}*/
                 over = firstOverflowing(box),
                 /**@type{?Element}*/
@@ -3250,8 +3329,19 @@ odf.TextLayout = function TextLayout() {
                 if (sent.length === 0) {
                     guard = 0;
                 } else {
-                    if (index + 1 >= boxes.length) {
-                        dims = plan.at(boxes.length);
+                    // What is sent on goes to the page that follows, unless
+                    // that page begins with what asks for a page of its own:
+                    // a page of its own it stays, and a page is made between
+                    // the two.
+                    fresh = index + 1 >= boxes.length
+                        || Boolean(boxes[index + 1].firstElementChild
+                            && asksForANewPage(
+                                /**@type{!Node}*/(
+                                    boxes[index + 1].firstElementChild
+                                )
+                            ));
+                    if (fresh) {
+                        dims = plan.at(index + 1);
                         target = /**@type{!Element}*/(
                             doc.createElementNS(htmlns, "div")
                         );
@@ -3267,11 +3357,17 @@ odf.TextLayout = function TextLayout() {
                         /**@type{!HTMLElement}*/(target).style.left =
                             dims.marginLeft + "px";
                         /**@type{!HTMLElement}*/(target).style.top =
-                            (boxes.length * (dims.pageHeight
+                            ((index + 1) * (dims.pageHeight
                                 + dims.pageSeparation)
                                 + dims.marginTop) + "px";
-                        text.appendChild(target);
-                        boxes.push(target);
+                        if (index + 1 >= boxes.length) {
+                            text.appendChild(target);
+                            boxes.push(target);
+                        } else {
+                            text.insertBefore(target, boxes[index + 1]);
+                            boxes.splice(index + 1, 0, target);
+                            placePages(plan, boxes, index + 2);
+                        }
                     } else {
                         target = boxes[index + 1];
                     }
