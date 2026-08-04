@@ -43,6 +43,10 @@ among other things, from where you can then copy it and use for your website.
 For more details about preparing the build of webodf.js , e.g. on Windows or OSX,
 please study ["README-Building.md"](README-Building.md).
 
+What a program may lean on in the library — the canvas that draws a document,
+the container that holds it, and what each of them answers — is written in
+["PUBLIC-API.md"](PUBLIC-API.md).
+
 ### ... and more
 
 This repository not only contains code for the library webodf.js, but also a few
