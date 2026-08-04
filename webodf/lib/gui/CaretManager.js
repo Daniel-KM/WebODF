@@ -123,7 +123,6 @@ gui.CaretManager = function CaretManager(sessionController, viewport) {
 
         // if local input member, then let controller listen on caret span
         if (memberid === sessionController.getInputMemberId()) {
-            runtime.log("Starting to track input on new cursor of " + memberid);
             odtDocument.subscribe(ops.OdtDocument.signalProcessingBatchEnd, caret.ensureVisible);
             odtDocument.subscribe(ops.Document.signalCursorMoved, caret.refreshCursorBlinking);
 

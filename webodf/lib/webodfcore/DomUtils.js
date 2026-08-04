@@ -42,7 +42,6 @@
             rangeBoundingRect,
             testContainer,
             testElement,
-            detectedQuirks,
             window,
             document,
             docElement,
@@ -111,16 +110,6 @@
 
                 range.detach();
                 body.removeChild(testContainer);
-                detectedQuirks = Object.keys(browserQuirks).map(
-                    /**
-                     * @param {!string} quirk
-                     * @return {!string}
-                     */
-                    function (quirk) {
-                        return quirk + ":" + String(browserQuirks[quirk]);
-                    }
-                ).join(", ");
-                runtime.log("Detected browser quirks - " + detectedQuirks);
             }
         }
         return browserQuirks;

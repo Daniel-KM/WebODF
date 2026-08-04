@@ -354,7 +354,6 @@ gui.SessionViewOptions = function () {
                 caret.setAvatarImageUrl(properties.imageUrl);
                 caret.setColor(properties.color);
             }
-            runtime.log("+++ View here +++ eagerly created an Caret for '" + memberId + "'! +++");
         }
 
         /**
