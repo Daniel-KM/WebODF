@@ -1249,7 +1249,6 @@ function NodeJSRuntime() {
 function RhinoRuntime() {
     "use strict";
     var self = this,
-        Packages = {},
         dom = Packages.javax.xml.parsers.DocumentBuilderFactory.newInstance(),
         /**@type{!Packages.javax.xml.parsers.DocumentBuilder}*/
         builder,
