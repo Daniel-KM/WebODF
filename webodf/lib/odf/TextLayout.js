@@ -147,19 +147,101 @@ odf.TextLayout = function TextLayout() {
         return area;
     }
     /**
+     * The graphic style of a shape, followed up its parents: a shape names a
+     * style of the family "graphic", that may name another one in turn.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} shape
+     * @return {?Element}
+     */
+    function graphicStyleOf(odfroot, shape) {
+        var /**@type{!string}*/
+            name = shape.getAttributeNS(drawns, "style-name") || "",
+            /**@type{!Array.<!Element>}*/
+            roots = [odfroot.automaticStyles, odfroot.styles],
+            /**@type{?Element}*/
+            style,
+            /**@type{!Element}*/
+            candidate,
+            /**@type{!NodeList}*/
+            styles,
+            /**@type{!number}*/
+            depth = 0,
+            /**@type{!number}*/
+            marker,
+            /**@type{!number}*/
+            i,
+            /**@type{!number}*/
+            r;
+        while (name !== "" && depth < 10) {
+            style = null;
+            for (r = 0; r < roots.length && style === null; r += 1) {
+                styles = roots[r].getElementsByTagNameNS(stylens, "style");
+                for (i = 0; i < styles.length && style === null; i += 1) {
+                    candidate = /**@type{!Element}*/(styles.item(i));
+                    if (candidate.getAttributeNS(stylens, "name") === name
+                            && candidate.getAttributeNS(stylens, "family")
+                                === "graphic") {
+                        style = candidate;
+                    }
+                }
+            }
+            if (style === null) {
+                // The container prefixes the automatic styles of "styles.xml"
+                // and every reference to them, so that they do not shadow the
+                // ones of "content.xml", see "prefixStyleNames": a reference
+                // that names no style of its own is read again without it.
+                marker = name.indexOf("_webodf_");
+                if (marker === -1) {
+                    return null;
+                }
+                name = name.substring(marker + "_webodf_".length);
+                depth += 1;
+            } else {
+                if (domUtils.getDirectChild(style, stylens,
+                        "graphic-properties")) {
+                    return style;
+                }
+                name = style.getAttributeNS(stylens, "parent-style-name") || "";
+                depth += 1;
+            }
+        }
+        return null;
+    }
+    /**
+     * Whether a shape is drawn behind the text or over it. A watermark is
+     * written behind, "style:run-through" being "background", and a stamp over
+     * it, which is the default the standard gives.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} shape
+     * @return {!boolean}
+     */
+    function isBehindTheText(odfroot, shape) {
+        var style = graphicStyleOf(odfroot, shape),
+            props = style && domUtils.getDirectChild(style, stylens,
+                "graphic-properties");
+        return Boolean(props
+            && props.getAttributeNS(stylens, "run-through") === "background");
+    }
+    /**
      * The shapes a master page draws on every page: a watermark, a banner
      * along an edge, a note in a margin. The standard allows them beside the
      * header and the footer, and it is where they are written, as the margins
      * of a page carry no area of their own.
+     * @param {!odf.ODFDocumentElement} odfroot
      * @param {?Element} masterPage
-     * @return {!Array.<!Element>}
+     * @return {!Array.<!odf.TextLayout.PageShape>}
      */
-    function shapesOf(masterPage) {
+    function shapesOf(odfroot, masterPage) {
         var shapes = [],
             node = masterPage && masterPage.firstElementChild;
         while (node) {
             if (node.namespaceURI === drawns) {
-                shapes.push(node);
+                shapes.push({
+                    node: node,
+                    background: isBehindTheText(odfroot, node),
+                    order: parseInt(node.getAttributeNS(drawns, "z-index"), 10)
+                        || 0
+                });
             }
             node = node.nextElementSibling;
         }
@@ -169,18 +251,19 @@ odf.TextLayout = function TextLayout() {
      * Draw the shapes of a master page on one page, where the shape itself
      * says where it goes: what a master page draws is placed against the
      * sheet, so the box is the sheet and the offsets are the ones written.
-     * @param {!Array.<!Element>} shapes
+     * @param {!Array.<!odf.TextLayout.PageShape>} shapes
      * @param {!HTMLDivElement} box
      * @return {undefined}
      */
     function fillPageShapes(shapes, box) {
         var doc = box.ownerDocument;
         shapes.forEach(function (shape) {
-            var copy = doc.importNode(shape, true),
-                x = shape.getAttributeNS(svgns, "x"),
-                y = shape.getAttributeNS(svgns, "y"),
-                width = shape.getAttributeNS(svgns, "width"),
-                height = shape.getAttributeNS(svgns, "height"),
+            var node = shape.node,
+                copy = doc.importNode(node, true),
+                x = node.getAttributeNS(svgns, "x"),
+                y = node.getAttributeNS(svgns, "y"),
+                width = node.getAttributeNS(svgns, "width"),
+                height = node.getAttributeNS(svgns, "height"),
                 /**@type{!HTMLDivElement}*/
                 place = /**@type{!HTMLDivElement}*/(doc.createElementNS(
                     box.namespaceURI, "div"));
@@ -191,6 +274,13 @@ odf.TextLayout = function TextLayout() {
             place.style.position = "absolute";
             place.style.left = x || "0";
             place.style.top = y || "0";
+            // A watermark is drawn behind the text and a stamp over it, and
+            // "draw:z-index" tells one shape of a layer from the next. The box
+            // of the page holds no stacking context of its own, so these are
+            // read against the text.
+            place.style.zIndex = String(shape.background
+                ? -1 - shape.order
+                : 10 + shape.order);
             if (width) {
                 place.style.width = width;
             }
@@ -203,10 +293,11 @@ odf.TextLayout = function TextLayout() {
     }
     /**
      * What a master page writes at the top and at the bottom of a page.
+     * @param {!odf.ODFDocumentElement} odfroot
      * @param {?Element} masterPage
      * @return {!odf.TextLayout.PageFurniture}
      */
-    function readFurniture(masterPage) {
+    function readFurniture(odfroot, masterPage) {
         /**
          * @param {!string} name
          * @return {?Element}
@@ -217,7 +308,7 @@ odf.TextLayout = function TextLayout() {
                 : null;
         }
         return {
-            shapes: shapesOf(masterPage),
+            shapes: shapesOf(odfroot, masterPage),
             header: child("header"),
             footer: child("footer"),
             headerLeft: child("header-left"),
@@ -320,9 +411,9 @@ odf.TextLayout = function TextLayout() {
             pageSeparation: pageSeparation,
             header: readPageArea(pageLayout, "header-style", "margin-bottom"),
             footer: readPageArea(pageLayout, "footer-style", "margin-top"),
-            firstPage: readFurniture(masterPage),
-            otherPages: readFurniture(nextMasterPage(odfroot, masterPage)
-                || masterPage)
+            firstPage: readFurniture(odfroot, masterPage),
+            otherPages: readFurniture(odfroot,
+                nextMasterPage(odfroot, masterPage) || masterPage)
         };
         // One margin for the four sides, or one by side.
         if (properties.getAttributeNS(fons, "margin")) {
@@ -586,19 +677,76 @@ odf.TextLayout = function TextLayout() {
         return right;
     }
     /**
+     * A box that holds the shapes of one page, of the size of the sheet.
+     * @param {!Document} doc
+     * @param {?string} htmlns
+     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!number} top where the page begins
+     * @return {!HTMLDivElement}
+     */
+    function pageShapesBox(doc, htmlns, dims, top) {
+        var box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
+            "div"));
+        box.className = "webodf-pageShapes";
+        box.style.position = "absolute";
+        box.style.left = 0;
+        box.style.right = 0;
+        box.style.top = top + "px";
+        box.style.height = dims.pageHeight + "px";
+        return box;
+    }
+    /**
+     * @param {!odf.TextLayout.PageShape} shape
+     * @return {!boolean}
+     */
+    function behindTheText(shape) {
+        return shape.background;
+    }
+    /**
+     * @param {!odf.TextLayout.PageShape} shape
+     * @return {!boolean}
+     */
+    function overTheText(shape) {
+        return !shape.background;
+    }
+    /**
+     * Take away the boxes of a former layout, wherever they were put.
+     * @param {!Element} root
+     * @return {undefined}
+     */
+    function removeBoxes(root) {
+        var boxes = root.getElementsByTagName("div"),
+            /**@type{!Element}*/
+            box,
+            /**@type{!number}*/
+            i;
+        for (i = boxes.length - 1; i >= 0; i -= 1) {
+            box = /**@type{!Element}*/(boxes.item(i));
+            if (box.className === "webodf-pageShapes"
+                    || box.className === "webodf-pageFurniture") {
+                box.parentNode.removeChild(box);
+            }
+        }
+    }
+    /**
      * Draw the header and the footer of every page.
      *
      * They are drawn beside the text rather than in it: the boxes of the pages
      * hold the text away from the margins, and these are laid over the room
      * that was left, one for each page. Nothing of the text is touched.
+     * @param {!odf.ODFDocumentElement} odfroot
      * @param {!odf.TextLayout.PageDimensions} dims
      * @param {!HTMLDivElement} pagesDiv
      * @param {!Object.<!string,!string>} meta what the document says of itself
      * @return {undefined}
      */
-    function drawPageFurniture(dims, pagesDiv, meta) {
-        var doc = pagesDiv.ownerDocument,
+    function drawPageFurniture(odfroot, dims, pagesDiv, meta) {
+        var /**@type{!Document}*/
+            doc = /**@type{!Document}*/(pagesDiv.ownerDocument),
+            /**@type{?string}*/
             htmlns = pagesDiv.namespaceURI,
+            /**@type{!Element}*/
+            behind = odfroot.body,
             pages = countPages(pagesDiv),
             /**@type{!HTMLDivElement}*/
             box,
@@ -606,17 +754,12 @@ odf.TextLayout = function TextLayout() {
             header,
             /**@type{?Element}*/
             footer,
-            /**@type{!Array.<!Element>}*/
+            /**@type{!Array.<!odf.TextLayout.PageShape>}*/
             shapes,
             top,
             n;
-        while (pagesDiv.lastChild
-                && (/**@type{!Element}*/(pagesDiv.lastChild).className
-                        === "webodf-pageFurniture"
-                    || /**@type{!Element}*/(pagesDiv.lastChild).className
-                        === "webodf-pageShapes")) {
-            pagesDiv.removeChild(pagesDiv.lastChild);
-        }
+        removeBoxes(pagesDiv);
+        removeBoxes(behind);
         if (!hasFurniture(dims.firstPage) && !hasFurniture(dims.otherPages)) {
             return;
         }
@@ -626,16 +769,16 @@ odf.TextLayout = function TextLayout() {
             footer = pageArea(dims, "footer", n + 1);
             shapes = (n === 0 ? dims.firstPage : dims.otherPages).shapes;
             if (shapes.length > 0) {
-                box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
-                    "div"));
-                box.className = "webodf-pageShapes";
-                box.style.position = "absolute";
-                box.style.left = 0;
-                box.style.right = 0;
-                box.style.top = top + "px";
-                box.style.height = dims.pageHeight + "px";
-                fillPageShapes(shapes, box);
+                // What is drawn over the text hangs beside it, as the header
+                // and the footer do. What is drawn behind it is put in the
+                // body of the document instead: the body carries the fill of
+                // the page, that would otherwise cover the shape.
+                box = pageShapesBox(doc, htmlns, dims, top);
+                fillPageShapes(shapes.filter(overTheText), box);
                 pagesDiv.appendChild(box);
+                box = pageShapesBox(doc, htmlns, dims, top);
+                fillPageShapes(shapes.filter(behindTheText), box);
+                behind.insertBefore(box, behind.firstChild);
             }
             if (header) {
                 box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
@@ -684,13 +827,20 @@ odf.TextLayout = function TextLayout() {
         }
         updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
         updateNumberOfPages(odfroot, dims, pagesDiv, maxTime);
-        drawPageFurniture(dims, pagesDiv, readMeta(odfroot));
+        drawPageFurniture(odfroot, dims, pagesDiv, readMeta(odfroot));
         return maxTime > 0;
     }
     this.layout = layout;
 };
 /**@typedef{{
-    shapes:!Array.<!Element>,
+    node:!Element,
+    background:!boolean,
+    order:!number
+}}*/
+odf.TextLayout.PageShape;
+
+/**@typedef{{
+    shapes:!Array.<!odf.TextLayout.PageShape>,
     header:?Element,
     footer:?Element,
     headerLeft:?Element,
