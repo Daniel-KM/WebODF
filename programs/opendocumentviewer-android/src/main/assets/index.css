@@ -1,9 +1,20 @@
-body, html, div {
+html {
+    /* The page of a document is white paper, so it is declared light whatever
+       the theme is: chromium then leaves its colours alone instead of darkening
+       them as it paints, and the ground below still follows the theme, from the
+       rules of this file. */
+    color-scheme: light;
+}
+/* Every rule of this page names "html > body" rather than "body": an element of
+   a document carries the local name "body", "office:body", which a selector of
+   one name reaches as well, so the colour, the font and the alignment of the
+   page were inherited by the whole document. */
+html, html > body, div {
     padding: 0;
     margin: 0;
     border: 0;
 }
-body, html {
+html, html > body {
     height: 100%;
     /* The ground sets the page apart, as a reader of pdf does, and follows the
        theme of the system. The page itself is white, from the style sheet of
@@ -43,6 +54,11 @@ a#empty {
 div#odf {
     /* Keeps the page off the edges of a phone. */
     padding: 0.6em;
+    /* The page is white paper, from the style sheet of the library, whatever
+       the theme is, so the ink is dark in both themes: a document that names no
+       colour for a text would take the one of the ground below, which is white
+       under a dark theme, on white paper. */
+    color: #15141a;
 }
 /* A way to the page that tells what the viewer is, kept out of the way of the
    touch that asks for a document. */
@@ -56,7 +72,7 @@ a#about {
     opacity: 0.75;
 }
 @media (prefers-color-scheme: dark) {
-    body, html {
+    html, html > body {
         background: #2a2a2e;
         color: #fbfbfe;
     }
