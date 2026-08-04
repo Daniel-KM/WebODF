@@ -3,7 +3,7 @@
 /**
  * Run the add-on of Chrome and check that it shows a document.
  *
- * The package is built here, from "programs/firefoxextension" and the library
+ * The package is built here, from "programs/odfviewer-webext" and the library
  * of "dist", then a document is served over http and the browser is asked for
  * it. The add-on has to send it to its viewer, that has to draw it.
  *
@@ -22,7 +22,7 @@ var fs = require("fs"),
     http = require("http"),
     path = require("path"),
     rootDir = path.resolve(__dirname, ".."),
-    extensionDir = path.join(rootDir, "programs/firefoxextension"),
+    extensionDir = path.join(rootDir, "programs/odfviewer-webext"),
     libraryPath = path.join(rootDir, "dist/webodf.js"),
     // A document that is versioned, so that the test needs no other build.
     documentPath = path.join(rootDir, "programs/benchmark/1page.odt"),
