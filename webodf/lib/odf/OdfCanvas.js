@@ -246,10 +246,13 @@
 
     /**
      * A new styles.xml has been loaded. Update the live document with it.
+     *
+     * What wrote the labels of the lists and of the headings is answered, so
+     * that an editor may ask for them to be written again.
      * @param {!odf.OdfContainer} odfcontainer
      * @param {!odf.Formatting} formatting
      * @param {!HTMLStyleElement} stylesxmlcss
-     * @return {undefined}
+     * @return {!odf.ListStyleToCss}
      **/
     function handleStyles(odfcontainer, formatting, stylesxmlcss) {
         // update the css translation of the styles
@@ -272,7 +275,7 @@
             styleSheet,
             styleTree,
             odfcontainer.rootElement.body);
-
+        return list2css;
     }
 
     /**
@@ -3541,6 +3544,8 @@
             waitingForDoneTimeoutId,
             /**@type{!webodfcore.ScheduledTask}*/redrawContainerTask,
             shouldRefreshCss = false,
+            /**@type{?odf.ListStyleToCss}*/
+            numbering = null,
             shouldRerenderAnnotations = false,
             loadingQueue = new LoadingQueue(),
             /**
@@ -3777,7 +3782,8 @@
          */
         function redrawContainer() {
             if (shouldRefreshCss) {
-                handleStyles(odfcontainer, formatting, stylesxmlcss);
+                numbering = handleStyles(odfcontainer, formatting,
+                    stylesxmlcss);
                 shouldRefreshCss = false;
                 // different styles means different layout, thus different sizes
             }
@@ -4072,6 +4078,21 @@
             }
         };
         /**
+         * Write the labels of the lists and of the headings again.
+         *
+         * The numbers are worked out as the document is drawn: an editor
+         * that adds an item to a list, or a heading to the text, asks for
+         * them to be worked out again. The rules of the styles are left
+         * alone, so this is the work of the labels alone.
+         * @return {undefined}
+         */
+        this.refreshNumbering = function () {
+            if (numbering && odfcontainer
+                    && odfcontainer.state === odf.OdfContainer.DONE) {
+                numbering.renumber(odfcontainer.rootElement.body);
+            }
+        };
+        /**
          * How many pages stand side by side on a row, see "TextLayout.js".
          * @param {!number} pages
          * @return {undefined}
@@ -4271,7 +4292,8 @@
 
                 formatting.setOdfContainer(odfcontainer);
                 handleFonts(odfcontainer, fontcss);
-                handleStyles(odfcontainer, formatting, stylesxmlcss);
+                numbering = handleStyles(odfcontainer, formatting,
+                    stylesxmlcss);
                 // do content last, because otherwise the document is constantly
                 // updated whenever the css changes
                 handleContent(odfcontainer, odfnode);

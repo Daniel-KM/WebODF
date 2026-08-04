@@ -92,6 +92,8 @@ gui.SessionViewOptions = function () {
             odfCanvas,
             /**@type{!webodfcore.ScheduledTask}*/
             highlightRefreshTask,
+            /**@type{!webodfcore.ScheduledTask}*/
+            numberingRefreshTask,
             showEditInfoMarkers = configOption(viewOptions.editInfoMarkersInitiallyVisible, true),
             showCaretAvatars = configOption(viewOptions.caretAvatarsInitiallyVisible, true),
             blinkOnRangeSelect = configOption(viewOptions.caretBlinksOnRangeSelect, true);
@@ -401,6 +403,18 @@ gui.SessionViewOptions = function () {
         function onParagraphChanged(info) {
             highlightEdit(info.paragraphElement, info.memberId, info.timeStamp);
             highlightRefreshTask.trigger();
+            // An item added to a list, or a heading added to the text, moves
+            // the numbers of everything that follows it: the labels are
+            // written again once the edits of the moment are done, and not
+            // at each one of them.
+            numberingRefreshTask.trigger();
+        }
+
+        /**
+         * @return {undefined}
+         */
+        function refreshNumbering() {
+            odfCanvas.refreshNumbering();
         }
 
         /**
@@ -453,6 +467,9 @@ gui.SessionViewOptions = function () {
 
             odtDocument.unsubscribe(ops.OdtDocument.signalParagraphChanged, selectionViewManager.rerenderSelectionViews);
             odtDocument.unsubscribe(ops.OdtDocument.signalTableAdded, selectionViewManager.rerenderSelectionViews);
+            odtDocument.unsubscribe(
+                ops.OdtDocument.signalParagraphStyleModified,
+                numberingRefreshTask.trigger);
             odtDocument.unsubscribe(ops.OdtDocument.signalParagraphStyleModified, selectionViewManager.rerenderSelectionViews);
 
             sessionConstraints.unsubscribe(gui.CommonConstraints.EDIT.ANNOTATIONS.ONLY_DELETE_OWN, processConstraints);
@@ -482,7 +499,8 @@ gui.SessionViewOptions = function () {
          * @return {undefined}
          */
         this.destroy = function (callback) {
-            var cleanup = [highlightRefreshTask.destroy, destroy];
+            var cleanup = [highlightRefreshTask.destroy,
+                numberingRefreshTask.destroy, destroy];
             odtDocument.unsubscribe(ops.OdtDocument.signalAnnotationAdded, onAnnotationAdded);
             webodfcore.Async.destroyAll(cleanup, callback);
         };
@@ -501,6 +519,10 @@ gui.SessionViewOptions = function () {
 
             odtDocument.subscribe(ops.OdtDocument.signalParagraphChanged, selectionViewManager.rerenderSelectionViews);
             odtDocument.subscribe(ops.OdtDocument.signalTableAdded, selectionViewManager.rerenderSelectionViews);
+            // A paragraph that is made a heading, or a heading that is made
+            // a paragraph, is a number more or a number less.
+            odtDocument.subscribe(ops.OdtDocument.signalParagraphStyleModified,
+                numberingRefreshTask.trigger);
             odtDocument.subscribe(ops.OdtDocument.signalParagraphStyleModified, selectionViewManager.rerenderSelectionViews);
 
             sessionConstraints.subscribe(gui.CommonConstraints.EDIT.ANNOTATIONS.ONLY_DELETE_OWN, processConstraints);
@@ -516,6 +538,8 @@ gui.SessionViewOptions = function () {
             processConstraints();
 
             highlightRefreshTask = webodfcore.Task.createRedrawTask(refreshHighlights);
+            numberingRefreshTask =
+                webodfcore.Task.createRedrawTask(refreshNumbering);
         }
         init();
     };

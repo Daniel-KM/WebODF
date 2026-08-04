@@ -418,6 +418,8 @@
     odf.ListStyleToCss = function ListStyleToCss() {
 
         var cssUnits = new webodfcore.CSSUnits(),
+            /**@type{(!Object.<string,!odf.StyleTreeNode>|undefined)}*/
+            lastListStyles,
             odfUtils = odf.OdfUtils;
 
         /**
@@ -1147,6 +1149,20 @@
             }
         }
         /**
+         * Write the labels of the lists and of the headings again.
+         *
+         * The numbers are worked out once, as the document is drawn: an
+         * editor that adds an item to a list, or a heading to the text, asks
+         * for them to be worked out again, and only for that, as the rules
+         * of the styles have not changed.
+         * @param {!Element} odfBody
+         * @return {undefined}
+         */
+        this.renumber = function (odfBody) {
+            numberLists(odfBody, lastListStyles);
+            numberHeadings(odfBody, lastListStyles);
+        };
+        /**
          * Creates CSS styles from the given ODF list styles and applies them to the stylesheet
          * @param {!CSSStyleSheet} styleSheet
          * @param {!odf.StyleTree.Tree} styleTree
@@ -1171,6 +1187,7 @@
             applyContentBasedStyles(styleSheet, odfBody, styleFamilyTree);
             numberLists(odfBody, styleFamilyTree);
             numberHeadings(odfBody, styleFamilyTree);
+            lastListStyles = styleFamilyTree;
             appendRule(styleSheet, 'text|h[odf-list-label]:before'
                 + '{content: attr(odf-list-label); white-space: pre;'
                 + 'display: inline-block;}');
