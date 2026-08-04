@@ -104,11 +104,4 @@
         urls: ["<all_urls>"],
         types: ["main_frame", "sub_frame"]
     }, ["blocking", "responseHeaders"]);
-
-    // The viewer has no permission to download, so it asks for it.
-    browser.runtime.onMessage.addListener(function (message) {
-        if (message && message.action === "download" && message.url) {
-            browser.downloads.download({url: message.url});
-        }
-    });
 }());

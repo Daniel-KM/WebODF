@@ -388,6 +388,10 @@ set(FIREFOX_EXTENSION_ODFVIEWER_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extensio
 set(FIREFOX_EXTENSION_ODFVIEWER ${FIREFOX_EXTENSION_ODFVIEWER_DIR}.xpi)
 set(FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extension-odfviewer-mv2-${WEBODF_VERSION})
 set(FIREFOX_EXTENSION_ODFVIEWER_MV2 ${FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR}.xpi)
+# Chrome takes a zip, and a file of rules rather than a script: it dropped the
+# blocking webRequest the two others redirect with.
+set(CHROME_EXTENSION_ODFVIEWER_DIR ${CMAKE_CURRENT_BINARY_DIR}/chrome-extension-odfviewer-${WEBODF_VERSION})
+set(CHROME_EXTENSION_ODFVIEWER ${CHROME_EXTENSION_ODFVIEWER_DIR}.zip)
 
 
 ####################

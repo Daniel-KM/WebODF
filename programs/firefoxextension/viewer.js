@@ -23,12 +23,17 @@
  * @source: https://github.com/kogmbh/WebODF/
  */
 
-/*global document, window, browser, odf, URLSearchParams, URL*/
+/*global document, window, browser, chrome, odf, URLSearchParams, URL*/
 
 (function () {
     "use strict";
 
-    var url = new URLSearchParams(window.location.search).get("file"),
+    // Firefox names the api "browser", Chrome names it "chrome". A page of an
+    // add-on carries its permissions, so it downloads by itself.
+    var api = (String(typeof browser) !== "undefined")
+            ? browser
+            : chrome,
+        url = new URLSearchParams(window.location.search).get("file"),
         canvas = new odf.OdfCanvas(document.getElementById("odf")),
         open = document.getElementById("open");
 
@@ -60,10 +65,8 @@
         return;
     }
     show(decodeURIComponent(url.split("/").pop()));
-    // The download goes through the background script, as the viewer holds no
-    // permission of its own.
     document.getElementById("download").addEventListener("click", function () {
-        browser.runtime.sendMessage({action: "download", url: url});
+        api.downloads.download({url: url});
     });
     canvas.load(url);
 }());
