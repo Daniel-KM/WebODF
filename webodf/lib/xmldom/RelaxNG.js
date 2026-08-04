@@ -804,8 +804,12 @@ xmldom.RelaxNG = function RelaxNG() {
         walker.currentNode = walker.root;
         errors = childDeriv(null, rootPattern, walker);
         if (!errors.nullable) {
-            runtime.log("Error in Relax NG validation: " + errors);
-            callback(["Error in Relax NG validation: " + errors]);
+            // What is left is a pattern that was not matched, not a place: the
+            // validator derives the patterns as it walks and keeps no track of
+            // where it was, so it tells that the document does not fit the
+            // schema and no more. Writing the object itself only ever gave
+            // "[object Object]".
+            callback(["The document does not conform to the schema."]);
         } else {
             callback(null);
         }
