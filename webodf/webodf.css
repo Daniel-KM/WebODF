@@ -44,6 +44,10 @@ office|body, office|document {
   display: inline-block;
   position: relative;
 }
+office|body {
+  /* The page, margins included, is white if document doesn't set background. */
+  background: white;
+}
 
 text|p, text|h {
   display: block;
@@ -142,6 +146,7 @@ draw|page {
   display: block;
   position: relative;
   overflow: hidden;
+  background: white;
 }
 presentation|notes, presentation|footer-decl, presentation|date-time-decl {
     display: none;

@@ -214,6 +214,9 @@ odf.Style2CSS = function Style2CSS() {
 
         /**@const
            @type{!Array.<!Array.<!string>>}*/
+        pageBackgroundPropertySimpleMapping = [
+            [ fons, 'background-color', 'background-color' ]
+        ],
         pageContentPropertySimpleMapping = [
             [ fons, 'background-color', 'background-color' ],
             [ fons, 'padding', 'padding' ],
@@ -563,7 +566,7 @@ odf.Style2CSS = function Style2CSS() {
         if (value === 'double') {
             textDecorationStyle = ' double';
         }
-        
+
         else {
             value = props.getAttributeNS(stylens, 'text-underline-style');
             switch (value) {
@@ -1181,6 +1184,7 @@ odf.Style2CSS = function Style2CSS() {
      */
     function addPageStyleRules(sheet, node) {
         var rule = '', imageProps, url,
+            background = '',
             contentLayoutRule = '',
             pageSizeRule = '',
             props = domUtils.getDirectChild(node, stylens, 'page-layout-properties'),
@@ -1228,6 +1232,19 @@ odf.Style2CSS = function Style2CSS() {
         } else if (documentType === 'text') {
             contentLayoutRule = 'office|text {' + rule + '}';
             rule = '';
+
+            // The background of the page covers the whole, margins included.
+            background = applySimpleMapping(props,
+                pageBackgroundPropertySimpleMapping);
+            if (imageProps && imageProps.getAttributeNS(xlinkns, 'href')) {
+                background += "background-image: url('odfkit:"
+                    + imageProps.getAttributeNS(xlinkns, 'href') + "');"
+                    + applySimpleMapping(imageProps, bgImageSimpleMapping);
+            }
+            if (background) {
+                sheet.insertRule('office|body {' + background + '}',
+                    sheet.cssRules.length);
+            }
 
             // TODO: We want to use the simpleMapping for ODTs, but not until we have pagination.
             // So till then, set only the width.
