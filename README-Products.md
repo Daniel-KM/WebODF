@@ -11,9 +11,17 @@ be created ("x.y.z" is a placeholder for the actual version number):
 
 None of them is built by a plain "make": they are asked for by their own
 target, from the build directory, and they need the option WEBODF_PROGRAMS,
-see "README-Building.md". The commands below are run from that directory, or
-with "make -C build" from the sources. Every product is written at its root,
-next to "webodf/".
+see "README-Building.md". The targets are listed by:
+
+```sh
+make -C build help
+```
+
+Each product answers to "product-", that builds it and runs the tests that go
+with it, and to "build-" and "test-", that do one or the other. The commands
+below are run from the build directory, or prefixed with "make -C build" from
+the sources, since the makefiles are written there and not next to the sources.
+Every product is written at the root of that directory, next to "webodf/".
 
 
 ### webodf.js library with API documentation
@@ -187,21 +195,110 @@ the key "author" needs. Chrome is out of reach for both: its manifest version
 3 wants a service worker as background, that Firefox does not support, and it
 dropped the blocking webRequest this add-on redirects with.
 
+### OpenDocument viewer for Android
+
+This application shows a document in the OpenDocument format on Android, so
+that the documents a phone receives are read without an office suite. It
+registers for the nine types of the format, so the system offers it when one
+is opened.
+
+Started on its own, from the list of the applications, it shows an empty page
+that asks for a document, and opens the picker of the system when it is touched:
+the system reads the file and hands it over, so the viewer holds no permission
+to reach the storage. It carries no bar and no button, as there would be one of
+each.
+
+It runs from Android 5.0, the release the web view began to be updated apart
+from the system in, so it holds a recent engine even on an old phone.
+
+With a prepared setup for building, from the build directory:
+
+```sh
+cmake -S ../webodf -DWEBODF_PROGRAMS=ON -DWEBODF_ANDROID=ON
+make product-odfviewer-android
+```
+
+It is behind the option WEBODF_ANDROID, as it needs the sdk of android and a
+jdk, that the build does not download. Gradle is downloaded, as the closure
+compiler and Rhino are: its version is the one the plugin of android asks for,
+9 for the plugin 9, where Debian 13 packages the 4.4.1 of 2017. The sdk is read
+from $ANDROID_HOME, the directory it is installed in, or from "sdk.dir" of the
+file "local.properties"; cmake stops with that message when it finds neither.
+The command line tools that install the sdk are at https://developer.android.com/studio#command-tools,
+and the packages the build needs are:
+
+```sh
+sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+```
+
+The apk that is written is not signed, as only its author may sign it, so it
+installs nowhere as it is. A second one is built for a test, that gradle signs
+with the key it writes for that:
+
+```sh
+make odfviewer-android-debug
+```
+
+It is written next to the other, in "build/programs/odfviewer-android/build/
+outputs/apk/debug/odfviewer-android-debug.apk", and installs on a device with
+"adb install", or in Waydroid, that runs Android on a Linux desktop:
+
+```sh
+waydroid session start
+waydroid app install .../odfviewer-android-debug.apk
+```
+
+A document is read from the shared storage of Waydroid, "~/.local/share/waydroid/data/media/0",
+that Android sees as "/sdcard": copy one there and open it with a file manager,
+that offers the viewer among the applications that read the format.
+
+Waydroid needs a web view of its own, that its images hold; the viewer draws
+nothing without one.
+
+The sdk is the only part of the build that is not free software, and the reason
+this product is off by default. The build tools are free: Debian builds them
+from the sources of AOSP and ships them in main. The platform is not free: it
+comes from the servers of Google, under the Android Software Development Kit License Agreement,
+that gradle asks to accept and writes in "$ANDROID_HOME/licenses/". Debian may
+not redistribute it, and only packages an installer that downloads it, in
+non-free. Those terms cover the sdk, not what is built with it: the apk stays
+under the license of WebODF.
+
+It is a web view that reads a page and the library from the assets of the
+application, with no framework, no plugin and no dependency at all: the sources
+are in "programs/odfviewer-android" and hold one class. Everything is served
+over "https://webodf.invalid/", from the requests the web view is intercepted
+on, as a page loaded from "file://" may not read another file with XMLHttpRequest,
+which is how the library reads a document. Only the four files of the viewer and
+the one document are served, each compared by its name and never used to build a
+path. The document the system hands over comes as a "content://" uri, that a web
+view may not read, so it is copied into the cache first.
+
+Nothing the viewer does reaches the network. The application asks for no
+permission, INTERNET included, so the system refuses a connection whatever
+happens. The web view answers every request itself, and answers with nothing at
+all when the address is not one of its files: a document that holds an image or
+a style sheet of the web tells no server that it was opened. Safe Browsing is
+turned off in the manifest, as there is no address to check, which spares the
+web view from asking Google for its lists, and the metrics it may report are
+turned off as well.
+
+The web view is still the one of the system, kept up to date by Google, and what
+it does on its own, such as reading the configuration of its field trials,
+belongs to it rather than to this application.
+
+It replaces the product of "programs/cordova", that drove cordova 3.5, of 2014,
+and built android with ant, which google dropped in 2015 for gradle, through the
+executable "android", that the sdk replaced by "sdkmanager" in 2018.
+
 ### Products that are not built any more
 
-Two products of "programs/cordova" are still declared, but no version of their
-toolchain is available: they are kept until they are either brought up to date
-or dropped.
+One product of "programs/cordova" is still declared, and no version of its
+toolchain is available: it is kept until it is either brought up to date or
+dropped.
 
-"make product-androidviewer" packs the viewer as an apk. It drives cordova
-3.5, of 2014, that builds android with ant, which google dropped in 2015 for
-gradle, through the executable "android", that the sdk replaced by
-"sdkmanager" in 2018. Cordova only wraps "webodf.js" in a web view, so the
-part that belongs to WebODF is untouched: what has to be written again is the
-packaging, on a current cordova or on capacitor.
-
-"make product-firefoxosviewer" packs it for Firefox OS. The system was
-abandoned by Mozilla in 2016, but it lives on through its forks, B2G OS, KaiOS
-and Capyloon, so the product is worth reviving rather than dropping. KaiOS in
-particular runs on feature phones that no office suite serves, which is the
-kind of place a viewer of the OpenDocument format is the most useful.
+"make product-firefoxosviewer" packs it for Firefox OS. The system was abandoned
+by Mozilla in 2016, but it lives on through its forks, B2G OS, KaiOS and
+Capyloon, so the product is worth reviving rather than dropping. KaiOS in
+particular runs on feature phones that no office suite serves, which is the kind
+of place a viewer of the OpenDocument format is the most useful.

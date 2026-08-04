@@ -30,12 +30,7 @@ and needs nothing but node, java and cmake:
 |--------------------|-------------------------------------------------------|
 | WEBODF_PROGRAMS    | The editors and the extensions of "programs/"         |
 | WEBODF_QTJSRUNTIME | qtjsruntime, that runs the tests in the webkit of qt  |
-
-The apk of android is one more output of "programs/cordova", so android and ant
-are only looked for along with the programs. That toolchain is out of reach as
-well: it drives cordova 3.5, of 2014, that builds android with ant, which google
-dropped in 2015 for gradle, through the executable "android", that the sdk
-replaced by "sdkmanager" in 2018.
+| WEBODF_ANDROID     | The viewer of OpenDocument for android, with its sdk  |
 
 WEBODF_QTJSRUNTIME needs Qt5Network, Qt5Xml, Qt5PrintSupport and
 Qt5WebKitWidgets, that Debian 12 and older install with:
