@@ -66,6 +66,7 @@ set(TESTJSFILES
     tests/odf/ObjectNameGeneratorTests.js
     tests/odf/MaliciousDocumentTests.js
     tests/odf/OdfContainerTests.js
+    tests/odf/OfficeDocumentsTests.js
     tests/odf/OdfContainerSafetyTests.js
     tests/odf/OdfUtilsTests.js
     tests/odf/StyleInfoTests.js

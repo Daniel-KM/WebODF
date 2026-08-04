@@ -1,0 +1,23 @@
+The documents of this directory are read by the tests beside them.
+
+Four of them are the templates LibreOffice ships, taken from the sources
+of it as they are, under the Mozilla Public License, version 2.0:
+
+  libreoffice-business-letter.ott  extras/source/templates/officorr/Modern_business_letter_serif
+  libreoffice-cv.ott               extras/source/templates/personal/CV
+  libreoffice-beehive.otp          extras/source/templates/presnt/Beehive
+  libreoffice-bpmn.otg             extras/source/templates/draw/bpmn
+
+  https://git.libreoffice.org/core/+/refs/heads/master/extras/source/templates/
+
+The sources keep a template unpacked, one directory to a template, and the
+build of LibreOffice zips it: these were zipped the same way, "mimetype"
+first and stored rather than deflated. What they hold is what the
+repository holds.
+
+They are read by "OfficeDocumentsTests.js", which asks of each one what a
+test of a document written here never asks: whether the library still
+reads what an office writes.
+
+"opendocument-v1.3-part3.odt" is the standard itself, as OASIS publishes
+it, and is read by "OdfContainerTests.js" and "LayoutTests.js".
