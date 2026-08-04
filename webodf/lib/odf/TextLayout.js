@@ -3811,13 +3811,16 @@ odf.TextLayout = function TextLayout() {
         // of css to the page: the labels of the lists are worked out once
         // and written on the elements, so nothing of the document is counted
         // by them any more, see "numberLists" in "ListStylesToCss.js".
-        // The spacing under a paragraph and the spacing over the next are
-        // added, as an office adds them, and not folded into one as the
-        // browser folds the margins of two elements that follow one another:
-        // a box that lays its children in a column keeps them apart.
-
-        sheet.insertRule(".webodf-pageBox, office|text, text|section,"
-            + " text|table-of-content, text|index-body"
+        // The spacing over an entry of an index and the spacing under the
+        // one before it are added, as an office adds them, and not folded
+        // into one as the browser folds the margins of two elements that
+        // follow one another: a box that lays its children in a column keeps
+        // them apart. The text itself is left as it is, where an office
+        // folds the two spacings into the larger of them, as the browser
+        // does: the table of contents of the schema of OpenDocument is drawn
+        // on seventy-two pages and its chapters begin on the pages an office
+        // begins them, which neither rule alone answers for.
+        sheet.insertRule("text|table-of-content, text|index-body"
             + " {display:flex;flex-direction:column;align-items:stretch;}",
             sheet.cssRules.length);
         // The spacing under the last child of such a box is not folded into
