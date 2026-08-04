@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OpenDocument Viewer</title>
+  <link rel="stylesheet" href="welcome.css">
+  <script defer src="welcome.js"></script>
+</head>
+<body>
+  <main>
+    <h1 id="heading" data-about="OpenDocument Viewer" data-update="OpenDocument Viewer is up to date">OpenDocument
+      Viewer is installed</h1>
+    <p id="lead" data-about="The viewer of the OpenDocument attachments of a message, inside Thunderbird itself." data-update="The viewer of the OpenDocument attachments of a
+      message, inside Thunderbird itself.">It reads the documents of the
+      OpenDocument standard, the ones LibreOffice and every other office suite
+      write, as they arrive by mail, without saving them and without an office
+      suite.</p>
+    <p>The format matters as much as the viewer, and the point <a href="#format">
+      why this format</a> recalls what sets OpenDocument apart from OOXML and
+      why a document written today with ODF will still be read in twenty
+      years.</p>
+
+    <h2>How a document is opened</h2>
+    <p>Right-click the attachment, at the foot of the message, and choose
+      <strong>Open in OpenDocument Viewer</strong>. The entry is there on the
+      documents of the OpenDocument format alone.</p>
+    <figure>
+      <img src="skin/default/menu-attachment.png" alt="" hidden>
+      <figcaption>The menu of an attachment.</figcaption>
+    </figure>
+    <p>The same entry is in the context menu of the messages that hold a file
+      of the OpenDocument format. When a message holds several of them, it is a
+      submenu with the list of their names.</p>
+    <figure>
+      <img src="skin/default/menu-message.png" alt="" hidden>
+      <figcaption>The menu of a message.</figcaption>
+    </figure>
+
+    <h2>A double click still opens your office suite</h2>
+    <p>Thunderbird hands a double click to the program the settings of the
+      system name, and no add-on may change them. To open the documents of the
+      format in Thunderbird, those settings have to be set:</p>
+    <ol>
+      <li>Settings, then General, then Files &amp; Attachments;</li>
+      <li>under Incoming, find the OpenDocument types, the text, the
+        spreadsheet and the presentation;</li>
+      <li>set each of them to Save File or to Always ask, so that Thunderbird
+        stops handing them over to the system.</li>
+    </ol>
+    <p>The menu of the attachment then becomes the quickest way to read a
+      document. And nothing is written to the disk to read it.</p>
+
+@FORMAT_TEXT@
+
+    <h2>Elsewhere</h2>
+    <p>The same viewer is an add-on of Firefox and of Chrome, that shows those
+      documents in the browser instead of downloading them, and an application
+      for Android that reads them from a mail or a file manager.</p>
+    <p>It is built on WebODF, a library that reads the format in JavaScript,
+      and it is free software, under the AGPL 3.
+      <a id="about" href="http://webodf.org/about/">About WebODF</a>.</p>
+  </main>
+</body>
+</html>

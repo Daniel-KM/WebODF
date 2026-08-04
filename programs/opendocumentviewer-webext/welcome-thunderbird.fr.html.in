@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>OpenDocument Viewer</title>
+  <link rel="stylesheet" href="welcome.css">
+  <script defer src="welcome.js"></script>
+</head>
+<body>
+  <main>
+    <h1 id="heading" data-about="Le lecteur OpenDocument" data-update="OpenDocument Viewer est à jour">OpenDocument
+      Viewer est installé</h1>
+    <p id="lead" data-about="Le lecteur des documents OpenDocument reçus en pièce jointe, dans Thunderbird même." data-update="Le lecteur des documents OpenDocument reçus
+      en pièce jointe, dans Thunderbird même.">Il lit les documents au standard
+      OpenDocument créés par LibreOffice et toutes les suites bureautiques, à
+      leur arrivée par courriel, sans les enregistrer et sans suite
+      bureautique.</p>
+    <p>Le format compte autant que le lecteur et le point <a href="#format">
+      pourquoi ce format</a> rappelle ce qui distingue OpenDocument d’OOXML et
+      pourquoi un document écrit aujourd’hui avec ODF se lira encore dans vingt
+      ans.</p>
+
+    <h2>Ouvrir un document</h2>
+    <p>Faire un clic droit sur la pièce jointe, au bas du message, et
+      choisir <strong>Ouvrir dans le lecteur OpenDocument</strong>.
+      L’entrée ne figure que sur les documents au format OpenDocument.</p>
+    <figure>
+      <img src="skin/default/menu-attachment.png" alt="" hidden>
+      <figcaption>Le menu d’une pièce jointe.</figcaption>
+    </figure>
+    <p>La même entrée se trouve dans le menu contextuel des messages qui
+      contiennent un fichier au format OpenDocument. Lorsque le message a
+      plusieurs fichiers ODF, c’est un sous-menu avec la liste des noms.</p>
+    <figure>
+      <img src="skin/default/menu-message.png" alt="" hidden>
+      <figcaption>Le menu d’un message.</figcaption>
+    </figure>
+
+    <h2>Le double-clic ouvre toujours votre suite bureautique</h2>
+    <p>Thunderbird confie un double-clic au programme indiqué par les réglages
+      du système et aucune extension ne peut les modifier. Pour ouvrir les
+      documents ODF dans Thunderbird, il convient donc de les configurer :</p>
+    <ol>
+      <li>Paramètres, puis Général, puis Fichiers et pièces jointes ;</li>
+      <li>sous Entrant, chercher les types OpenDocument, le texte, le classeur
+        et la présentation ;</li>
+      <li>régler chacun sur Enregistrer le fichier ou sur Toujours demander,
+        pour que Thunderbird cesse de les transmettre au système.</li>
+    </ol>
+    <p>Le menu de la pièce jointe devient alors la solution la plus rapide pour
+      consulter le document. De plus, rien n’est écrit sur le disque pour le
+      lire.</p>
+
+@FORMAT_TEXT@
+
+    <h2>Ailleurs</h2>
+    <p>Le même lecteur existe en extension pour Firefox et pour Chrome, qui
+      affiche ces documents dans le navigateur au lieu de les télécharger, et
+      en application pour Android, qui les lit depuis un courriel ou un
+      gestionnaire de fichiers.</p>
+    <p>Il repose sur WebODF, une bibliothèque qui lit le format en JavaScript,
+      et c’est un logiciel libre, sous licence AGPL 3.
+      <a id="about" href="http://webodf.org/about/">À propos de WebODF</a>.</p>
+  </main>
+</body>
+</html>
