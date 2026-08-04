@@ -205,26 +205,6 @@ add_custom_target(copy_node_modules ALL
     COMMENT copying node_modules from source to build
 )
 
-# Android
-# If android sdk is properly installed, cmake only needs to know where to find
-# the executable 'android'.
-# The variable ANDROID_SDK_DIR can be provided if a specific android sdk version
-# is desired or if the android executable is not in the path.
-if (ANDROID_SDK_DIR)
-  set(ANDROID ${ANDROID_SDK_DIR}/tools/android)
-else (ANDROID_SDK_DIR)
-  find_program(ANDROID NAMES android DOC "Path to the Android executable.")
-endif(ANDROID_SDK_DIR)
-FIND_PROGRAM(ANT NAMES ant DOC "Path to the Ant executable.")
-if(ANDROID AND ANT)
-  set(BUILD_APK TRUE)
-  message(STATUS "Found Android and Ant: building an APK for Android.")
-  message(STATUS "android: ${ANDROID}")
-  message(STATUS "ant: ${ANT}")
-else()
-  message(STATUS "Android was not found: APK will not be built.")
-endif()
-
 # The coverage is measured by c8, that reads the one V8 records while it runs
 # the tests: it neither parses nor rewrites the sources, so it does not
 # constrain the version of ECMAScript the library is written in. It replaces
@@ -240,10 +220,38 @@ add_custom_target(coverage
     USES_TERMINAL
 )
 
-# The programs, the editors and the extensions, need Dojo 1.8.1, that is not
-# published any more: neither dojotoolkit.org nor npm has it. They are built
-# only when they are asked for, so that the library builds without them.
+# The programs, the editors and the extensions, need Dojo, that is downloaded
+# from the registry of npm, see below. They are built only when they are asked
+# for, so that the library builds without them.
 option(WEBODF_PROGRAMS "Build the editors and the extensions of programs/" OFF)
+
+# The apk of android is one more output of programs/cordova, so it is only
+# looked for along with the programs. Nothing of that toolchain is available
+# any more: it drives cordova 3.5, of 2014, that builds android with ant,
+# which google dropped in 2015 for gradle, through the executable "android",
+# that the sdk replaced by "sdkmanager" in 2018. It is kept as it is until
+# programs/ is either brought up to date or dropped.
+if (WEBODF_PROGRAMS)
+  # If android sdk is properly installed, cmake only needs to know where to find
+  # the executable 'android'.
+  # The variable ANDROID_SDK_DIR can be provided if a specific android sdk version
+  # is desired or if the android executable is not in the path.
+  if (ANDROID_SDK_DIR)
+    set(ANDROID ${ANDROID_SDK_DIR}/tools/android)
+  else (ANDROID_SDK_DIR)
+    find_program(ANDROID NAMES android DOC "Path to the Android executable.")
+  endif(ANDROID_SDK_DIR)
+  FIND_PROGRAM(ANT NAMES ant DOC "Path to the Ant executable.")
+  if(ANDROID AND ANT)
+    set(BUILD_APK TRUE)
+    message(STATUS "Found Android and Ant: building an APK for Android.")
+    message(STATUS "android: ${ANDROID}")
+    message(STATUS "ant: ${ANT}")
+  else()
+    message(STATUS "Android was not found: APK will not be built.")
+  endif()
+endif ()
+
 
 # Dojo
 # The source release of dojotoolkit.org is not published any more, so the four
