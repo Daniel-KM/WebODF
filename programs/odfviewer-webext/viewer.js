@@ -61,7 +61,7 @@
     });
 
     if (!url) {
-        show("ODF Viewer");
+        show("OpenDocument Viewer");
         return;
     }
     show(decodeURIComponent(url.split("/").pop()));

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ODF Viewer</string>
+    <string name="app_name">OpenDocument Viewer</string>
     <string name="no_picker">No application of this system opens a file, so a
         document has to be opened from a file manager.</string>
 </resources>
