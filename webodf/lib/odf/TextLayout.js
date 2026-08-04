@@ -79,14 +79,16 @@ odf.TextLayout = function TextLayout() {
          * How wide the box that holds the height of a page is drawn. It is
          * as narrow as a browser lets a box be and still count it: a box of
          * no width at all is held to occupy nothing, and every page would be
-         * drawn at the top of the one before it. The width stands above the
-         * grain of the engines, a sixtieth of a pixel in gecko and a
-         * sixty-fourth in blink and in webkit, and what it takes is taken
-         * from the text beside it.
+         * drawn at the top of the one before it. The width stands well above
+         * the grain of the engines, a sixtieth of a pixel in gecko and a
+         * sixty-fourth in blink and in webkit, and above it still once a
+         * reader has drawn the document small: a quarter of a pixel is
+         * counted down to a zoom of a fifteenth, where a twentieth of a
+         * pixel is already lost at a quarter.
          * @const
          * @type{!string}
          */
-        pageColumnWidth = "0.05px",
+        pageColumnWidth = "0.25px",
         /**
          * How many pages are drawn at the most. A document of a thousand pages
          * is already far more than a reader shows at once, and the bound is
