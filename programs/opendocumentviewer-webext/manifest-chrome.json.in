@@ -7,7 +7,7 @@
     "homepage_url": "http://webodf.org/",
     "minimum_chrome_version": "88",
     "icons": {
-        "238": "skin/default/icon.png"
+        "128": "skin/default/icon.png"
     },
     "permissions": [
         "declarativeNetRequest",

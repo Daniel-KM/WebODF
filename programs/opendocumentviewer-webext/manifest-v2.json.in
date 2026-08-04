@@ -15,7 +15,7 @@
         }
     },
     "icons": {
-        "238": "skin/default/icon.png"
+        "128": "skin/default/icon.png"
     },
     "permissions": [
         "webRequest",
