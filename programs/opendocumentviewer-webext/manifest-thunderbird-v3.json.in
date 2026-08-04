@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "OpenDocument Viewer",
+    "version": "@WEBODF_MANIFEST_VERSION@",
+    "description": "Reads the .odt, .ods and .odp attachments of a message inside Thunderbird, without saving them and without an office suite.",
+    "author": "Daniel Berthereau",
+    "homepage_url": "http://webodf.org/",
+    "default_locale": "en",
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "thunderbird@webodf.js",
+            "strict_min_version": "128.0"
+        }
+    },
+    "options_ui": {
+        "page": "welcome.html",
+        "open_in_tab": true
+    },
+    "icons": {
+        "128": "skin/default/icon.png"
+    },
+    "permissions": [
+        "menus",
+        "storage",
+        "messagesRead",
+        "downloads"
+    ],
+    "background": {
+        "scripts": ["background-thunderbird.js"]
+    }
+}

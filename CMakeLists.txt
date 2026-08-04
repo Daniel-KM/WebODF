@@ -394,6 +394,15 @@ set(OPENDOCUMENTVIEWER_FIREFOX_MV2 ${OPENDOCUMENTVIEWER_FIREFOX_MV2_DIR}.xpi)
 set(OPENDOCUMENTVIEWER_CHROME_DIR ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer-chrome-${WEBODF_VERSION})
 set(OPENDOCUMENTVIEWER_CHROME ${OPENDOCUMENTVIEWER_CHROME_DIR}.zip)
 
+# Thunderbird reads the attachments of the messages, which no request carries,
+# so it gets a script of its own. The version 3 needs Thunderbird 128, of 2024,
+# and the version 2 reaches back to the 98, of 2022, the first that opens a
+# menu on an attachment.
+set(OPENDOCUMENTVIEWER_THUNDERBIRD_DIR ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer-thunderbird-${WEBODF_VERSION})
+set(OPENDOCUMENTVIEWER_THUNDERBIRD ${OPENDOCUMENTVIEWER_THUNDERBIRD_DIR}.xpi)
+set(OPENDOCUMENTVIEWER_THUNDERBIRD_MV2_DIR ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer-thunderbird-mv2-${WEBODF_VERSION})
+set(OPENDOCUMENTVIEWER_THUNDERBIRD_MV2 ${OPENDOCUMENTVIEWER_THUNDERBIRD_MV2_DIR}.xpi)
+
 
 ####################
 ## WORKAROUND HELPER
