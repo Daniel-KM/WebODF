@@ -70,7 +70,9 @@ odf.TextLayout = function TextLayout() {
             header: {height: 0, gap: 0},
             footer: {height: 0, gap: 0},
             headerNode: null,
-            footerNode: null
+            footerNode: null,
+            headerLeftNode: null,
+            footerLeftNode: null
         };
     /**
      * Read a length of the page layout, in pixels, and fall back on the given
@@ -183,6 +185,12 @@ odf.TextLayout = function TextLayout() {
                 : null,
             footerNode: masterPage
                 ? domUtils.getDirectChild(masterPage, stylens, "footer")
+                : null,
+            headerLeftNode: masterPage
+                ? domUtils.getDirectChild(masterPage, stylens, "header-left")
+                : null,
+            footerLeftNode: masterPage
+                ? domUtils.getDirectChild(masterPage, stylens, "footer-left")
                 : null
         };
         // One margin for the four sides, or one by side.
@@ -205,10 +213,10 @@ odf.TextLayout = function TextLayout() {
         // The header and the footer are written inside the margins of the
         // page, between its edge and the text: the text has that much less
         // room, and the margins of the layout hold it away from them.
-        if (dims.headerNode) {
+        if (dims.headerNode || dims.headerLeftNode) {
             dims.marginTop += dims.header.height + dims.header.gap;
         }
-        if (dims.footerNode) {
+        if (dims.footerNode || dims.footerLeftNode) {
             dims.marginBottom += dims.footer.height + dims.footer.gap;
         }
         return dims;
@@ -383,6 +391,26 @@ odf.TextLayout = function TextLayout() {
         }
     }
     /**
+     * The header or the footer a page carries. A master page may write one for
+     * the pages on the left and another for the pages on the right, which is
+     * how a book puts the number of the page on the outer edge: the first page
+     * is a right one, so the pages of an even number are the left ones. Where
+     * "style:header-left" is not written, the header of the master page is the
+     * one of every page, see the part 1 of the standard, "style:header-left".
+     * @param {!odf.TextLayout.PageDimensions} dims
+     * @param {!string} which "header" or "footer"
+     * @param {!number} page the number of the page, from one
+     * @return {?Element}
+     */
+    function pageArea(dims, which, page) {
+        var left = which === "header" ? dims.headerLeftNode : dims.footerLeftNode,
+            right = which === "header" ? dims.headerNode : dims.footerNode;
+        if (page % 2 === 0 && left) {
+            return left;
+        }
+        return right;
+    }
+    /**
      * Draw the header and the footer of every page.
      *
      * They are drawn beside the text rather than in it: the boxes of the pages
@@ -398,6 +426,10 @@ odf.TextLayout = function TextLayout() {
             pages = countPages(pagesDiv),
             /**@type{!HTMLDivElement}*/
             box,
+            /**@type{?Element}*/
+            header,
+            /**@type{?Element}*/
+            footer,
             top,
             n;
         while (pagesDiv.lastChild
@@ -405,12 +437,15 @@ odf.TextLayout = function TextLayout() {
                     === "webodf-pageFurniture") {
             pagesDiv.removeChild(pagesDiv.lastChild);
         }
-        if (!dims.headerNode && !dims.footerNode) {
+        if (!dims.headerNode && !dims.footerNode
+                && !dims.headerLeftNode && !dims.footerLeftNode) {
             return;
         }
         for (n = 0; n < pages; n += 1) {
             top = n * (dims.pageHeight + dims.pageSeparation);
-            if (dims.headerNode) {
+            header = pageArea(dims, "header", n + 1);
+            footer = pageArea(dims, "footer", n + 1);
+            if (header) {
                 box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
                     "div"));
                 box.className = "webodf-pageFurniture";
@@ -423,10 +458,10 @@ odf.TextLayout = function TextLayout() {
                 // two lines where one was asked for grows into the margin
                 // rather than being cut.
                 box.style.minHeight = dims.header.height + "px";
-                fillPageArea(dims.headerNode, box, n + 1, pages);
+                fillPageArea(header, box, n + 1, pages);
                 pagesDiv.appendChild(box);
             }
-            if (dims.footerNode) {
+            if (footer) {
                 box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
                     "div"));
                 box.className = "webodf-pageFurniture";
@@ -436,7 +471,7 @@ odf.TextLayout = function TextLayout() {
                 box.style.top = (top + dims.pageHeight - dims.marginBottom
                     + dims.footer.gap) + "px";
                 box.style.minHeight = dims.footer.height + "px";
-                fillPageArea(dims.footerNode, box, n + 1, pages);
+                fillPageArea(footer, box, n + 1, pages);
                 pagesDiv.appendChild(box);
             }
         }
@@ -478,6 +513,8 @@ odf.TextLayout.PageArea;
     header:!odf.TextLayout.PageArea,
     footer:!odf.TextLayout.PageArea,
     headerNode:?Element,
-    footerNode:?Element
+    footerNode:?Element,
+    headerLeftNode:?Element,
+    footerLeftNode:?Element
 }}*/
 odf.TextLayout.PageDimensions;
