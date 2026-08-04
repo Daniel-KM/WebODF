@@ -249,7 +249,10 @@ gui.TrivialUndoManager = function TrivialUndoManager(defaultRules) {
             moveCursor = {},
             requiredAddOps = {},
             remainingAddOps,
-            ops,
+            // Not named "ops": it would shadow the namespace of the same name,
+            // used by the annotations of this function.
+            /**@type{!Array.<!ops.Operation>}*/
+            operations,
             stateTransition = undoStateTransitions.pop();
 
         document.getMemberIds().forEach(function (memberid) {
@@ -285,9 +288,9 @@ gui.TrivialUndoManager = function TrivialUndoManager(defaultRules) {
         }
 
         while (stateTransition && remainingAddOps > 0) {
-            ops = stateTransition.getOperations();
-            ops.reverse(); // Want the LAST move/add operation seen
-            ops.forEach(processOp);
+            operations = stateTransition.getOperations();
+            operations.reverse(); // Want the LAST move/add operation seen
+            operations.forEach(processOp);
             stateTransition = undoStateTransitions.pop();
         }
 
