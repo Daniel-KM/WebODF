@@ -35,9 +35,11 @@
             : chrome,
         query = new URLSearchParams(window.location.search),
         url = query.get("file"),
-        // The name of a document is carried apart, as the url of a blob, that
-        // Thunderbird hands over for an attachment, holds none.
+        // The name of a document is carried apart, as an attachment of a
+        // message is named by its part, not by an address.
         name = query.get("name"),
+        message = query.get("message"),
+        part = query.get("part"),
         canvas = new odf.OdfCanvas(document.getElementById("odf")),
         open = document.getElementById("open"),
         menu = document.getElementById("menu"),
@@ -92,6 +94,14 @@
             ? ""
             : "none";
     }
+
+    // The document is saved as it came, under the name it carries, whether it
+    // was read from a message, from an address or from the disk.
+    document.getElementById("download").addEventListener("click", function () {
+        if (url) {
+            api.downloads.download({url: url, filename: document.title});
+        }
+    });
 
     // A document that is read from the disk is opened here, as the requests of
     // a file:// url never reach the background script: webRequest only watches
@@ -160,13 +170,31 @@
     canvas.addListener("statereadychange", fit);
     window.addEventListener("resize", refit);
 
+    // Thunderbird names the attachment of a message rather than an address:
+    // the document is read here, in the tab, and not in the background. A url
+    // of a blob belongs to the page that made it, and the background of an
+    // add-on is a page that is unloaded as soon as it falls idle, taking the
+    // url of the blob with it, which left the tab with nothing to read.
+    if (message && part) {
+        api.messages.getAttachmentFile(Number(message), part).then(
+            function (file) {
+                // The document is drawn and saved from the same blob, so the
+                // attachment is read once and written as it came. The url of
+                // the blob is made here, in the tab, and not in the background
+                // of the add-on: that background is a page Thunderbird unloads
+                // as soon as it falls idle, and the url would die with it.
+                url = URL.createObjectURL(file);
+                show(name || file.name);
+                canvas.load(url);
+            }
+        );
+        return;
+    }
+
     if (!url) {
         show("OpenDocument Viewer");
         return;
     }
     show(name || decodeURIComponent(url.split("/").pop()));
-    document.getElementById("download").addEventListener("click", function () {
-        api.downloads.download({url: url});
-    });
     canvas.load(url);
 }());

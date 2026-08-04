@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <title>OpenDocument Viewer</title>
   <link rel="stylesheet" href="viewer.css">
+  <script defer src="webodf.js"></script>
+  <script defer src="viewer.js"></script>
 </head>
 <body>
   <!-- The commands sit in a menu rather than in a bar: a document is read far
@@ -22,12 +24,10 @@
         accept=".odt,.fodt,.ott,.odp,.fodp,.otp,.ods,.fods,.ots">
     </label>
     <button class="entry" type="button" id="download"
-      data-message="download">Download this document</button>
+      data-message="download">Save this document</button>
     <a class="entry" id="about" href="welcome.en.html"
       data-message="about">About this viewer</a>
   </div>
   <div id="odf"></div>
-  <script src="webodf.js"></script>
-  <script src="viewer.js"></script>
 </body>
 </html>
