@@ -148,6 +148,20 @@ draw|page {
   overflow: hidden;
   background: white;
 }
+/* The slides of a presentation are drawn one under the other, so the ground is
+   seen between two of them and each is read as a page of its own. The gap is
+   written in the unit of a page, and follows the zoom as the page does.
+
+   The rule holds for the slides of the document and for the master pages that
+   are cloned behind them, in "#shadowContent": the two are stacked the same
+   way, and a gap given to one alone would move it away from the other, slide
+   after slide. The attribute is there for the weight it gives, as the page
+   layout of the document is written as "draw|page[draw|master-page-name=...]"
+   and would otherwise set the margins back to its own. */
+draw|page + draw|page[draw|master-page-name] {
+  margin-top: 0.5cm;
+}
+
 presentation|notes, presentation|footer-decl, presentation|date-time-decl {
     display: none;
 }

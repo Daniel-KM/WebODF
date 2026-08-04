@@ -785,6 +785,41 @@ odf.ListStyleToCssTests = function ListStyleToCssTests(runner) {
         r.shouldBe(t, "'" + normalizeCSSContent(t.styleSheet.cssRules.rules[19].cssRule.style.content) + "'", "'counter(...) [.] counter(...) [.] counter(...) [FO O]'");
     }
 
+    // The numbering of the chapters is written as an outline style, and a list
+    // of the text names it as its own style: it has to be read as a style of a
+    // list, or such a document is drawn without its numbering.
+    function outlineStyle_ReadAsAListStyle() {
+        applyListStyles(
+            '<text:outline-style style:name="Outline">' +
+              '<text:outline-level-style text:level="1" style:num-format="1">' +
+                '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">' +
+                  '<style:list-level-label-alignment text:label-followed-by="listtab" fo:margin-left="0.6cm"></style:list-level-label-alignment>' +
+                '</style:list-level-properties>' +
+              '</text:outline-level-style>' +
+            '</text:outline-style>',
+            '',
+            '<text:list xml:id="outline1" text:style-name="Outline">' +
+              '<text:list-item><text:p>One</text:p></text:list-item>' +
+            '</text:list>'
+        );
+        t.rules = t.styleSheet.cssRules.length;
+        r.shouldBe(t, "t.rules > 0", "true");
+    }
+
+    // A list may name a style that is nowhere in the document. It is drawn
+    // without a style of its own, and the reading of the document goes on.
+    function list_OfAnUnknownStyle_IsDrawnAllTheSame() {
+        applyListStyles(
+            '',
+            '',
+            '<text:list xml:id="lost1" text:style-name="NoSuchStyle">' +
+              '<text:list-item><text:p>One</text:p></text:list-item>' +
+            '</text:list>'
+        );
+        t.rules = t.styleSheet.cssRules.length;
+        r.shouldBe(t, "t.rules", "0");
+    }
+
     this.tests = function () {
         return r.name([
             verifyCSSContentNormalization,
@@ -801,7 +836,9 @@ odf.ListStyleToCssTests = function ListStyleToCssTests(runner) {
             continuedListById_IncorrectId,
             continuedListById_DifferentListStyles,
             continuedListById_MultiLevelContinuation,
-            multiLevelList_DisplayLevels
+            multiLevelList_DisplayLevels,
+            outlineStyle_ReadAsAListStyle,
+            list_OfAnUnknownStyle_IsDrawnAllTheSame
         ]);
     };
     this.asyncTests = function () {

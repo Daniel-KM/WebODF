@@ -25,8 +25,9 @@ function main() {
     // first, so that the tests walking a document are not skipped.
     fs.writeFileSync(bundlePath, bundle.withTests());
     fs.writeFileSync(path.join(dir, "run.js"),
-        "require(" + JSON.stringify(path.join(__dirname, "lib/dom.js"))
-        + ").install();\nrequire(" + JSON.stringify(bundlePath) + ");\n");
+        `require(${JSON.stringify(path.join(__dirname, "lib/dom.js"))}).install();
+require(${JSON.stringify(bundlePath)});
+`);
     // The tests read their documents from the current directory, and require()
     // resolves the dependencies from the directory of the bundle.
     fs.symlinkSync(path.join(rootDir, "node_modules"), path.join(dir, "node_modules"));

@@ -102,7 +102,12 @@
                         (node.localName === 'default-style'))) {
                     family = node.getAttributeNS(stylens, 'family');
                 } else if (node.namespaceURI === textns &&
-                    node.localName === 'list-style') {
+                        (node.localName === 'list-style'
+                            || node.localName === 'outline-style')) {
+                    // The numbering of the chapters is written as an outline
+                    // style, that a list of the text names as its own style:
+                    // it belongs to the same family, and a document that uses
+                    // it has no list style of that name to be found.
                     family = "list";
                 } else if (node.namespaceURI === stylens &&
                     (node.localName === 'page-layout' || node.localName === 'default-page-layout')) {

@@ -63,7 +63,8 @@ public class ViewerActivity extends Activity {
     private static final String PAGE = "https://" + DOMAIN + "/index.html";
     private static final String CACHED = "document.odf";
     private static final String[] FILES = {
-        "index.html", "index.css", "index.js", "webodf.js"
+        "index.html", "index.css", "index.js", "webodf.js",
+        "about.en.html", "about.fr.html", "about.css"
     };
     /** The nine types of the format, as the picker only offers those. */
     private static final String[] TYPES = {
@@ -81,6 +82,18 @@ public class ViewerActivity extends Activity {
     private static final String OPEN = "/open";
 
     private WebView view;
+
+    /**
+     * Whether a path is one of the files of the viewer.
+     */
+    private static boolean served(String path) {
+        for (String file : FILES) {
+            if (("/" + file).equals(path)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * The type of a file of the viewer, as the web view only reads a script
@@ -152,16 +165,29 @@ public class ViewerActivity extends Activity {
                 return new WebResourceResponse("application/octet-stream", null,
                         new FileInputStream(new File(getCacheDir(), CACHED)));
             }
-            for (String served : FILES) {
-                if (("/" + served).equals(path)) {
-                    return new WebResourceResponse(typeOf(served), "utf-8",
-                            getAssets().open(served));
+            for (String file : FILES) {
+                if (("/" + file).equals(path)) {
+                    return new WebResourceResponse(typeOf(file), "utf-8",
+                            getAssets().open(file));
                 }
             }
         } catch (IOException e) {
             return nothing();
         }
         return nothing();
+    }
+
+    /**
+     * The page of the details is left by the back of the system, that goes
+     * back to the document, or out of the viewer when there is nowhere to go.
+     */
+    @Override
+    public void onBackPressed() {
+        if (view != null && view.canGoBack()) {
+            view.goBack();
+            return;
+        }
+        super.onBackPressed();
     }
 
     @Override
@@ -181,6 +207,12 @@ public class ViewerActivity extends Activity {
         settings.setGeolocationEnabled(false);
         settings.setDomStorageEnabled(false);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        // A page is drawn at the width of the screen at most, and a reader
+        // zooms in on it with two fingers from there. The buttons the web view
+        // draws for that are left out, as every phone pinches.
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
         view.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(
@@ -197,9 +229,21 @@ public class ViewerActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(
                     WebView webView, WebResourceRequest request) {
-                if (OPEN.equals(request.getUrl().getPath())) {
+                Uri uri = request.getUrl();
+                if (OPEN.equals(uri.getPath())) {
                     pick();
                     return true;
+                }
+                // The page that tells what the viewer is belongs to it, and is
+                // loaded as the first one was. A link it holds leads out, to
+                // the browser of the system, that opens it: this viewer shows
+                // documents, and never a page of the web.
+                if (DOMAIN.equals(uri.getHost()) && served(uri.getPath())) {
+                    return false;
+                }
+                if ("http".equals(uri.getScheme())
+                        || "https".equals(uri.getScheme())) {
+                    startActivity(new Intent(Intent.ACTION_VIEW, uri));
                 }
                 return true;
             }

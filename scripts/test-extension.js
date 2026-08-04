@@ -156,7 +156,7 @@ function main() {
         fs.rmSync(directory, {recursive: true, force: true});
         if (url.indexOf("viewer.html") === -1) {
             console.error("The add-on did not send the document to its viewer,"
-                + " the page is at " + url);
+                + ` the page is at ${url}`);
             process.exit(1);
         }
         console.log("The add-on showed the document: " + url.slice(0, 80));

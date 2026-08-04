@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenDocument Viewer</title>
+  <link rel="stylesheet" href="about.css">
+</head>
+<body>
+  <main>
+    <h1>OpenDocument Viewer</h1>
+    <p id="lead">It reads the documents of the OpenDocument standard, the ones
+      LibreOffice and every other office suite write, from a mail or a file
+      manager, without an office suite.</p>
+    <p>It is offered for the nine types of OpenDocument, and the system is what
+      reads the file and hands it over: the viewer holds no permission to reach
+      the storage, and it reaches no network at all.</p>
+
+@FORMAT_TEXT@
+
+    <h2>Elsewhere</h2>
+    <p>The same viewer is an add-on of Firefox, of Chrome and of Thunderbird,
+      that shows those documents in the browser or in a message instead of
+      downloading them.</p>
+    <p>It is built on WebODF, a library that reads the format in JavaScript,
+      and it is free software, under the AGPL 3.</p>
+    <p class="ways"><a href="/open">Open a document</a></p>
+  </main>
+</body>
+</html>

@@ -14,8 +14,7 @@ var fs = require("fs"),
     version = process.env.RHINO_VERSION || "1.9.1",
     jarName = "rhino-all-" + version + ".jar",
     jarPath = path.join(toolsDir, jarName),
-    jarUrl = "https://repo1.maven.org/maven2/org/mozilla/rhino-all/"
-        + version + "/" + jarName;
+    jarUrl = `https://repo1.maven.org/maven2/org/mozilla/rhino-all/${version}/${jarName}`;
 
 /**
  * Path of the jar, downloaded when missing. The environment variable RHINO_JAR

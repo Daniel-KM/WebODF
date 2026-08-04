@@ -74,13 +74,25 @@ if (WEBODF_ANDROID)
     )
     set(GRADLE ${CMAKE_CURRENT_BINARY_DIR}/Gradle-prefix/src/Gradle/bin/gradle)
 
+    # The two pages that tell what the format is worth hold a text that is
+    # written once, see "INSERT_TEXT" in the CMakeLists of the root. They are
+    # written among the assets, as the library is: gradle reads them from there.
+    foreach (LANGUAGE en fr)
+        INSERT_TEXT(${CMAKE_CURRENT_SOURCE_DIR}/about.${LANGUAGE}.html.in
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/about.${LANGUAGE}.html
+            ${LANGUAGE})
+    endforeach ()
+
     set(OPENDOCUMENTVIEWER_ANDROID_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/build.gradle
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main/AndroidManifest.xml
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/webodf/viewer/ViewerActivity.java
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.html
         ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.js
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.css)
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/index.css
+        ${CMAKE_CURRENT_SOURCE_DIR}/about.en.html.in
+        ${CMAKE_CURRENT_SOURCE_DIR}/about.fr.html.in
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/about.css)
 
     # Two apk are built from the same sources. The one of the release is not
     # signed, as only its author may sign it; the one of the debug is, with

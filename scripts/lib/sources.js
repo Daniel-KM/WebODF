@@ -90,8 +90,8 @@ function libraryFiles() {
         }
         manifest[name].forEach(function (dependency) {
             if (unusedClasses.indexOf(dependency) !== -1) {
-                throw new Error(name + " uses " + dependency
-                    + ", that is excluded from the library.");
+                throw new Error(`${name} uses ${dependency}, that is excluded`
+                    + " from the library.");
             }
         });
     });
@@ -126,6 +126,7 @@ var testFileNames = [
     "gui/TrivialUndoManagerTests.js",
     "gui/UndoStateRulesTests.js",
     "odf/StyleParseUtilsTests.js",
+    "odf/StyleTreeTests.js",
     "odf/StyleCacheTests.js",
     "odf/FormattingTests.js",
     "odf/LayoutTests.js",

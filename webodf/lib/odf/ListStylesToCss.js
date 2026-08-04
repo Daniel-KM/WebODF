@@ -751,6 +751,14 @@
                 // lists that have no text:style-name attribute defined but do have a parent list that defines a
                 // style name will inherit that style and will be handled correctly as any text:list with a style defined
                 // will have CSS rules applied to its child text:list elements
+                // A list may name a style that is nowhere in the document, and
+                // one that is written by another program often does. It is then
+                // drawn without a style of its own, rather than stopping the
+                // reading of the whole document.
+                if (styleName && !listStyles[styleName]) {
+                    runtime.log("DEBUG: no list style named " + styleName + ".");
+                    styleName = null;
+                }
                 if (styleName) {
                     continueNumbering = list.getAttributeNS(textns, "continue-numbering");
                     continueListXmlId = list.getAttributeNS(textns, "continue-list");

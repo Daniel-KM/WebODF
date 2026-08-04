@@ -57,6 +57,7 @@ set(TESTJSFILES
     tests/gui/TrivialUndoManagerTests.js
     tests/gui/UndoStateRulesTests.js
     tests/odf/StyleParseUtilsTests.js
+    tests/odf/StyleTreeTests.js
     tests/odf/StyleCacheTests.js
     tests/odf/FormattingTests.js
     tests/odf/LayoutTests.js
@@ -240,6 +241,10 @@ add_custom_command(
         ${CMAKE_SOURCE_DIR}/scripts/lib/generated.js
         ${HEADERCOMPILED_FILE}
         ${LIBJSFILES}
+        # The css of the viewer is written into the library as a string, so a
+        # change of it is a change of the library: without this, the packages
+        # were built again with the css of the build before.
+        ${CMAKE_CURRENT_SOURCE_DIR}/webodf.css
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_custom_target(webodf.js-target DEPENDS webodf.js)
@@ -284,16 +289,16 @@ add_custom_target(syntaxcheck ALL
 
 # rhino tests are disabled for now: rhino runtime lacks (wrappers for)
 # essential necessities such as Uint8Array, Node and NodeFilter
-# RHINOTEST is only defined here and hence undefined to disable rhinotest
+# RHINOTEST is only defined here and hence undefined to disable test-rhino
 if (RHINOTEST)
-add_custom_target(rhinotest
+add_custom_target(test-rhino
     COMMAND ${Java_JAVA_EXECUTABLE} -jar ${RHINO}
         -debug lib/runtime.js tests/tests.js
     DEPENDS Rhino
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     SOURCES ${LIBJSFILES}
 )
-add_custom_target(simplerhinotest
+add_custom_target(test-simplerhino
     COMMAND ${Java_JAVA_EXECUTABLE} -jar ${RHINO}
         ${CMAKE_CURRENT_BINARY_DIR}/simplecompiled.js
     DEPENDS Rhino simplecompiled.js-target
@@ -320,9 +325,9 @@ add_custom_command(
     DEPENDS ${NODE} simplecompiled.js copy_node_modules
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
 )
-add_custom_target(simplenodetest ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp)
+add_custom_target(test-simplenode ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/simplenodetest.timestamp)
 
-add_custom_target(webodf.js-tests DEPENDS syntaxcheck simplenodetest)
+add_custom_target(webodf.js-tests DEPENDS syntaxcheck test-simplenode)
 
 add_custom_command(
     OUTPUT ${WEBODFJS_DIR}

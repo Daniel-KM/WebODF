@@ -1,0 +1,22 @@
+{
+    "openInViewer": {
+        "message": "Ouvrir dans le lecteur OpenDocument",
+        "description": "The entry of the menus that opens an attachment in the viewer."
+    },
+    "menu": {
+        "message": "Menu",
+        "description": "The name of the button that opens the menu of the viewer."
+    },
+    "openLocal": {
+        "message": "Ouvrir un document local",
+        "description": "The entry of the menu of the viewer that opens a file of the disk."
+    },
+    "download": {
+        "message": "Enregistrer ce document",
+        "description": "The entry of the menu of the viewer that saves the document."
+    },
+    "about": {
+        "message": "À propos de ce lecteur",
+        "description": "The entry of the menu of the viewer that leads to the page of the welcome."
+    }
+}

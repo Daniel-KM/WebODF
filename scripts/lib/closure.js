@@ -14,8 +14,7 @@ var fs = require("fs"),
     version = process.env.CLOSURE_VERSION || "v20260804",
     jarName = "closure-compiler-" + version + ".jar",
     jarPath = path.join(toolsDir, jarName),
-    jarUrl = "https://repo1.maven.org/maven2/com/google/javascript/closure-compiler/"
-        + version + "/" + jarName;
+    jarUrl = `https://repo1.maven.org/maven2/com/google/javascript/closure-compiler/${version}/${jarName}`;
 
 /**
  * Path of the jar, downloaded when missing. The environment variable

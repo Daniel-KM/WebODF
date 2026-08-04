@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="no_picker">Aucune application de ce système n’ouvre un
+        fichier : un document doit donc être ouvert depuis un gestionnaire de
+        fichiers.</string>
+</resources>

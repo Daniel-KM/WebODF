@@ -4,26 +4,26 @@ téléphone se lise aussitôt, sans suite bureautique.
 
 Il se déclare pour les neuf types du format, et le système le propose donc dès
 qu’un document est ouvert depuis un courriel, un message ou un gestionnaire de
-fichiers. Lancé seul, il affiche une page vide qui demande un document et ouvre
-le sélecteur du système quand on la touche : c’est le système qui lit le
-fichier et le lui remet, si bien que la visionneuse ne détient aucune
-permission d’accès au stockage, et n’accède à aucun réseau.
+fichiers. Lancé seul, il affiche une page vide qui demande un document et
+ouvre le sélecteur du système quand on la touche : c’est le système qui lit le
+fichier et le lui remet, si bien que le lecteur ne détient aucune permission
+d’accès au stockage, et n’accède à aucun réseau.
 
-Elle est légère : l’application entière pèse moins d’un mégaoctet, là où les
-autres visionneuses du format en pèsent cent fois plus, si bien qu’elle
-s’installe sur un téléphone qui n’a plus de place, et qu’elle s’ouvre aussitôt.
+Il est léger : l’application entière pèse moins d’un mégaoctet, là où les
+autres lecteurs du format en pèsent cent fois plus, si bien qu’il s’installe
+sur un téléphone qui n’a plus de place, et qu’il s’ouvre aussitôt.
 
 OpenDocument est le premier format de documents bureautiques approuvé comme
-norme internationale, ISO/IEC 26300, en 2006, et le seul qui en tienne le
-rôle : il est écrit au grand jour par OASIS, il n’appartient à aucune
-entreprise, et plusieurs programmes de plusieurs auteurs l’écrivent et le
-lisent en entier.
+norme internationale, ISO/IEC 26300, en 2006, et le seul qui en tienne le rôle
+: il est écrit au grand jour par OASIS, il n’appartient à aucune entreprise,
+et plusieurs programmes de plusieurs auteurs l’écrivent et le lisent en
+entier.
 
 Un document écrit aujourd’hui se lira encore dans vingt ans, par qui que ce
 soit, avec quoi que ce soit.
 
-La même visionneuse existe en extension pour Firefox et pour Chrome, qui
-affiche ces documents dans le navigateur au lieu de les télécharger.
+Le même lecteur existe en extension pour Firefox et pour Chrome, qui affiche
+ces documents dans le navigateur au lieu de les télécharger.
 
-Elle repose sur WebODF, une bibliothèque qui lit le format en JavaScript, et
+Il repose sur WebODF, une bibliothèque qui lit le format en JavaScript, et
 c’est un logiciel libre, sous licence AGPL 3.

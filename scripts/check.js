@@ -151,8 +151,8 @@ closure.jar().then(function (jarPath) {
     // space would be read as two arguments.
     args.forEach(function (arg) {
         if (/\s/.test(arg)) {
-            throw new Error("The path \"" + arg
-                + "\" holds a space, that the flag file of the compiler does not support.");
+            throw new Error(`The path "${arg}" holds a space, that the flag`
+                + " file of the compiler does not support.");
         }
     });
     fs.writeFileSync(flagFile, args.join("\n"));
