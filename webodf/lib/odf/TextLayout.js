@@ -599,6 +599,29 @@ odf.TextLayout = function TextLayout() {
         return meta;
     }
     /**
+     * How many pages the document says it has, from the statistics its
+     * metadata carries, or zero where it says nothing. A text is broken into
+     * pages one slice at a time, so the number of pages that are drawn is not
+     * the number of pages of the document until the last one is broken: the
+     * footer of the first page would read "1 of 12" while the rest is still
+     * being laid out. The number the writer of the document recorded is the
+     * one a reader expects, and it is used until the text is broken whole.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {!number}
+     */
+    function recordedPageCount(odfroot) {
+        var stat = odfroot.meta
+                ? domUtils.getDirectChild(odfroot.meta, metans,
+                    "document-statistic")
+                : null,
+            count = stat
+                ? parseInt(stat.getAttributeNS(metans, "page-count"), 10)
+                : NaN;
+        return isNaN(count) || count < 1
+            ? 0
+            : count;
+    }
+    /**
      * The paragraphs and the headings a box holds.
      * @param {!Element} box
      * @return {!Array.<!Element>}
@@ -1445,6 +1468,8 @@ odf.TextLayout = function TextLayout() {
             /**@type{!Element}*/
             behind = odfroot.body,
             pages = countPages(pagesDiv),
+            /**@type{!number}*/
+            total = recordedPageCount(odfroot) || countPages(pagesDiv),
             /**@type{!HTMLDivElement}*/
             box,
             /**@type{?Element}*/
@@ -1516,7 +1541,7 @@ odf.TextLayout = function TextLayout() {
                 // two lines where one was asked for grows into the margin
                 // rather than being cut.
                 box.style.minHeight = dims.header.height + "px";
-                fillPageArea(odfroot, header, box, n + 1, pages, meta);
+                fillPageArea(odfroot, header, box, n + 1, total, meta);
                 pagesDiv.appendChild(box);
                 drawn.push(box);
             }
@@ -1531,7 +1556,7 @@ odf.TextLayout = function TextLayout() {
                 box.style.top = (top + dims.pageHeight - dims.marginBottom
                     + dims.footer.gap) + "px";
                 box.style.minHeight = dims.footer.height + "px";
-                fillPageArea(odfroot, footer, box, n + 1, pages, meta);
+                fillPageArea(odfroot, footer, box, n + 1, total, meta);
                 pagesDiv.appendChild(box);
                 drawn.push(box);
             }
@@ -1610,11 +1635,22 @@ odf.TextLayout = function TextLayout() {
         return false;
     }
     /**
+     * The prefixes of the document, written as the head of a sheet of styles.
+     * @return {!string}
+     */
+    function namespaceRules() {
+        var text = "";
+        odf.Namespaces.forEachPrefix(function (prefix, ns) {
+            text += "@namespace " + prefix + " url(" + ns + ");\n";
+        });
+        return text + "@namespace webodfhelper url(" + webodfhelperns + ");\n";
+    }
+    /**
      * The sheet of styles the layout writes its own rules in.
      *
-     * The text is broken into columns by rules that are of the reader and
-     * not of the document, so they are kept in a sheet of their own, made
-     * once and written anew at each layout.
+     * The text is broken into pages by rules that are of the reader and not
+     * of the document, so they are kept in a sheet of their own, made once
+     * and written anew at each layout.
      * @param {!Document} doc
      * @return {!CSSStyleSheet}
      */
@@ -1625,11 +1661,31 @@ odf.TextLayout = function TextLayout() {
                 "style");
             element.id = "webodf-pageStyles";
             /**@type{!HTMLStyleElement}*/(element).type = "text/css";
+            // The prefixes are written in the sheet itself and not put in it
+            // by "insertRule": gecko parses a rule that names a prefix
+            // against the prefixes the sheet was written with, and threw
+            // "SyntaxError" on every selector of the layout, so no page was
+            // ever drawn in firefox.
+            element.appendChild(doc.createTextNode(namespaceRules()));
             doc.head.appendChild(element);
         }
         return /**@type{!CSSStyleSheet}*/(
             /**@type{!HTMLStyleElement}*/(element).sheet
         );
+    }
+    /**
+     * Drop the rules the layout wrote before, and keep the prefixes the sheet
+     * was written with, which are the first rules of it.
+     * @param {!CSSStyleSheet} sheet
+     * @return {undefined}
+     */
+    function clearOwnRules(sheet) {
+        var i;
+        for (i = sheet.cssRules.length - 1; i >= 0; i -= 1) {
+            if (sheet.cssRules[i].type !== 10) {
+                sheet.deleteRule(i);
+            }
+        }
     }
     /**
      * How many columns a box of columns holds.
@@ -1759,18 +1815,8 @@ odf.TextLayout = function TextLayout() {
             /**@type{!number}*/
             round = 0,
             /**@type{!number}*/
-            first = 0,
-            /**@type{!number}*/
-            i;
-        for (i = sheet.cssRules.length - 1; i >= 0; i -= 1) {
-            sheet.deleteRule(i);
-        }
-        odf.Namespaces.forEachPrefix(function (prefix, ns) {
-            sheet.insertRule("@namespace " + prefix + " url(" + ns + ");",
-                sheet.cssRules.length);
-        });
-        sheet.insertRule("@namespace webodfhelper url(" + webodfhelperns
-            + ");", sheet.cssRules.length);
+            first = 0;
+        clearOwnRules(sheet);
         // The runs stand beside one another, and the text no longer holds
         // the height of a page: each run holds its own.
         // The runs stand beside one another on one line, so neither the
@@ -2458,18 +2504,8 @@ odf.TextLayout = function TextLayout() {
             /**@type{!DocumentFragment}*/
             store = doc.createDocumentFragment(),
             /**@type{!Array.<!Node>}*/
-            waiting = [],
-            /**@type{!number}*/
-            i;
-        for (i = sheet.cssRules.length - 1; i >= 0; i -= 1) {
-            sheet.deleteRule(i);
-        }
-        odf.Namespaces.forEachPrefix(function (prefix, ns) {
-            sheet.insertRule("@namespace " + prefix + " url(" + ns + ");",
-                sheet.cssRules.length);
-        });
-        sheet.insertRule("@namespace webodfhelper url(" + webodfhelperns
-            + ");", sheet.cssRules.length);
+            waiting = [];
+        clearOwnRules(sheet);
         sheet.insertRule("office|text {width:auto;margin:0;padding:0;"
             + "position:relative;}", sheet.cssRules.length);
         sheet.insertRule(".webodf-pageBox {overflow:hidden;}",

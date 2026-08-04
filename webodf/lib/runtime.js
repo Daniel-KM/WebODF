@@ -656,7 +656,9 @@ function BrowserRuntime() {
      * @return {undefined}
      */
     function readFile(path, encoding, callback) {
-        var /**@type{!XMLHttpRequest}*/ xhr;
+        var /**@type{!XMLHttpRequest}*/ xhr,
+            /**@type{!boolean}*/
+            answered;
         // A document that is already in memory is handed over as a data url,
         // which no request reaches: an add-on that reads an attachment, or a
         // page that made the document itself, names it that way.
@@ -665,9 +667,15 @@ function BrowserRuntime() {
             return;
         }
         xhr = createXHR(path, encoding, true);
+        // A request answers once. Gecko raises the event of the last state
+        // more than once when a request is taken up again under it, and the
+        // second answer, an error, undid the first: a document that was read
+        // whole was then read as if it were broken.
+        answered = false;
         function handleResult() {
             var r;
-            if (xhr.readyState === 4) {
+            if (xhr.readyState === 4 && !answered) {
+                answered = true;
                 r = handleXHRResult(path, encoding, xhr);
                 callback(r.err, r.data);
             }
@@ -676,7 +684,10 @@ function BrowserRuntime() {
         try {
             xhr.send(null);
         } catch (/**@type{!Error}*/e) {
-            callback(e.message, null);
+            if (!answered) {
+                answered = true;
+                callback(e.message, null);
+            }
         }
     }
     /**
@@ -795,9 +806,12 @@ function BrowserRuntime() {
      * @return {undefined}
      */
     function loadXML(path, callback) {
-        var xhr = new XMLHttpRequest();
+        var xhr = new XMLHttpRequest(),
+            /**@type{!boolean}*/
+            answered = false;
         function handleResult() {
-            if (xhr.readyState === 4) {
+            if (xhr.readyState === 4 && !answered) {
+                answered = true;
                 if (xhr.status === 0 && !xhr.responseText) {
                     callback("File " + path + " is empty.", null);
                 } else if (xhr.status === 200 || xhr.status === 0) {
@@ -817,7 +831,10 @@ function BrowserRuntime() {
         try {
             xhr.send(null);
         } catch (/**@type{!Error}*/e) {
-            callback(e.message, null);
+            if (!answered) {
+                answered = true;
+                callback(e.message, null);
+            }
         }
     }
     this.readFile = readFile;
