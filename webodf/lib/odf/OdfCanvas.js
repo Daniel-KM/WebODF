@@ -220,6 +220,8 @@
         /**@const@type {!string}*/xlinkns = odf.Namespaces.xlinkns,
         /**@const@type {!string}*/presentationns = odf.Namespaces.presentationns,
         /**@const@type {!string}*/webodfhelperns = "urn:webodf:names:helper",
+        /**@type{?MutationObserver}*/
+        styleNameWatcher = null,
         xpath = xmldom.XPath,
         domUtils = webodfcore.DomUtils,
         odfUtils = odf.OdfUtils,
@@ -2858,6 +2860,49 @@
         }
     }
     /**
+     * Keep the classes of the styles right while a document is written in.
+     *
+     * An editor writes the name of another style on a paragraph, and the
+     * class it carries is written anew: what is drawn answers to the class
+     * and no longer to the name.
+     * @param {!Element} root
+     * @return {undefined}
+     */
+    function watchStyleNames(root) {
+        var window = runtime.getWindow(),
+            /**@type{!Array.<!string>}*/
+            watched = [],
+            /**@type{!number}*/
+            i;
+        if (!window || !window.MutationObserver) {
+            return;
+        }
+        if (styleNameWatcher) {
+            styleNameWatcher.disconnect();
+        }
+        for (i = 0; i < odf.Style2CSS.styleNameAttributes.length; i += 1) {
+            watched.push(odf.Style2CSS.styleNameAttributes[i].prefix
+                + ":style-name");
+        }
+        styleNameWatcher = new window.MutationObserver(function (records) {
+            records.forEach(function (record) {
+                // An element alone carries an attribute, so what answers
+                // here is one; the number is written rather than "Node",
+                // that the sources of this file do not name.
+                if (record.target.nodeType === 1) {
+                    odf.Style2CSS.stampOne(
+                        /**@type{!Element}*/(record.target)
+                    );
+                }
+            });
+        });
+        styleNameWatcher.observe(root, {
+            attributes: true,
+            subtree: true,
+            attributeFilter: watched
+        });
+    }
+    /**
      * @param {!Element} odfbody
      * @return {undefined}
      */
@@ -4111,6 +4156,11 @@
             shadowContent.style.top = 0;
             shadowContent.style.left = 0;
             container.getContentElement().appendChild(shadowContent);
+
+            // The classes of the styles are written by "Style2CSS.js", that
+            // the rules are read against; they are kept right here while a
+            // document is written in.
+            watchStyleNames(odfnode);
 
             // The margins of the page, that a frame placed against the sheet is
             // written from, see "getHorizontalOffset".
