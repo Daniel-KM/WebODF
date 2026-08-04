@@ -642,6 +642,16 @@ office|annotation text|p {
     font-family: sans-serif;
 }
 
+/* The word given to a reader while a document is read. The colour is one
+   that is read on a white ground as on a black one, as a reader may have
+   asked for either. */
+.webodf-loading {
+    display: block;
+    padding: 1em;
+    color: #808080;
+    font-family: sans-serif;
+}
+
 #annotationsPane {
     background-color: #EAEAEA;
     width: 4cm;
