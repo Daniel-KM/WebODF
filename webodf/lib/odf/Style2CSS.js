@@ -160,7 +160,13 @@ odf.Style2CSS = function Style2CSS() {
             [ fons, 'margin-right', 'margin-right' ],
             [ fons, 'margin-top', 'margin-top' ],
             [ fons, 'margin-bottom', 'margin-bottom' ],
-            [ fons, 'border', 'border' ]
+            [ fons, 'border', 'border' ],
+            // The lines an office keeps together where a paragraph is cut by
+            // the end of a page: css names them the same and takes the same
+            // numbers, and reads them in a text that is broken into columns,
+            // which is how a page is broken here.
+            [ fons, 'orphans', 'orphans' ],
+            [ fons, 'widows', 'widows' ]
         ],
 
         /**@const
@@ -638,7 +644,7 @@ odf.Style2CSS = function Style2CSS() {
      * @return {!string}
      */
     function getParagraphProperties(props) {
-        var rule = '', bgimage, url, lineHeight;
+        var rule = '', bgimage, url, lineHeight, keepWithNext, keepTogether;
         rule += applySimpleMapping(props, paragraphPropertySimpleMapping);
         bgimage = domUtils.getDirectChild(props, stylens, 'background-image');
         if (bgimage) {
@@ -648,6 +654,22 @@ odf.Style2CSS = function Style2CSS() {
                 //rule += "background-repeat: repeat;"; //FIXME test
                 rule += applySimpleMapping(bgimage, bgImageSimpleMapping);
             }
+        }
+
+        // A paragraph that keeps with the one after it is not left alone at
+        // the foot of a page, and one that keeps together is not cut at all.
+        // "always" is the word of the standard, "auto" its own opposite.
+        keepWithNext = props.getAttributeNS(fons, 'keep-with-next');
+        if (keepWithNext === 'always') {
+            rule += 'break-after: avoid;';
+        } else if (keepWithNext === 'auto') {
+            rule += 'break-after: auto;';
+        }
+        keepTogether = props.getAttributeNS(fons, 'keep-together');
+        if (keepTogether === 'always') {
+            rule += 'break-inside: avoid;';
+        } else if (keepTogether === 'auto') {
+            rule += 'break-inside: auto;';
         }
 
         lineHeight = props.getAttributeNS(fons, 'line-height');
