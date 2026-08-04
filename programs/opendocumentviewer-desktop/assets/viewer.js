@@ -32,6 +32,50 @@
             - parseFloat(style.paddingRight);
     }
 
+    // How the first page came out: the height of its text, how far its text
+    // reaches, and where the foot drawn on it begins. A foot that begins
+    // above the end of the text is drawn over the last line of it.
+    function pageReport() {
+        var box = document.querySelector(".webodf-pageBox"),
+            furniture = document.querySelector(".webodf-pageFurniture"),
+            drawn = document.querySelectorAll(".webodf-pageSheet").length,
+            edge,
+            bottom = 0,
+            top = Infinity,
+            i,
+            parts,
+            rect;
+        if (!box) {
+            return String(drawn) + " drawn, no page box";
+        }
+        edge = box.getBoundingClientRect();
+        for (i = 0; i < box.children.length; i += 1) {
+            rect = box.children[i].getBoundingClientRect();
+            if (rect.height > 0) {
+                bottom = Math.max(bottom, rect.bottom);
+            }
+        }
+        if (furniture) {
+            parts = furniture.getElementsByTagName("*");
+            for (i = 0; i < parts.length; i += 1) {
+                rect = parts[i].getBoundingClientRect();
+                if (rect.height > 0
+                        && rect.top > edge.bottom - edge.height / 2) {
+                    top = Math.min(top, rect.top);
+                }
+            }
+        }
+        return String(drawn) + " drawn, zoom " + zoom()
+            + ", box " + Math.round(edge.height)
+            + ", text ends " + Math.round(bottom - edge.top)
+            + ", foot begins " + (top === Infinity
+                ? "nowhere"
+                : Math.round(top - edge.top))
+            + ", over by " + (top === Infinity
+                ? 0
+                : Math.round(bottom - top));
+    }
+
     // What the first text of the document is drawn in, and what it is drawn on:
     // a text takes the colour of the ground when the document names none, so
     // this is what tells a white text on white paper.
@@ -88,6 +132,10 @@
             // the size it was written at, and a window that holds a page
             // whole leaves it at that size.
             canvas.addListener("pagesdrawn", function () {
+                // What the pages came to, written when the category
+                // "webodf.viewer" is turned on: it tells a foot drawn over
+                // the last line of a page apart from one that stands clear.
+                window.console.log("pages " + pageReport());
                 if (!refitting) {
                     return;
                 }
