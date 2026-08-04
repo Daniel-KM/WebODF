@@ -3913,6 +3913,29 @@ odf.TextLayout = function TextLayout() {
         drawPageFurniture(odfroot, plan, pagesDiv, readMeta(odfroot));
     }
     /**
+     * Give every page the size the plan gives it.
+     *
+     * The room a header and a foot take is known once they are drawn and
+     * measured, and the pages of the first slice were filled before that: a
+     * page held the lines of a page without a foot, and the foot was drawn
+     * over the last of them. The pages are given their size again once the
+     * furniture is drawn, and what no longer fits is moved on by the trim.
+     * @param {!PagePlan} plan
+     * @param {!Array.<!Element>} boxes
+     * @return {undefined}
+     */
+    function resizePages(plan, boxes) {
+        boxes.forEach(function (box, index) {
+            var dims = plan.at(index),
+                /**@type{!string}*/
+                tall = (dims.pageHeight - dims.marginTop
+                    - dims.marginBottom) + "px";
+            if (/**@type{!HTMLElement}*/(box).style.height !== tall) {
+                /**@type{!HTMLElement}*/(box).style.height = tall;
+            }
+        });
+    }
+    /**
      * Set every page from one of them onwards at the place of its number.
      *
      * A page that is made between two others moves the ones that follow it
@@ -4112,6 +4135,11 @@ odf.TextLayout = function TextLayout() {
                 }
             }
         }
+        // The pages are given the size the plan gives them before they are
+        // read: the room the headers and the feet take was not known when
+        // the first of them were filled.
+        resizePages(plan, boxes);
+        placePages(plan, boxes, 0);
         i = 0;
         while (i < boxes.length && boxes.length < maxPages) {
             trimOne(boxes[i], i);
