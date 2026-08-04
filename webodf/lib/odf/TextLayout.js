@@ -3021,6 +3021,47 @@ odf.TextLayout = function TextLayout() {
             : null;
     }
     /**
+     * Whether a table may be cut between two of its rows.
+     *
+     * A table that says "style:may-break-between-rows" is false is written
+     * whole on one page, as an office writes it: it goes to the page that
+     * follows rather than being cut, unless the page holds nothing else and
+     * it is taller than a page, where it is cut all the same.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} table
+     * @return {!boolean}
+     */
+    function mayBreakBetweenRows(odfroot, table) {
+        var name = table.getAttributeNS(tablens, "style-name") || "",
+            /**@type{?Element}*/
+            style,
+            /**@type{?Element}*/
+            properties,
+            /**@type{!string}*/
+            said = "",
+            /**@type{!number}*/
+            depth = 0;
+        while (name !== "" && said === "" && depth < 16) {
+            style = styleOf(odfroot, name, "table");
+            if (!style && plainStyleName(name) !== name) {
+                name = plainStyleName(name);
+                style = styleOf(odfroot, name, "table");
+            }
+            if (!style) {
+                break;
+            }
+            properties = domUtils.getDirectChild(style, stylens,
+                "table-properties");
+            said = properties
+                ? properties.getAttributeNS(stylens, "may-break-between-rows")
+                    || ""
+                : "";
+            name = style.getAttributeNS(stylens, "parent-style-name") || "";
+            depth += 1;
+        }
+        return said !== "false";
+    }
+    /**
      * Cut an element where the page ends, and answer what is left of it: a
      * copy of the element that holds what did not fit.
      *
@@ -3031,9 +3072,11 @@ odf.TextLayout = function TextLayout() {
      * @param {!Element} element
      * @param {!number} depth how far the cut may reach into the element
      * @param {!boolean} alone whether the page holds nothing else
+     * @param {?odf.ODFDocumentElement=} odfroot the document, that says of a
+     *                  table whether it may be cut between two of its rows
      * @return {?Element} what did not fit, or nothing if all of it fits
      */
-    function cutElement(box, element, depth, alone) {
+    function cutElement(box, element, depth, alone, odfroot) {
         var doc = /**@type{!Document}*/(box.ownerDocument),
             bottom = box.getBoundingClientRect().bottom,
             /**@type{?Node}*/
@@ -3052,6 +3095,15 @@ odf.TextLayout = function TextLayout() {
             next,
             /**@type{!ClientRect}*/
             rect;
+        // A table that is written whole is not cut: it goes to the page
+        // that follows, unless the page holds nothing else, where it is cut
+        // rather than sent from page to page for ever.
+        if (!alone && element.namespaceURI === tablens
+                && element.localName === "table"
+                && odfroot !== undefined && odfroot !== null
+                && !mayBreakBetweenRows(odfroot, element)) {
+            return null;
+        }
         // What the element itself says of its size is not read: a section
         // and a list of the standard are drawn of no height at all while
         // what they hold is drawn under them, and nothing of them would
@@ -3085,7 +3137,7 @@ odf.TextLayout = function TextLayout() {
                     from = node;
                 } else if (depth > 0) {
                     inner = cutElement(box, /**@type{!Element}*/(node),
-                        depth - 1, alone);
+                        depth - 1, alone, odfroot);
                     if (!inner) {
                         from = node;
                     }
@@ -3276,7 +3328,7 @@ odf.TextLayout = function TextLayout() {
                     held = String(node.textContent).length;
                     lines = linesOf(/**@type{!Element}*/(node));
                     rest = cutElement(box, /**@type{!Element}*/(node), 8,
-                        box.childNodes.length === 1);
+                        box.childNodes.length === 1, state.root);
                     if (rest && box.childNodes.length > 1
                             && !cutWhereAnOfficeWould(
                                 /**@type{!Element}*/(node), lines
@@ -3444,6 +3496,7 @@ odf.TextLayout = function TextLayout() {
         }
         return {
             text: text,
+            root: odfroot,
             doc: doc,
             htmlns: doc.documentElement.namespaceURI,
             plan: plan,
@@ -3617,7 +3670,7 @@ odf.TextLayout = function TextLayout() {
                 held = String(over.textContent).length;
                 lines = linesOf(over);
                 more = cutElement(box, over, 8,
-                    over === box.firstElementChild);
+                    over === box.firstElementChild, odfroot);
                 if (more && over !== box.firstElementChild
                         && !cutWhereAnOfficeWould(over, lines)) {
                     while (more.firstChild) {
@@ -4002,6 +4055,7 @@ odf.TextLayout.TabStop;
 
 /**@typedef{{
     text:!Element,
+    root:!odf.ODFDocumentElement,
     doc:!Document,
     htmlns:?string,
     plan:!Object,
