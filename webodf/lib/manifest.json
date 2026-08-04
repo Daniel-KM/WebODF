@@ -254,6 +254,9 @@
     "odf.PageLayoutProperties": [
         "odf.StyleParseUtils"
     ],
+    "odf.PageMeasure": [
+        "odf.Namespaces"
+    ],
     "odf.ParagraphProperties": [
         "odf.StyleParseUtils"
     ],
@@ -285,6 +288,7 @@
         "odf.Namespaces"
     ],
     "odf.TextLayout": [
+        "odf.PageMeasure",
         "odf.Style2CSS"
     ],
     "odf.TextProperties": [

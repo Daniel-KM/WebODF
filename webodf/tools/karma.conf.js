@@ -49,6 +49,7 @@ module.exports = function (config) {
             'lib/odf/Formatting.js',
             'lib/odf/StyleTree.js',
             'lib/odf/ListStylesToCss.js',
+            'lib/odf/PageMeasure.js',
             'lib/odf/StyleParseUtils.js',
             'lib/odf/Style2CSS.js',
             'lib/odf/TextLayout.js',
