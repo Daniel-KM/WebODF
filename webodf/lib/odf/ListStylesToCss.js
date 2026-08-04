@@ -837,9 +837,11 @@
          * @param {!Element} style the "text:list-style"
          * @param {!number} level from one
          * @param {!Array.<!number>} held the number each level stands at
+         * @param {!Element=} where what carries the label, the first child
+         *                  of the item by default
          * @return {undefined}
          */
-        function labelOne(item, style, level, held) {
+        function labelOne(item, style, level, held, where) {
             var rule = levelOfStyle(style, level),
                 /**@type{!string}*/
                 written = "",
@@ -853,7 +855,8 @@
                 format,
                 /**@type{!number}*/
                 l;
-            if (!rule || rule.localName !== "list-level-style-number") {
+            if (!rule || (rule.localName !== "list-level-style-number"
+                    && rule.localName !== "outline-level-style")) {
                 return;
             }
             start = parseInt(item.getAttributeNS(textns, "start-value")
@@ -881,7 +884,7 @@
                 }
             }
             written += rule.getAttributeNS(stylens, "num-suffix") || "";
-            /**@type{!Element}*/(item.firstElementChild).setAttribute(
+            (where || /**@type{!Element}*/(item.firstElementChild)).setAttribute(
                 "odf-list-label",
                 written
             );
@@ -1016,6 +1019,65 @@
             }
         }
         /**
+         * Write on every heading the number of its chapter.
+         *
+         * A document numbers its chapters with an outline style, that names
+         * a way of writing the number of each level: it is not a list, and
+         * the headings that carry those numbers stand in no list. A heading
+         * that stands in a list is numbered by the list and left alone here.
+         * @param {!Element} odfBody
+         * @param {(!Object.<string,!odf.StyleTreeNode>|undefined)} listStyles
+         * @return {undefined}
+         */
+        function numberHeadings(odfBody, listStyles) {
+            var headings = odfBody.getElementsByTagNameNS(textns, "h"),
+                /**@type{?Element}*/
+                outline = null,
+                /**@type{!Array.<!number>}*/
+                held = [],
+                /**@type{!number}*/
+                level,
+                /**@type{?Element}*/
+                parent,
+                /**@type{!Element}*/
+                heading,
+                /**@type{!number}*/
+                i;
+            if (!listStyles) {
+                return;
+            }
+            Object.keys(listStyles).forEach(function (name) {
+                if (!outline
+                        && listStyles[name].element.localName
+                            === "outline-style") {
+                    outline = listStyles[name].element;
+                }
+            });
+            if (!outline) {
+                return;
+            }
+            for (i = 0; i < headings.length; i += 1) {
+                heading = /**@type{!Element}*/(headings.item(i));
+                parent = heading.parentElement;
+                level = parseInt(heading.getAttributeNS(textns,
+                    "outline-level") || "1", 10);
+                if (isNaN(level) || level < 1) {
+                    level = 1;
+                }
+                // A heading of a list is numbered by its list, and one that
+                // the document writes as the head of a list carries no
+                // number at all.
+                if (parent && parent.namespaceURI === textns
+                        && parent.localName === "list-item") {
+                    parent = null;
+                } else if (heading.getAttributeNS(textns, "is-list-header")
+                        !== "true") {
+                    labelOne(heading, /**@type{!Element}*/(outline), level,
+                        held, heading);
+                }
+            }
+        }
+        /**
          * Creates CSS styles from the given ODF list styles and applies them to the stylesheet
          * @param {!CSSStyleSheet} styleSheet
          * @param {!odf.StyleTree.Tree} styleTree
@@ -1039,6 +1101,9 @@
 
             applyContentBasedStyles(styleSheet, odfBody, styleFamilyTree);
             numberLists(odfBody, styleFamilyTree);
+            numberHeadings(odfBody, styleFamilyTree);
+            appendRule(styleSheet, 'text|h[odf-list-label]:before'
+                + '{content: attr(odf-list-label); white-space: pre;}');
         };
     };
 }());
