@@ -465,6 +465,43 @@ stay empty, the fallback is asked for by hand:
 set QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu
 ```
 
+#### The viewer on macos
+
+The same program, and the same build: what macos asks for beyond it is a bundle
+rather than a plain executable, an icon in the format of its own, made from the
+same drawing as the one of windows, and a "Info.plist" that names the eleven
+types the viewer reads.
+
+```sh
+cmake -S ../webodf -DWEBODF_DESKTOP=ON -DWEBODF_QTJSRUNTIME=ON \
+    -DCMAKE_PREFIX_PATH=$HOME/Qt/6.8.2/macos
+cmake --build . --target test-qtjsruntime
+cmake --build . --target product-opendocumentviewer-desktop
+cmake --install . --prefix dist
+```
+
+The installation runs "macdeployqt", which gathers the frameworks of qt,
+"QtWebEngineProcess.app" and the resources it reads inside the bundle: "OpenDocument
+Viewer.app" then runs on a machine where qt is not installed.
+
+One thing of macos is in the code rather than in the build: a document opened by
+a double click, or by "Open with", is not named on the command line there. The
+system sends it to the application once it is running, as an event, which
+"main.cpp" listens for. Without it the viewer would open its empty window and
+forget what it was asked for.
+
+The bundle is neither signed nor notarised by the build. Without that, macos
+refuses to open it save through the menu of the context, and says it comes from
+an unidentified developer. Both need an account of the developer program of
+Apple, at a hundred dollars a year:
+
+```sh
+codesign --deep --force --options runtime --sign "Developer ID Application: ..." \
+    "dist/OpenDocument Viewer.app"
+xcrun notarytool submit --wait ...
+xcrun stapler staple "dist/OpenDocument Viewer.app"
+```
+
 ### One text for every product
 
 The pages of the products tell what the OpenDocument format is worth, and they

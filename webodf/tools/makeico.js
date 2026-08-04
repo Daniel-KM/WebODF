@@ -205,16 +205,22 @@ function writeIco(images) {
     return Buffer.concat([head].concat(images.map((image) => image.bytes)));
 }
 
-const [source, target] = process.argv.slice(2);
-if (!source || !target) {
-    process.stderr.write("Usage: node makeico.js icon.png icon.ico\n");
-    process.exit(1);
+// The reading of a png and its scaling serve the icon of macos as well, see
+// "makeicns.js", so they are given away here rather than written twice.
+module.exports = {readPng, scale, writePng};
+
+if (require.main === module) {
+    const [source, target] = process.argv.slice(2);
+    if (!source || !target) {
+        process.stderr.write("Usage: node makeico.js icon.png icon.ico\n");
+        process.exit(1);
+    }
+    const read = readPng(fs.readFileSync(source));
+    const written = SIZES
+        .filter((size) => size <= read.width)
+        .map((size) => ({
+            size,
+            bytes: writePng(size === read.width ? read : scale(read, size))
+        }));
+    fs.writeFileSync(target, writeIco(written));
 }
-const read = readPng(fs.readFileSync(source));
-const written = SIZES
-    .filter((size) => size <= read.width)
-    .map((size) => ({
-        size,
-        bytes: writePng(size === read.width ? read : scale(read, size))
-    }));
-fs.writeFileSync(target, writeIco(written));

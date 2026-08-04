@@ -34,7 +34,42 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QEvent>
+#include <QFileOpenEvent>
 #include <QIcon>
+#include <QObject>
+
+namespace {
+
+/**
+ * Hear the documents macos hands over.
+ *
+ * A double click, or "Open with", does not name the document on the command
+ * line there: the system sends it to the application, once it is running, as
+ * an event of its own. Without this, the viewer would open its empty window
+ * and forget what it was asked for.
+ */
+class Documents : public QObject {
+public:
+    Documents(QObject* parent, MainWindow& window)
+        : QObject(parent),
+          viewer(window) {
+    }
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        if (event->type() == QEvent::FileOpen) {
+            viewer.open(static_cast<QFileOpenEvent*>(event)->file());
+            return true;
+        }
+        return QObject::eventFilter(watched, event);
+    }
+
+private:
+    MainWindow& viewer;
+};
+
+} // namespace
 
 int main(int argc, char** argv) {
     // The scheme the document is served at has to be declared before the
@@ -57,6 +92,9 @@ int main(int argc, char** argv) {
 
     MainWindow window;
     window.show();
+
+    // Only macos sends this event; elsewhere the filter is never called.
+    app.installEventFilter(new Documents(&app, window));
 
     // A document may be given on the command line, which is how a file manager
     // opens one, and the rest of the arguments are left to qt.

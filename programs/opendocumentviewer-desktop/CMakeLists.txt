@@ -50,8 +50,8 @@ qt_add_resources(opendocumentviewer-desktop "library"
 
 # One icon serves every product, so it is read where it lies rather than copied
 # here, and it names the window and the entry of the desktop. The one of the
-# window is the small one, that the extensions carry; the icon of windows is
-# made from the large one, as a bar of tasks draws it at 256.
+# window is the small one, that the extensions carry; the icons of windows and
+# of macos are made from the large one, as a dock draws it at 512.
 set(ICON ${CMAKE_CURRENT_SOURCE_DIR}/../opendocumentviewer-webext/skin/default/icon.png)
 set(ICON_MASTER ${CMAKE_CURRENT_SOURCE_DIR}/../opendocumentviewer-android/src/main/fastlane/metadata/android/en-US/images/icon.png)
 set_source_files_properties(${ICON} PROPERTIES QT_RESOURCE_ALIAS icon.png)
@@ -72,8 +72,6 @@ target_link_libraries(opendocumentviewer-desktop
     Qt6::WebEngineCore
     Qt6::WebEngineWidgets
 )
-
-
 
 # Windows draws a program with the icon of its resources, in the format of its
 # own, and shows what the version tells in the properties of the file. The icon
@@ -121,6 +119,41 @@ if (WIN32)
         ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer.iss @ONLY)
 endif ()
 
+# Macos draws a program with the icon of its bundle, in the format of its own,
+# and reads what the bundle tells about it, the types of documents it opens
+# among them.
+if (APPLE)
+    set(OPENDOCUMENTVIEWER_ICNS
+        ${CMAKE_CURRENT_BINARY_DIR}/opendocumentviewer.icns)
+    add_custom_command(
+        OUTPUT ${OPENDOCUMENTVIEWER_ICNS}
+        COMMAND ${NODE} ARGS ${TOOLS_DIR}/makeicns.js ${ICON_MASTER}
+            ${OPENDOCUMENTVIEWER_ICNS}
+        DEPENDS ${ICON_MASTER} ${TOOLS_DIR}/makeicns.js
+            ${TOOLS_DIR}/makeico.js
+    )
+    # The icon goes into the resources of the bundle, where the plist names it.
+    set_source_files_properties(${OPENDOCUMENTVIEWER_ICNS} PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
+    target_sources(opendocumentviewer-desktop PRIVATE
+        ${OPENDOCUMENTVIEWER_ICNS})
+
+    # The oldest macos the program runs on is the one qt was built for, that
+    # cmake holds when it is told, and the one of Qt 6.8 otherwise: a bundle
+    # that claimed less would be offered to a machine that cannot run it.
+    if (CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(OPENDOCUMENTVIEWER_MACOS ${CMAKE_OSX_DEPLOYMENT_TARGET})
+    else ()
+        set(OPENDOCUMENTVIEWER_MACOS 12.0)
+    endif ()
+    configure_file(data/Info.plist.in
+        ${CMAKE_CURRENT_BINARY_DIR}/Info.plist @ONLY)
+    set_target_properties(opendocumentviewer-desktop PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/Info.plist
+        OUTPUT_NAME "OpenDocument Viewer")
+endif ()
+
 add_custom_target(product-opendocumentviewer-desktop
     DEPENDS opendocumentviewer-desktop)
 
@@ -129,12 +162,17 @@ add_custom_target(product-opendocumentviewer-desktop
 # named after the entry, as the specification of the freedesktop asks.
 include(GNUInstallDirs)
 install(TARGETS opendocumentviewer-desktop
+    BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES data/org.webodf.OpenDocumentViewer.desktop
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
-install(FILES ${ICON}
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps
-    RENAME org.webodf.OpenDocumentViewer.png)
+if (NOT APPLE)
+    install(FILES data/org.webodf.OpenDocumentViewer.desktop
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+endif ()
+if (NOT APPLE)
+    install(FILES ${ICON}
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps
+        RENAME org.webodf.OpenDocumentViewer.png)
+endif ()
 
 # The libraries of qt are gathered beside the program by the tool of the
 # platform, "windeployqt" on windows and "macdeployqt" on macos, so that
