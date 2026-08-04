@@ -1,4 +1,14 @@
 
+# Two products are packed here, and neither builds any more, see
+# "README-Products.md". They are kept until they are either brought up to date
+# or dropped: cordova only wraps "webodf.js" in a web view, so what has to be
+# written again is the packaging, not anything of WebODF.
+#
+# - product-androidviewer drives cordova 3.5, of 2014, that builds android
+#   with ant, dropped by google in 2015 for gradle.
+# - product-firefoxosviewer packs it for Firefox OS, that Mozilla abandoned in
+#   2016, but that lives on through its forks, B2G OS, KaiOS and Capyloon.
+
 configure_file(config.xml.in config.xml)
 configure_file(manifest.webapp.in manifest.webapp)
 

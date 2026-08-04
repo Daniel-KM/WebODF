@@ -221,18 +221,26 @@ add_custom_command(
     DEPENDS ClosureCompiler ${LIBJSFILES} tools/externs.js
         webodf.css.js-target
 )
-# Include non-Closure Compiler compatible libraries with no further recompilation
+# The library is written by the build with node, so that both builds produce
+# the same file. The closure compiler still reads the sources, in
+# "webodf-compiled.js" above, but only to check their types: it compiles with
+# SIMPLE_OPTIMIZATIONS, that neither folds the definition IS_COMPILED_CODE nor
+# drops what it makes unreachable, so it kept the loader of the classes and
+# the runner of the scripts, that read a file with eval(), inside a library
+# that never calls them.
 add_custom_command(
     OUTPUT webodf.js
-    COMMAND ${Java_JAVA_EXECUTABLE}
-    ARGS ${SHARED_CLOSURE_ARGS}
-        --js ${HEADERCOMPILED_FILE}
-        --js webodf-compiled.js
-        --js ${CMAKE_CURRENT_SOURCE_DIR}/lib/externs/*.js
-        --compilation_level WHITESPACE_ONLY
-        --js_output_file webodf.js-
-    COMMAND ${CMAKE_COMMAND} ARGS -E rename webodf.js- webodf.js
-    DEPENDS ClosureCompiler webodf-compiled.js ${HEADERCOMPILED_FILE}
+    COMMAND ${NODE} ARGS ${CMAKE_SOURCE_DIR}/scripts/build.js
+        --output ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
+        --header ${HEADERCOMPILED_FILE}
+    DEPENDS ${NODE} webodf-compiled.js manifest.json-target
+        ${CMAKE_SOURCE_DIR}/scripts/build.js
+        ${CMAKE_SOURCE_DIR}/scripts/lib/bundle.js
+        ${CMAKE_SOURCE_DIR}/scripts/lib/sources.js
+        ${CMAKE_SOURCE_DIR}/scripts/lib/generated.js
+        ${HEADERCOMPILED_FILE}
+        ${LIBJSFILES}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_custom_target(webodf.js-target DEPENDS webodf.js)
 

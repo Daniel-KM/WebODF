@@ -12,7 +12,16 @@ The library "webodf.js" is built in two ways.
   compiler, Rhino and Dojo are downloaded from maven central and from the
   registry of npm, at the same versions as the build with node uses.
 
-Both produce the same library, from the same sources and in the same order.
+Both produce the same file, byte for byte: the build with cmake writes the
+library by running "scripts/build.js" as well. It still compiles the sources
+with the closure compiler, but only to check their types, as it compiles with
+SIMPLE_OPTIMIZATIONS, which neither folds the definition IS_COMPILED_CODE nor
+drops what it makes unreachable: the loader of the classes and the runner of
+the scripts stayed in a library that never calls them, with the eval() they
+read a file with.
+
+So "npm install" is needed for the build with cmake too, as terser minifies
+the library.
 
 Two parts of the build with cmake are opt-in, so that a plain build stays
 short and needs nothing but node, java and cmake:
@@ -279,6 +288,7 @@ npm run check:tests # check the types of the library and of the tests
 npm test            # run the tests with node
 npm run test:rhino  # run the tests with Rhino, on a java virtual machine
 npm run test:browser  # run the tests in a browser, with all the suites
+npm run test:extension # run the add-on of Chrome and check it shows a document
 npm run all         # check, test, build and doc
 ```
 
@@ -371,11 +381,42 @@ and the css are generated in memory, not in files. The build with cmake writes
 in the directory given to cmake, usually "build", next to the sources, and
 keeps its downloads there.
 
-Both libraries hold the same code: the sources concatenated in the order of
-their dependencies, with IS_COMPILED_CODE set to true so that the runtime does
-not load the classes one by one. The one built with node is about eight percent
-smaller, since terser compresses more than the closure compiler used with
-SIMPLE_OPTIMIZATIONS.
+Both libraries are the same file, byte for byte: the sources concatenated in
+the order of their dependencies, with IS_COMPILED_CODE set to true so that the
+runtime does not load the classes one by one, minified by terser. The build
+with cmake runs "scripts/build.js" as well, see "Two ways to build" above.
+
+### Running the add-ons without installing them
+
+The three packages of "programs/firefoxextension", see "README-Products.md",
+are loaded from their directory, with a profile of their own, so that nothing
+has to be clicked and nothing is kept:
+
+```sh
+npx web-ext run --source-dir build/firefox-extension-odfviewer-mv2-x.y.z/
+chromium --user-data-dir=$(mktemp -d) --no-first-run \
+    --load-extension=build/chrome-extension-odfviewer-x.y.z/
+```
+
+web-ext writes a temporary profile, installs the add-on in it and follows the
+changes of the files; "--firefox" chooses the binary and "--url" opens a page
+at once. Open the page after the add-on is installed, not with it:
+a page that is asked for while Firefox is still starting is not redirected,
+and the add-on looks broken when it is not. Firefox refuses an unsigned xpi, but not a directory loaded this way,
+which is what "about:debugging" does by hand.
+
+Chrome keeps the profile of "--user-data-dir", hence the temporary directory,
+and "--load-extension" only takes a directory, never a zip.
+
+"npm run test:extension" does all of it for Chrome: it builds the package,
+serves a document under a type that says nothing, asks the browser for it and
+checks that the viewer of the add-on drew it. It needs a chromium, like
+"npm run test:browser", and the library of "dist".
+
+It is worth running: a rule Chrome refuses is dropped without a word, and the
+documents are downloaded as if the add-on were not installed. Neither the
+linter of addons.mozilla.org nor the closure compiler sees it. Firefox is not
+driven, as web-ext is not a dependency of this project.
 
 ### What the closure compiler is used for
 

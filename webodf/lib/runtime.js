@@ -41,12 +41,6 @@
 function Runtime() {"use strict"; }
 
 /**
- * @param {!string} name
- * @return {*}
- */
-Runtime.prototype.getVariable = function (name) { "use strict"; };
-
-/**
  * @param {*} anything
  * @return {!string}
  */
@@ -276,21 +270,6 @@ Runtime.byteArrayToString = function (bytearray, encoding) {
 };
 
 /**
- * @param {!string} name
- * @return {*}
- */
-Runtime.getVariable = function (name) {
-    "use strict";
-    /*jslint evil: true*/
-    try {
-        return eval(name);
-    } catch (e) {
-        return undefined;
-    }
-    /*jslint evil: false*/
-};
-
-/**
  * @param {*} anything
  * @return {!string}
  */
@@ -465,12 +444,6 @@ function BrowserRuntime() {
         return result;
     };
     this.byteArrayToString = Runtime.byteArrayToString;
-
-    /**
-    * @param {!string} name
-    * @return {*}
-    */
-    this.getVariable = Runtime.getVariable;
 
 
     /**
@@ -957,12 +930,6 @@ function NodeJSRuntime() {
     this.byteArrayToString = Runtime.byteArrayToString;
 
     /**
-    * @param {!string} name
-    * @return {*}
-    */
-    this.getVariable = Runtime.getVariable;
-
-    /**
     * @param {!string} jsonstr
     * @return {*}
     */
@@ -1370,12 +1337,6 @@ function RhinoRuntime() {
     };
     /*jslint unparam: false*/
     this.byteArrayToString = Runtime.byteArrayToString;
-
-    /**
-    * @param {!string} name
-    * @return {*}
-    */
-    this.getVariable = Runtime.getVariable;
 
     /**
     * @param {!string} jsonstr
@@ -1787,6 +1748,28 @@ var webodf = {};
         classNames.forEach(visit);
         return loadList;
     }
+    // The five namespaces of the library are gathered here, so that a class may
+    // be looked up by its name. The compiler reports a partial alias for each
+    // of them, JSC_PARTIAL_NAMESPACE, as it may no longer flatten what they
+    // hold, and any way of reading a namespace as a value does it: a map built
+    // when a class is looked up rather than here, or a function returning them
+    // one by one, are reported the same way. Only dropping the lookup by name
+    // would remove it, that this loader exists for.
+    //
+    // The warning is left, as it only shows in the target "compiled.js" of the
+    // build with cmake, that compiles the library and the tests with
+    // ADVANCED_OPTIMIZATIONS to report more problems, and whose output is never
+    // run. The library that ships is compiled with SIMPLE_OPTIMIZATIONS, that
+    // flattens no namespace, and reports none of it.
+    var         /**@type{!Object.<string,!{dir:string, deps:!Array.<string>}>}*/
+        dependencies,
+        packages = {
+            webodfcore: webodfcore,
+            gui: gui,
+            xmldom: xmldom,
+            odf: odf,
+            ops: ops
+        };
     /**
      * @param {string} path
      * @param {string} content
@@ -1801,15 +1784,22 @@ var webodf = {};
      * @param {!Array.<string>} paths
      */
     function loadFiles(paths) {
-        // this function is not strict, so eval can assign to globals
-        var i,
-            content;
-        for (i = 0; i < paths.length; i += 1) {
-            content = runtime.readFileSync(paths[i], "utf-8");
-            content = addContent(paths[i], /**@type{string}*/(content));
-            /*jslint evil: true*/
-            eval(content);
-            /*jslint evil: false*/
+        // The classes are read in the scope of this file, where the five
+        // namespaces are declared: a direct eval() is needed for that, an
+        // indirect one only sees the global scope, and this file is a module
+        // under node. The block around it is only there so that a minifier
+        // drops the whole of it when the code is compiled, as it may not drop
+        // a scope that holds a direct eval().
+        if (!IS_COMPILED_CODE) {
+            var i,
+                content;
+            for (i = 0; i < paths.length; i += 1) {
+                content = runtime.readFileSync(paths[i], "utf-8");
+                content = addContent(paths[i], /**@type{string}*/(content));
+                /*jslint evil: true*/
+                eval(content);
+                /*jslint evil: false*/
+            }
         }
     }
     /**
@@ -1841,28 +1831,6 @@ var webodf = {};
         }
         e.parentNode.insertBefore(df, e);
     }
-    // The five namespaces of the library are gathered here, so that a class may
-    // be looked up by its name. The compiler reports a partial alias for each
-    // of them, JSC_PARTIAL_NAMESPACE, as it may no longer flatten what they
-    // hold, and any way of reading a namespace as a value does it: a map built
-    // when a class is looked up rather than here, or a function returning them
-    // one by one, are reported the same way. Only dropping the lookup by name
-    // would remove it, that this loader exists for.
-    //
-    // The warning is left, as it only shows in the target "compiled.js" of the
-    // build with cmake, that compiles the library and the tests with
-    // ADVANCED_OPTIMIZATIONS to report more problems, and whose output is never
-    // run. The library that ships is compiled with SIMPLE_OPTIMIZATIONS, that
-    // flattens no namespace, and reports none of it.
-    var /**@type{!Object.<string,!{dir:string, deps:!Array.<string>}>}*/
-        dependencies,
-        packages = {
-            webodfcore: webodfcore,
-            gui: gui,
-            xmldom: xmldom,
-            odf: odf,
-            ops: ops
-        };
     /**
      * Check if a class has been defined.
      * For class "webodfcore.sub.Name", this checks if there is an entry
@@ -1970,6 +1938,12 @@ var webodf = {};
 }());
 
 /*jslint sloppy: true*/
+// Run the scripts given as arguments, "runtime.js script.js". Only the
+// sources are run this way, never the compiled library, so the whole
+// runner is kept out of it: it reads a file with eval(), that a minifier
+// may only drop when the block around it is dropped whole, as it has to
+// assume that the string it runs reads the locals around it.
+if (!IS_COMPILED_CODE) {
 (function (args) {
     if (args) {
         args = Array.prototype.slice.call(/**@type{{length:number}}*/(args));
@@ -2029,3 +2003,4 @@ var webodf = {};
         run(args.slice(1));
     }
 }(String(typeof arguments) !== "undefined" && arguments));
+}

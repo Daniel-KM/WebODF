@@ -59,6 +59,14 @@ else (OVERRULED_WEBODF_VERSION)
 endif (OVERRULED_WEBODF_VERSION)
 message(STATUS "WebODF version " ${WEBODF_VERSION})
 
+# The manifest of an add-on only takes up to four numbers separated by dots,
+# where git describe adds the number of commits and the hash of the last one:
+# "0.5.10-161-gc2572a4a" is written "0.5.10.161", so that the builds between
+# two tags still follow each other. A tagged build is left as it is.
+string(REGEX REPLACE "^([0-9]+(\\.[0-9]+)*)-([0-9]+)-g[0-9a-f]+.*$" "\\1.\\3"
+    WEBODF_MANIFEST_VERSION "${WEBODF_VERSION}")
+string(REGEX REPLACE "-dirty$" "" WEBODF_MANIFEST_VERSION "${WEBODF_MANIFEST_VERSION}")
+
 
 #########################################################
 ## Find installed dependencies
@@ -373,8 +381,17 @@ set(WODOTEXTEDITORBUILDDIR ${CMAKE_CURRENT_BINARY_DIR}/wodotexteditor)
 set(WODOCOLLABTEXTEDITORBUILDDIR ${CMAKE_BINARY_DIR}/wodocollabtexteditor)
 set(WODOCOLLABTEXTEDITOR_ZIP ${CMAKE_CURRENT_BINARY_DIR}/wodocollabtexteditor-${WEBODF_VERSION}.zip)
 
+# The add-on is packed twice, from the same scripts: the manifest version 3
+# needs Firefox 109, of 2023, and the version 2 reaches back to Firefox 48, of
+# 2016. See "README-Products.md".
 set(FIREFOX_EXTENSION_ODFVIEWER_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extension-odfviewer-${WEBODF_VERSION})
 set(FIREFOX_EXTENSION_ODFVIEWER ${FIREFOX_EXTENSION_ODFVIEWER_DIR}.xpi)
+set(FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR ${CMAKE_CURRENT_BINARY_DIR}/firefox-extension-odfviewer-mv2-${WEBODF_VERSION})
+set(FIREFOX_EXTENSION_ODFVIEWER_MV2 ${FIREFOX_EXTENSION_ODFVIEWER_MV2_DIR}.xpi)
+# Chrome takes a zip, and a file of rules rather than a script: it dropped the
+# blocking webRequest the two others redirect with.
+set(CHROME_EXTENSION_ODFVIEWER_DIR ${CMAKE_CURRENT_BINARY_DIR}/chrome-extension-odfviewer-${WEBODF_VERSION})
+set(CHROME_EXTENSION_ODFVIEWER ${CHROME_EXTENSION_ODFVIEWER_DIR}.zip)
 
 
 ####################

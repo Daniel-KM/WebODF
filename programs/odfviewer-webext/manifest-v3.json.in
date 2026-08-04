@@ -1,0 +1,37 @@
+{
+    "manifest_version": 3,
+    "name": "ODF Viewer",
+    "version": "@WEBODF_MANIFEST_VERSION@",
+    "description": "Viewer for files in OpenDocument Format (ODF), powered by WebODF, using only web standard technologies.",
+    "author": "Daniel Berthereau",
+    "homepage_url": "http://webodf.org/",
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "uriloader@webodf.js",
+            "data_collection_permissions": {
+                "required": ["none"]
+            },
+            "strict_min_version": "109.0"
+        }
+    },
+    "icons": {
+        "238": "skin/default/icon.png"
+    },
+    "permissions": [
+        "webRequest",
+        "webRequestBlocking",
+        "downloads"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "scripts": ["background.js"]
+    },
+    "web_accessible_resources": [
+        {
+            "resources": ["viewer.html"],
+            "matches": ["<all_urls>"]
+        }
+    ]
+}
