@@ -11,10 +11,11 @@ android {
 
     defaultConfig {
         applicationId = 'org.webodf.viewer'
-        // 21 is the release the web view began to be updated apart from the
-        // system in, so it holds a recent engine from there on, and the one
-        // call the viewer intercepts its requests with was added there too.
-        minSdk = 21
+        // 24 is the oldest release androidx.webkit runs on, which it says
+        // when the manifests are merged. The web view has been updated apart
+        // from the system since 21, so it reads what the library needs on
+        // every release from there anyway.
+        minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = project.findProperty('webodfVersion') ?: '0.0.0'
