@@ -73,6 +73,18 @@ odf.TextLayout = function TextLayout() {
          */
         pageSeparation = 10,
         /**
+         * How wide the box that holds the height of a page is drawn. It is
+         * as narrow as a browser lets a box be and still count it: a box of
+         * no width at all is held to occupy nothing, and every page would be
+         * drawn at the top of the one before it. The width stands above the
+         * grain of the engines, a sixtieth of a pixel in gecko and a
+         * sixty-fourth in blink and in webkit, and what it takes is taken
+         * from the text beside it.
+         * @const
+         * @type{!string}
+         */
+        pageColumnWidth = "0.05px",
+        /**
          * How many pages are drawn at the most. A document of a thousand pages
          * is already far more than a reader shows at once, and the bound is
          * what keeps a page height read as something absurd, or a text that
@@ -570,7 +582,7 @@ odf.TextLayout = function TextLayout() {
             frag.appendChild(div);
             div = doc.createElementNS(htmlns, "div");
             div.style.height = contentHeight + "px";
-            div.style.width = "1px";
+            div.style.width = pageColumnWidth;
             div.style.cssFloat = "right";
             frag.appendChild(div);
             n += 1;
