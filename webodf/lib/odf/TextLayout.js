@@ -3485,6 +3485,40 @@ odf.TextLayout = function TextLayout() {
      * @return {!number} how many pages the text was broken into
      */
     /**
+     * Take the spacings from what a page ends on and that holds nothing.
+     *
+     * Cutting a paragraph between two of its words may leave nothing of it on
+     * the page it was cut on: the empty paragraph is drawn as its spacings
+     * and no more, and in a box that lays its children in a column those
+     * spacings are not folded into the edge of the box, so the page is a few
+     * pixels too full and the line above is moved on for nothing.
+     * @param {!Element} box the page
+     * @return {undefined}
+     */
+    function unspaceEmptyTail(box) {
+        var node = box.lastElementChild,
+            /**@type{!number}*/
+            guard = 8;
+        // The last thing on the page is looked for, and then everything it
+        // stands in that holds nothing either: a paragraph left empty by a
+        // cut holds the box its tabs were laid in, which is empty as well.
+        while (node && node.lastElementChild && guard > 0) {
+            node = node.lastElementChild;
+            guard -= 1;
+        }
+        guard = 8;
+        while (node && node !== box && guard > 0
+                && node.getBoundingClientRect().height === 0) {
+            // An element of the document is of no namespace of html, where
+            // the browser leaves a "style" attribute alone: it is marked
+            // instead, and the rule of the mark takes its spacings away.
+            node.setAttributeNS(webodfhelperns, "webodfhelper:spaceless",
+                "true");
+            node = node.parentElement;
+            guard -= 1;
+        }
+    }
+    /**
      * Fill one page, and answer with the page that was filled.
      *
      * The paragraphs are taken from what waits to be written, several at a
@@ -3722,6 +3756,11 @@ odf.TextLayout = function TextLayout() {
             box.removeChild(keeper);
             keeper = box.lastElementChild;
         }
+        // Cutting a paragraph may leave nothing of it on the page it was cut
+        // on: the spacings of what holds nothing are taken away, or the page
+        // is a few pixels too full and the line above it is moved on for
+        // nothing.
+        unspaceEmptyTail(box);
         // A table written for a page of another size is drawn to the width
         // of the text of this one before the notes are drawn: it is taller
         // for being narrower, and what it pushes past the end of the page is
@@ -3831,6 +3870,12 @@ odf.TextLayout = function TextLayout() {
         // page that follows: the spacing over its first child was already
         // written on the page before it, and writing it again pushes the
         // whole of it a little past the end of its page.
+        // What a cut left holding nothing is drawn as its spacings and no
+        // more: they are taken away, or the page it ends is that much too
+        // full, see "unspaceEmptyTail".
+        sheet.insertRule("[webodfhelper|spaceless]"
+            + " {margin-top:0 !important;margin-bottom:0 !important;}",
+            sheet.cssRules.length);
         sheet.insertRule("[webodfhelper|continued] > :first-child"
             + " {margin-top:0;}", sheet.cssRules.length);
         sheet.insertRule(".webodf-pageBox > :last-child,"
@@ -4219,7 +4264,9 @@ odf.TextLayout = function TextLayout() {
                     }
                     guard -= 1;
                     // The notes of what was moved went with it, so the foot
-                    // of the page is drawn again before it is read anew.
+                    // of the page is drawn again before it is read anew, and
+                    // what the cut left holding nothing keeps no spacing.
+                    unspaceEmptyTail(box);
                     layNotes(box);
                     over = firstOverflowing(box);
                 }
@@ -4235,6 +4282,14 @@ odf.TextLayout = function TextLayout() {
             if (!keepLast || i < boxes.length - 1) {
                 trimOne(boxes[i], i);
             }
+            i += 1;
+        }
+        // What a cut left holding nothing keeps no spacing: the page it ends
+        // is a few pixels too full otherwise, and the line above it is moved
+        // to the page that follows for nothing.
+        i = from || 0;
+        while (i < boxes.length) {
+            unspaceEmptyTail(boxes[i]);
             i += 1;
         }
         columnPages = boxes.length;
