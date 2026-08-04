@@ -3201,13 +3201,18 @@ odf.TextLayout = function TextLayout() {
         // every measure of the page being filled lays out the whole of the
         // document again, and a document of eight hundred pages is laid out
         // eight hundred times over.
-        // The page is laid out on its own — its size, its layout and what
-        // it paints are its own — but not its counters: "contain:strict"
-        // holds the styles as well, and the numbers of a list begin again
-        // at every page that way. The three that are of the layout are
-        // named instead.
-        sheet.insertRule(".webodf-pageBox {overflow:hidden;"
-            + "contain:size layout paint;}",
+        // A page holds what it holds and is of the size the plan gives it:
+        // the browser is told so, so that a page that is filled is laid out
+        // on its own and not with the pages that went before it. Without it
+        // every measure of the page being filled lays out the whole of the
+        // document again, and a document of eight hundred pages is laid out
+        // eight hundred times over.
+        //
+        // The styles of a page are its own as well, which holds the counters
+        // of css to the page: the labels of the lists are worked out once
+        // and written on the elements, so nothing of the document is counted
+        // by them any more, see "numberLists" in "ListStylesToCss.js".
+        sheet.insertRule(".webodf-pageBox {overflow:hidden;contain:strict;}",
             sheet.cssRules.length);
         while (text.firstChild) {
             store.appendChild(text.firstChild);
