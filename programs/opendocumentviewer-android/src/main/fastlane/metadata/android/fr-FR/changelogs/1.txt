@@ -1,3 +1,3 @@
-Première version de la visionneuse pour Android : elle affiche les textes, les
+Première version du lecteur pour Android : il affiche les textes, les
 tableurs et les présentations du format OpenDocument, depuis un gestionnaire de
 fichiers, un courriel ou le sélecteur du système.
