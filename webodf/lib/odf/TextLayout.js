@@ -1564,6 +1564,28 @@ odf.TextLayout = function TextLayout() {
         spreadLines(drawn);
     }
     /**
+     * Write the number of pages the text was broken into in every header and
+     * every foot that asks for it.
+     *
+     * The pages are broken one slice at a time, so the count is not known
+     * until the last slice: the field carries the number the writer of the
+     * document recorded until then, and the true one once the text is broken
+     * whole. Nothing is laid out again for it: the fields stand in the
+     * furniture of the pages, beside the text and not in it, and only their
+     * text is written anew.
+     * @param {!HTMLDivElement} pagesDiv
+     * @param {!number} pages
+     * @return {undefined}
+     */
+    function tellPageCount(pagesDiv, pages) {
+        var fields = pagesDiv.getElementsByTagNameNS(textns, "page-count"),
+            /**@type{!number}*/
+            i;
+        for (i = 0; i < fields.length; i += 1) {
+            fields.item(i).textContent = String(pages);
+        }
+    }
+    /**
      * Whether a paragraph or a table asks to be written on a new page.
      *
      * The standard says it with "fo:break-before" on the style of the
@@ -2213,6 +2235,22 @@ odf.TextLayout = function TextLayout() {
             && node.localName === "table-header-rows";
     }
     /**
+     * Whether a node says how wide the columns of a table are.
+     *
+     * Such an element holds no text and is drawn over the whole height of
+     * the table, so its foot is past the end of every page but the last: read
+     * as content, it sent every row to the next page for ever.
+     * @param {!Node} node
+     * @return {!boolean}
+     */
+    function isTableColumns(node) {
+        return node.nodeType === Node.ELEMENT_NODE
+            && node.namespaceURI === tablens
+            && (node.localName === "table-column"
+                || node.localName === "table-columns"
+                || node.localName === "table-column-group");
+    }
+    /**
      * Whether a node is a row of a table, of the kind that is written whole
      * on one page.
      * @param {!Node} node
@@ -2223,6 +2261,31 @@ odf.TextLayout = function TextLayout() {
             && node.namespaceURI === tablens
             && (node.localName === "table-row"
                 || node.localName === "table-rows");
+    }
+    /**
+     * Whether nothing stands before this child of the element but the rows of
+     * the head of a table, which are written again at the top of every page
+     * the table runs over.
+     *
+     * A row that follows them alone is the first thing the page holds, and it
+     * is kept there whatever its height: a row taller than a page would
+     * otherwise be moved to a page of its own for ever, and every page would
+     * be written with the head of the table and nothing else.
+     * @param {!Element} element
+     * @param {!Node} node
+     * @return {!boolean}
+     */
+    function afterHeaderRowsOnly(element, node) {
+        var before = element.firstChild;
+        while (before && before !== node) {
+            if (!isHeaderRows(before)
+                    && !(before.nodeType === Node.TEXT_NODE
+                        && !before.textContent.trim())) {
+                return false;
+            }
+            before = before.nextSibling;
+        }
+        return true;
     }
     /**
      * Cut an element where the page ends, and answer what is left of it: a
@@ -2251,6 +2314,8 @@ odf.TextLayout = function TextLayout() {
             /**@type{?Element}*/
             head,
             /**@type{?Node}*/
+            column,
+            /**@type{?Node}*/
             next,
             /**@type{!ClientRect}*/
             rect;
@@ -2262,7 +2327,12 @@ odf.TextLayout = function TextLayout() {
             rect = node.nodeType === Node.TEXT_NODE
                 ? rangeOf(doc, node).getBoundingClientRect()
                 : /**@type{!Element}*/(node).getBoundingClientRect();
-            if (isHeaderRows(node) && node === element.firstElementChild) {
+            if (isTableColumns(node)) {
+                // The columns say how wide the table is and hold nothing that
+                // is read: they are of the table and not of the page.
+                node = node.nextSibling;
+            } else if (isHeaderRows(node)
+                    && node === element.firstElementChild) {
                 // The rows of the head of a table belong to the head of it
                 // and are never moved: they are written again at the top of
                 // what follows, see below. A document that writes such rows
@@ -2274,7 +2344,7 @@ odf.TextLayout = function TextLayout() {
                     from = cutText(box, /**@type{!Text}*/(node), alone)
                         || node;
                 } else if (isTableRow(node)
-                        && !(alone && node === element.firstElementChild)) {
+                        && !(alone && afterHeaderRowsOnly(element, node))) {
                     // A row of a table is written whole on one page or on
                     // the next, and never cut across, which would part the
                     // cells of one row from one another. A row taller than
@@ -2303,6 +2373,17 @@ odf.TextLayout = function TextLayout() {
         tail = /**@type{!Element}*/(element.cloneNode(false));
         // A table that is cut in two writes the rows of its head again at
         // the top of what follows, as an office does.
+        if (element.namespaceURI === tablens) {
+            // The columns of the table are written again with it, before its
+            // head, as they are the width of what follows.
+            column = element.firstChild;
+            while (column) {
+                if (isTableColumns(column)) {
+                    tail.appendChild(column.cloneNode(true));
+                }
+                column = column.nextSibling;
+            }
+        }
         head = domUtils.getDirectChild(element, tablens, "table-header-rows");
         if (head && element.namespaceURI === tablens
                 && !(from && isHeaderRows(from))) {
@@ -2823,6 +2904,9 @@ odf.TextLayout = function TextLayout() {
                 drawPageFurniture(fillingRoot, plan, fillingDiv,
                     readMeta(fillingRoot), 0);
                 round2 += 1;
+            }
+            if (round === fillingRound && fillingDiv) {
+                tellPageCount(fillingDiv, countPages(fillingDiv));
             }
         }, 0);
     }
