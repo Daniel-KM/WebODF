@@ -595,6 +595,58 @@ function BrowserRuntime() {
         return xhr;
     }
     /**
+     * Whether what is to be read is a document that is carried in its own
+     * name, "data:application/vnd.oasis.opendocument.text;base64,UEsDBBQ...",
+     * rather than a file to be fetched.
+     * @param {!string} path
+     * @return {!boolean}
+     */
+    function isDataUrl(path) {
+        return path.substr(0, 5).toLowerCase() === "data:";
+    }
+    /**
+     * Read a document that is carried in a data url. The bytes are written
+     * either in base64 or as the text of the url itself, where a byte that no
+     * url carries is written as "%xx", see RFC 2397.
+     * @param {!string} path
+     * @param {!string} encoding text encoding or 'binary'
+     * @param {!function(?string,?(string|Uint8Array)):undefined} callback
+     * @return {undefined}
+     */
+    function readDataUrl(path, encoding, callback) {
+        var comma = path.indexOf(","),
+            head,
+            /**@type{!string}*/
+            body,
+            /**@type{!Uint8Array}*/
+            bytes;
+        if (comma === -1) {
+            callback("The data url of " + path.substr(0, 32)
+                + " carries no comma, so it names no data.", null);
+            return;
+        }
+        head = path.substring(5, comma).toLowerCase();
+        body = path.substring(comma + 1);
+        try {
+            if (head.substr(head.length - 7) === ";base64") {
+                bytes = byteArrayFromString(self.getWindow().atob(body));
+            } else {
+                bytes = byteArrayFromString(decodeURIComponent(body));
+            }
+        } catch (/**@type{!Error}*/e) {
+            callback("The data url of " + path.substr(0, 32)
+                + " is not read: " + String(e), null);
+            return;
+        }
+        // The bytes are answered as they are, or read as the text the caller
+        // asked for, as a request would answer them.
+        if (encoding === "binary") {
+            callback(null, bytes);
+        } else {
+            callback(null, Runtime.byteArrayToString(bytes, encoding));
+        }
+    }
+    /**
      * Read the contents of a file. Returns the result via a callback. If the
      * encoding is 'binary', the result is returned as a Uint8Array,
      * otherwise, it is returned as a string.
@@ -604,18 +656,13 @@ function BrowserRuntime() {
      * @return {undefined}
      */
     function readFile(path, encoding, callback) {
-        if (encoding === 'base64') {
-          callback(null, path);
-          return;
-        }
-        var /**@type{!XMLHttpRequest}*/ xhr,
-            /**@type{!Uint8Array}*/zipData,
-            /**@type{!string}*/decoded,
-            /**@type{!function(!string):!string}*/atob = window.atob;
-        if(path.split(',')[0].length > 1 && path.split(',')[0].indexOf('base64') >= 0){
-            decoded = atob(path.split(',')[1]);
-            zipData = byteArrayFromString(decoded);
-            return callback(null, zipData);
+        var /**@type{!XMLHttpRequest}*/ xhr;
+        // A document that is already in memory is handed over as a data url,
+        // which no request reaches: an add-on that reads an attachment, or a
+        // page that made the document itself, names it that way.
+        if (isDataUrl(path)) {
+            readDataUrl(path, encoding, callback);
+            return;
         }
         xhr = createXHR(path, encoding, true);
         function handleResult() {
