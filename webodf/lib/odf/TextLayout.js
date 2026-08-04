@@ -3824,6 +3824,12 @@ odf.TextLayout = function TextLayout() {
         // the edge of the box, as it is in a box that lays its children one
         // under another: a page that ends on it would be one spacing too
         // full, and the line above it moved to the next page for nothing.
+        // What is left of an element that was cut goes on at the head of the
+        // page that follows: the spacing over its first child was already
+        // written on the page before it, and writing it again pushes the
+        // whole of it a little past the end of its page.
+        sheet.insertRule("[webodfhelper|continued] > :first-child"
+            + " {margin-top:0;}", sheet.cssRules.length);
         sheet.insertRule(".webodf-pageBox > :last-child,"
             + " office|text > :last-child, text|section > :last-child,"
             + " text|table-of-content > :last-child,"
@@ -4338,6 +4344,14 @@ odf.TextLayout = function TextLayout() {
         if (fontsLanded) {
             fontsLanded = false;
             trimPages(fillingRoot, plan, 0, true);
+        } else {
+            // The pages of this slice are set right as they are drawn: the
+            // room the foot of a page takes is known once it is drawn, and a
+            // page that gives it back holds a line less. A reader would
+            // otherwise see that line cut in two until the whole text was
+            // broken, which is a minute on a document of eight hundred
+            // pages.
+            trimPages(fillingRoot, plan, from, true);
         }
         drawPageFurniture(fillingRoot, plan, fillingDiv,
             readMeta(fillingRoot), from);
