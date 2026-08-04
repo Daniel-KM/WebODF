@@ -4048,7 +4048,8 @@
             // another, and the box is left clear between two of them, so that
             // the ground of the reader is seen there and each slide is read on
             // its own. A slide paints itself from its page style.
-            if (container.getDocumentType() !== "presentation") {
+            if (container.getDocumentType() !== "presentation"
+                    && container.getDocumentType() !== "drawing") {
                 sizer.style.background = "white";
             }
             // The #shadowContent master-page overlay is position:absolute with

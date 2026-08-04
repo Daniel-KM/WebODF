@@ -1155,9 +1155,13 @@
                 body;
             if (!contentElement) {
                 body = self.rootElement.body;
+                // A drawing is written as a run of pages, as a
+                // presentation is, and is drawn the same way: the canvas
+                // reads both, see "OdfCanvas.js".
                 contentElement = domUtils.getDirectChild(body, officens, "text")
                     || domUtils.getDirectChild(body, officens, "presentation")
-                    || domUtils.getDirectChild(body, officens, "spreadsheet");
+                    || domUtils.getDirectChild(body, officens, "spreadsheet")
+                    || domUtils.getDirectChild(body, officens, "drawing");
             }
             if (!contentElement) {
                 throw "Could not find content element in <office:body/>.";

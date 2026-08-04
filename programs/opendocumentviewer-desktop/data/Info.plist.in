@@ -57,6 +57,7 @@
                 <string>org.oasis-open.opendocument.spreadsheet-flat-xml</string>
                 <string>org.oasis-open.opendocument.graphics</string>
                 <string>org.oasis-open.opendocument.graphics-template</string>
+                <string>org.oasis-open.opendocument.graphics-flat-xml</string>
             </array>
         </dict>
     </array>

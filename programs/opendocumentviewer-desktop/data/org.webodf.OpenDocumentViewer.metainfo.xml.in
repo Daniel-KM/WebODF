@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What a store of software reads to offer the viewer: the entry of the
+     desktop says how it is launched, this says what it is. The tools of the
+     AppImage and of the flatpak ask for it, see "README-Products.md". -->
+<component type="desktop-application">
+  <id>org.webodf.OpenDocumentViewer</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>OpenDocument Viewer</name>
+  <name xml:lang="fr">Lecteur OpenDocument</name>
+  <summary>A reader for OpenDocument files</summary>
+  <summary xml:lang="fr">Un lecteur de fichiers OpenDocument</summary>
+  <!-- One description holds every language: a second one for another
+       language is no description of AppStream, that reads the language of
+       each line of it. -->
+  <description>
+    <p>
+      OpenDocument Viewer opens the files of the open standard OpenDocument
+      and shows them, with no office suite to hand.
+    </p>
+    <p xml:lang="fr">
+      Le Lecteur OpenDocument ouvre les fichiers au standard ouvert
+      OpenDocument et les affiche sans avoir besoin d’une suite bureautique.
+    </p>
+    <p>It opens:</p>
+    <p xml:lang="fr">Il ouvre :</p>
+    <ul>
+      <li>texts (.odt, .fodt)</li>
+      <li xml:lang="fr">les textes (.odt, .fodt)</li>
+      <li>spreadsheets (.ods, .fods)</li>
+      <li xml:lang="fr">les tableurs (.ods, .fods)</li>
+      <li>presentations (.odp, .fodp)</li>
+      <li xml:lang="fr">les présentations (.odp, .fodp)</li>
+      <li>drawings (.odg) and formulas (.odf)</li>
+      <li xml:lang="fr">les dessins (.odg) et les formules (.odf)</li>
+    </ul>
+    <p>
+      OpenDocument Format is the one standard of the office published by the
+      ISO and free to use: the viewer reads a file whatever wrote it. It is
+      light, and spares opening a suite of the office or sending the document
+      who knows where.
+    </p>
+    <p xml:lang="fr">
+      OpenDocument Format est la seule norme bureautique ISO publiée et
+      libre : le lecteur peut lire le fichier quel que soit le logiciel qui
+      l’a écrit. Le lecteur est léger et évite d’ouvrir une suite bureautique
+      ou d’envoyer les données on ne sait où.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.webodf.OpenDocumentViewer.desktop</launchable>
+  <url type="homepage">https://webodf.org/</url>
+  <url type="bugtracker">https://github.com/webodf/WebODF/issues</url>
+  <provides>
+    <binary>opendocumentviewer-desktop</binary>
+  </provides>
+  <categories>
+    <category>Office</category>
+    <category>Viewer</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <developer id="org.webodf">
+    <name>WebODF</name>
+  </developer>
+  <!-- A release is dated: the day this one was built, as a build of the
+       sources is a release of no other day. -->
+  <releases>
+    <release version="@OPENDOCUMENTVIEWER_METAINFO_VERSION@"
+      date="@OPENDOCUMENTVIEWER_METAINFO_DATE@"/>
+  </releases>
+</component>

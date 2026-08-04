@@ -188,10 +188,29 @@ if (UNIX AND NOT APPLE)
             COMMAND ${CMAKE_COMMAND} -E make_directory ${VIEWER_PRODUCTS}
             COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}
                 --prefix ${VIEWER_APPDIR}/usr
+            # LDAI_OUTPUT is the name the plugin of the AppImage reads
+            # today, OUTPUT the one it read before and warns against. The
+            # desktop file is named rather than left to be found: the tool
+            # takes the first one of the directory otherwise, which is this
+            # one alone today and would be another the day a second is
+            # installed.
+            # The tool of the AppImage looks for the metadata under the
+            # name it bore before, "appdata.xml", and warns where it finds
+            # none: the file is written under both names, the one of today
+            # and the one of yesterday.
+            COMMAND ${CMAKE_COMMAND} -E copy
+                ${VIEWER_APPDIR}/usr/share/metainfo/${VIEWER_ID}.metainfo.xml
+                ${VIEWER_APPDIR}/usr/share/metainfo/${VIEWER_ID}.appdata.xml
             COMMAND ${CMAKE_COMMAND} -E env
-                OUTPUT=${VIEWER_APPIMAGE}
+                LDAI_OUTPUT=${VIEWER_APPIMAGE}
                 ${VIEWER_QMAKE}
+                # The plugin of qt looks for the modules of qml and says so
+                # where a program has none, which the viewer has not: it is
+                # told to leave qml alone.
+                QT_SKIP_MODULES=qml
                 ${LINUXDEPLOY} --appdir ${VIEWER_APPDIR}
+                    --desktop-file
+                        ${VIEWER_APPDIR}/usr/share/applications/org.webodf.OpenDocumentViewer.desktop
                     --plugin qt --output appimage
             COMMAND ${CMAKE_COMMAND} -E echo "Wrote ${VIEWER_APPIMAGE}"
             DEPENDS opendocumentviewer-desktop
