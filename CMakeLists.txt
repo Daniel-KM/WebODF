@@ -64,17 +64,26 @@ message(STATUS "WebODF version " ${WEBODF_VERSION})
 ## Find installed dependencies
 #########################################################
 
-set(QT_MIN_VERSION "5.1.1")
-find_package(Qt5Network)
-find_package(Qt5Xml)
-find_package(Qt5PrintSupport)
-find_package(Qt5WebKitWidgets)
+# qtjsruntime runs the tests in the webkit of qt, see "webodf/tests". It is
+# opt-in: Qt WebKit was dropped from Qt in 5.6 and is not packaged any more by
+# Debian since 13, and "npm run test:browser" runs the same tests in a browser
+# that is still maintained. Without the option, the modules are not looked for
+# at all, so no warning is reported for something that is not asked for.
+option(WEBODF_QTJSRUNTIME "Build qtjsruntime, that runs the tests in the webkit of qt" OFF)
 
-if (Qt5Network_FOUND AND Qt5Xml_FOUND AND Qt5PrintSupport_FOUND AND Qt5WebKitWidgets_FOUND)
-  set(BUILD_QTJSRUNTIME TRUE)
-else ()
-  message(WARNING "Qt5 with modules Qt5Network Qt5Xmle Qt5PrintSupport Qt5WebKitWidgets was not found. qtjsruntime will no be built.")
-  set(BUILD_QTJSRUNTIME FALSE)
+set(BUILD_QTJSRUNTIME FALSE)
+if (WEBODF_QTJSRUNTIME)
+  set(QT_MIN_VERSION "5.1.1")
+  find_package(Qt5Network)
+  find_package(Qt5Xml)
+  find_package(Qt5PrintSupport)
+  find_package(Qt5WebKitWidgets)
+
+  if (Qt5Network_FOUND AND Qt5Xml_FOUND AND Qt5PrintSupport_FOUND AND Qt5WebKitWidgets_FOUND)
+    set(BUILD_QTJSRUNTIME TRUE)
+  else ()
+    message(FATAL_ERROR "Qt5 with modules Qt5Network Qt5Xml Qt5PrintSupport Qt5WebKitWidgets was not found, so qtjsruntime cannot be built. On Debian 12 and older: apt-get install qtbase5-dev libqt5webkit5-dev")
+  endif ()
 endif ()
 
 # java runtime is needed for Closure Compiler
