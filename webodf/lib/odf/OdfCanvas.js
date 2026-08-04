@@ -4174,6 +4174,10 @@
             hideEmptyListItems(odfnode.body, css);
             expandSpaceElements(odfnode.body);
             expandTabElements(odfnode.body);
+            // A tab of the text is laid at the stop the document writes,
+            // see "TextLayout.js": a table of contents is written from the
+            // left and the numbers of its pages against a stop on the right.
+            textLayout.layOutTabs(odfnode);
             loadImages(container, odfnode.body, css);
             loadCharts(container, odfnode.body, css);
             loadVideos(container, odfnode.body);

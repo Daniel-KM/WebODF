@@ -833,27 +833,21 @@ odf.TextLayout = function TextLayout() {
         });
     }
     /**
-     * Set the parts of a paragraph against the tab stops it is written with.
+     * The parts of a paragraph, that is what stands between its tabs.
      *
-     * A tab is drawn as a tab of a terminal otherwise, that walks to the next
-     * stop of eight letters, so a title, a date and a number of a page ran
-     * into one another. Each part is laid where its stop says instead, and
-     * against it as its stop asks: the standard calls that "style:type" of a
-     * "style:tab-stop".
-     * @param {!odf.ODFDocumentElement} odfroot
+     * The nodes of the paragraph are taken out of it and put in a span for
+     * each part, the first of them holding what stands before the first tab.
      * @param {!Element} paragraph
-     * @return {undefined}
+     * @param {!Document} doc
+     * @param {!string} htmlns
+     * @return {!Array.<!HTMLElement>}
      */
-    function layOutTabStops(odfroot, paragraph) {
-        var doc = paragraph.ownerDocument,
-            htmlns = "http://www.w3.org/1999/xhtml",
-            stops = tabStopsOf(odfroot, paragraph),
-            /**@type{!Array.<!HTMLElement>}*/
+    function partsOfParagraph(paragraph, doc, htmlns) {
+        var /**@type{!Array.<!HTMLElement>}*/
             parts = [],
             /**@type{!HTMLElement}*/
-            part,
-            /**@type{!HTMLElement}*/
-            line,
+            part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns,
+                "span")),
             /**@type{?Node}*/
             node = paragraph.firstChild,
             /**@type{?Node}*/
@@ -862,19 +856,6 @@ odf.TextLayout = function TextLayout() {
             pieces,
             /**@type{!number}*/
             i;
-        if (stops.length === 0) {
-            return;
-        }
-        raiseTabs(paragraph);
-        if (!paragraph.getElementsByTagNameNS(textns, "tab").length
-                && String(paragraph.textContent).indexOf("\t") === -1) {
-            // A line without a tab is written as it stands: nothing of it is
-            // moved, and nothing of it can be lost.
-            return;
-        }
-        // The parts are the nodes between the tabs, the first one before the
-        // first tab.
-        part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "span"));
         parts.push(part);
         while (node) {
             next = node.nextSibling;
@@ -888,7 +869,7 @@ odf.TextLayout = function TextLayout() {
             } else if (node.nodeType === Node.TEXT_NODE
                     && String(node.textContent).indexOf("\t") !== -1) {
                 // The canvas writes a "text:tab" as a tab of a terminal
-                // before a header is drawn, so a tab is a letter here.
+                // before a text is drawn, so a tab is a letter here.
                 pieces = String(node.textContent).split("\t");
                 paragraph.removeChild(node);
                 for (i = 0; i < pieces.length; i += 1) {
@@ -899,7 +880,7 @@ odf.TextLayout = function TextLayout() {
                         ));
                         parts.push(part);
                     }
-                    if (pieces[i].length > 0) {
+                    if (pieces[i] !== "") {
                         part.appendChild(doc.createTextNode(pieces[i]));
                     }
                 }
@@ -908,6 +889,39 @@ odf.TextLayout = function TextLayout() {
             }
             node = next;
         }
+        return parts;
+    }
+    /**
+     * Set the parts of a paragraph against the tab stops it is written with.
+     *
+     * A tab is drawn as a tab of a terminal otherwise, that walks to the next
+     * stop of eight letters, so a title, a date and a number of a page ran
+     * into one another. Each part is laid where its stop says instead, and
+     * against it as its stop asks: the standard calls that "style:type" of a
+     * "style:tab-stop".
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} paragraph
+     * @return {undefined}
+     */
+    function layOutTabStops(odfroot, paragraph) {
+        var doc = /**@type{!Document}*/(paragraph.ownerDocument),
+            htmlns = "http://www.w3.org/1999/xhtml",
+            stops = tabStopsOf(odfroot, paragraph),
+            /**@type{!Array.<!HTMLElement>}*/
+            parts,
+            /**@type{!HTMLElement}*/
+            line;
+        if (stops.length === 0) {
+            return;
+        }
+        raiseTabs(paragraph);
+        if (!paragraph.getElementsByTagNameNS(textns, "tab").length
+                && String(paragraph.textContent).indexOf("\t") === -1) {
+            // A line without a tab is written as it stands: nothing of it is
+            // moved, and nothing of it can be lost.
+            return;
+        }
+        parts = partsOfParagraph(paragraph, doc, htmlns);
         if (parts.length < 2) {
             // Nothing was told apart, so what was taken from the paragraph
             // is put back where it was.
@@ -950,6 +964,74 @@ odf.TextLayout = function TextLayout() {
             line.appendChild(piece);
         });
 
+    }
+    /**
+     * Lay the tabs of a paragraph of the text at their stops.
+     *
+     * A header is drawn in a box of its own and every part of it is laid at
+     * its stop; a paragraph of the text keeps the first of its parts in the
+     * flow of the text, so that the line holds its height and its words wrap
+     * as they would: an entry of a table of contents is written from the
+     * left, and the number of the page it names is laid against the stop on
+     * the right.
+     *
+     * Nothing is measured here: the stops are written where the document
+     * says, and the parts are laid there by the browser.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} paragraph
+     * @return {undefined}
+     */
+    function layOutTabsInText(odfroot, paragraph) {
+        var doc = /**@type{!Document}*/(paragraph.ownerDocument),
+            htmlns = "http://www.w3.org/1999/xhtml",
+            stops = tabStopsOf(odfroot, paragraph),
+            /**@type{!Array.<!HTMLElement>}*/
+            parts,
+            /**@type{!HTMLElement}*/
+            line;
+        if (stops.length === 0
+                || paragraph.hasAttributeNS(webodfhelperns, "laidout")) {
+            return;
+        }
+        raiseTabs(paragraph);
+        if (!paragraph.getElementsByTagNameNS(textns, "tab").length
+                && String(paragraph.textContent).indexOf("\t") === -1) {
+            return;
+        }
+        parts = partsOfParagraph(paragraph, doc, htmlns);
+        if (parts.length < 2) {
+            while (parts[0].firstChild) {
+                paragraph.appendChild(parts[0].firstChild);
+            }
+            return;
+        }
+        line = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "div"));
+        line.style.position = "relative";
+        paragraph.appendChild(line);
+        paragraph.setAttributeNS(webodfhelperns, "webodfhelper:laidout",
+            "true");
+        parts.forEach(function (piece, index) {
+            var /**@type{?odf.TextLayout.TabStop}*/
+                stop = index === 0
+                    ? null
+                    : stops[Math.min(index, stops.length) - 1];
+            if (!stop) {
+                // The first part is written as the text is: it holds the
+                // height of the line and wraps where the page ends.
+                line.appendChild(piece);
+                return;
+            }
+            piece.style.position = "absolute";
+            piece.style.whiteSpace = "pre";
+            piece.style.top = "0";
+            piece.style.left = "min(" + stop.at + "px, 100%)";
+            if (stop.type === "center") {
+                piece.style.transform = "translateX(-50%)";
+            } else if (stop.type === "right") {
+                piece.style.transform = "translateX(-100%)";
+            }
+            line.appendChild(piece);
+        });
     }
     /**
      * Push the parts of the lines apart where they would be written over.
@@ -3544,6 +3626,25 @@ odf.TextLayout = function TextLayout() {
         return maxTime > 0;
     }
     this.layout = layout;
+    /**
+     * Lay the tabs of every paragraph of a text at their stops.
+     *
+     * A tab of the text was drawn as a tab of a terminal, that walks to the
+     * next stop of eight letters: an entry of a table of contents and the
+     * number of the page it names ran into one another. It is done once, as
+     * the text is drawn, and nothing is measured for it.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @return {undefined}
+     */
+    this.layOutTabs = function (odfroot) {
+        var text = getOfficeText(odfroot);
+        if (!text) {
+            return;
+        }
+        paragraphsOf(text).forEach(function (paragraph) {
+            layOutTabsInText(odfroot, paragraph);
+        });
+    };
     /**
      * The way a text is drawn over pages.
      *
