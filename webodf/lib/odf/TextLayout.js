@@ -3979,9 +3979,10 @@ odf.TextLayout = function TextLayout() {
      * furniture is drawn, and what no longer fits is moved on by the trim.
      * @param {!PagePlan} plan
      * @param {!Array.<!Element>} boxes
+     * @param {!number=} from the first page to size, from zero
      * @return {undefined}
      */
-    function resizePages(plan, boxes) {
+    function resizePages(plan, boxes, from) {
         var doc = boxes.length > 0
                 ? /**@type{!Document}*/(boxes[0].ownerDocument)
                 : null,
@@ -3998,6 +3999,9 @@ odf.TextLayout = function TextLayout() {
                     - dims.marginBottom) + "px",
                 /**@type{!number}*/
                 room;
+            if (index < (from || 0)) {
+                return;
+            }
             if (page.style.height !== tall) {
                 page.style.height = tall;
             }
@@ -4221,8 +4225,8 @@ odf.TextLayout = function TextLayout() {
         // The pages are given the size the plan gives them before they are
         // read: the room the headers and the feet take was not known when
         // the first of them were filled.
-        resizePages(plan, boxes);
-        placePages(plan, boxes, 0);
+        resizePages(plan, boxes, from);
+        placePages(plan, boxes, from || 0);
         i = from || 0;
         while (i < boxes.length && boxes.length < maxPages) {
             if (!keepLast || i < boxes.length - 1) {
