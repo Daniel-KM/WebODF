@@ -98,6 +98,7 @@ var JavaObject;
 var JavaPackage;
 
 /**
+ * @const {!Object}
  * @see https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Packages
  */
 var Packages;

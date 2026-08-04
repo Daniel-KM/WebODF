@@ -211,173 +211,208 @@ function readFile(path, encoding) {"use strict"; }
  * @return {undefined}
  */
 function quit(exitCode) {"use strict"; }
+// The java packages that Rhino exposes to the scripts it runs. The variable
+// itself is declared in "externs/window.js". Only the classes and the methods
+// used by RhinoRuntime are declared below. The namespaces are plain objects: a
+// typedef would declare a type, not a value, and the classes below it would be
+// unknown.
+
 /**
- * @typedef {!Object}
+ * @const {!Object}
  */
-Packages.java;
+Packages.java = {};
+
 /**
- * @typedef {!Object}
- */
-Packages.java.io;
-/**
- * @constructor
- * @extends Packages.java.io.Reader
- * @param {!string} path
- */
-Packages.java.io.FileReader = function (path) {"use strict"; };
-/**
- * @typedef {!Object}
- */
-Packages.javax;
-/**
- * @namespace
- */
-Packages.javax.xml = {};
-/**
- * @namespace
- */
-Packages.javax.xml.validation = {};
-/**
- * @constructor
- */
-Packages.javax.xml.validation.Schema = function () {"use strict"; };
-/**
- * @namespace
- */
-Packages.javax.xml.parsers = {};
-/**
- * @constructor
- */
-Packages.javax.xml.parsers.DocumentBuilder = function () {"use strict"; };
-/**
- * @param {!Object} entityresolver
- * @return {undefined}
- */
-Packages.javax.xml.parsers.DocumentBuilder.prototype.setEntityResolver =
-    function (entityresolver) {"use strict"; };
-/**
- * @param {!Packages.org.xml.sax.InputSource|!Packages.java.io.File} source
- * @return {?Document}
- */
-Packages.javax.xml.parsers.DocumentBuilder.prototype.parse =
-    function (source) {"use strict"; };
-/**
- * @return {DOMImplementation}
- */
-Packages.javax.xml.parsers.DocumentBuilder.prototype.getDOMImplementation =
-    function () {"use strict"; };
-/**
- * @constructor
- */
-Packages.javax.xml.parsers.DocumentBuilderFactory = function () {"use strict"; };
-/**
- * @constructor
- */
-Packages.DocumentBuilderFactory = function () {"use strict"; };
-/**
- * @return {!Packages.javax.xml.parsers.DocumentBuilderFactory}
- */
-Packages.newInstance = function () {"use strict"; };
-/**
- * @return {!Packages.javax.xml.parsers.DocumentBuilderFactory}
- */
-Packages.javax.xml.parsers.DocumentBuilderFactory.newInstance = function () {"use strict"; };
-/**
- * @param {!boolean} value
- */
-Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.setValidating =
-    function (value) {"use strict"; };
-/**
- * @param {!boolean} value
- */
-Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.setNamespaceAware =
-    function (value) {"use strict"; };
-/**
- * @param {!boolean} value
- */
-Packages.javax.xml.parsers.DocumentBuilderFactory.prototype
-    .setExpandEntityReferences = function (value) {"use strict"; };
-/**
- * @param {?Packages.javax.xml.validation.Schema} schema
- */
-Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.setSchema =
-    function (schema) {"use strict"; };
-/**
- * @return {!Packages.javax.xml.parsers.DocumentBuilder}
- */
-Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.newDocumentBuilder =
-    function () {"use strict"; };
-/**
- * @typedef {!Object}
- */
-Packages.org;
-/**
- * @namespace
- */
-Packages.org.xml.sax = {};
-/**
- * @param {!Object} definition
- * @return {!Object}
- */
-Packages.org.xml.sax.EntityResolver = function (definition) {"use strict"; };
-/**
- * @typedef {!Object}
- */
-Packages.java;
-/**
- * @namespace
+ * @const {!Object}
  */
 Packages.java.io = {};
+
 /**
  * @constructor
  * @param {!string} path
  */
 Packages.java.io.File = function (path) {"use strict"; };
+
 /**
  * @return {!boolean}
  */
 Packages.java.io.File.prototype.isFile = function () {"use strict"; };
+
 /**
  * @return {!boolean}
  */
 Packages.java.io.File.prototype['delete'] = function () {"use strict"; };
+
 /**
  * @param {!Packages.java.io.File} other
  * @return {!boolean}
  */
 Packages.java.io.File.prototype.rename = function (other) {"use strict"; };
+
 /**
  * @return {undefined}
  */
 Packages.java.io.File.prototype.deleteOnExit = function () {"use strict"; };
+
 /**
  * @return {!number}
  */
 Packages.java.io.File.prototype.length = function () {"use strict"; };
+
 /**
  * @constructor
  */
 Packages.java.io.Reader = function () {"use strict"; };
+
 /**
  * @constructor
- * @extends Packages.java.io.Reader
+ * @extends {Packages.java.io.Reader}
+ * @param {!string} path
+ */
+Packages.java.io.FileReader = function (path) {"use strict"; };
+
+/**
+ * @constructor
+ * @extends {Packages.java.io.Reader}
  * @param {!string} string
  */
 Packages.java.io.StringReader = function (string) {"use strict"; };
+
 /**
  * @constructor
  * @param {!string} path
  */
 Packages.java.io.FileOutputStream = function (path) {"use strict"; };
+
 /**
  * @param {!number} b
  * @return {undefined}
  */
 Packages.java.io.FileOutputStream.prototype.write = function (b) {"use strict"; };
+
 /**
  * @return {undefined}
  */
 Packages.java.io.FileOutputStream.prototype.close = function () {"use strict"; };
+
+/**
+ * @const {!Object}
+ */
+Packages.javax = {};
+
+/**
+ * @const {!Object}
+ */
+Packages.javax.xml = {};
+
+/**
+ * @const {!Object}
+ */
+Packages.javax.xml.validation = {};
+
+/**
+ * @constructor
+ */
+Packages.javax.xml.validation.Schema = function () {"use strict"; };
+
+/**
+ * @const {!Object}
+ */
+Packages.javax.xml.parsers = {};
+
+/**
+ * @constructor
+ */
+Packages.javax.xml.parsers.DocumentBuilder = function () {"use strict"; };
+
+/**
+ * @param {!Object} entityResolver
+ * @return {undefined}
+ */
+Packages.javax.xml.parsers.DocumentBuilder.prototype.setEntityResolver =
+    function (entityResolver) {"use strict"; };
+
+/**
+ * @param {!Packages.org.xml.sax.InputSource|!Packages.java.io.File} source
+ * @return {!Document}
+ */
+Packages.javax.xml.parsers.DocumentBuilder.prototype.parse =
+    function (source) {"use strict"; };
+
+/**
+ * @return {!DOMImplementation}
+ */
+Packages.javax.xml.parsers.DocumentBuilder.prototype.getDOMImplementation =
+    function () {"use strict"; };
+
+/**
+ * @constructor
+ */
+Packages.javax.xml.parsers.DocumentBuilderFactory = function () {"use strict"; };
+
+/**
+ * @return {!Packages.javax.xml.parsers.DocumentBuilderFactory}
+ */
+Packages.javax.xml.parsers.DocumentBuilderFactory.newInstance =
+    function () {"use strict"; };
+
+/**
+ * @param {!boolean} validating
+ * @return {undefined}
+ */
+Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.setValidating =
+    function (validating) {"use strict"; };
+
+/**
+ * @param {!boolean} namespaceAware
+ * @return {undefined}
+ */
+Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.setNamespaceAware =
+    function (namespaceAware) {"use strict"; };
+
+/**
+ * @param {!boolean} expandEntityReferences
+ * @return {undefined}
+ */
+Packages.javax.xml.parsers.DocumentBuilderFactory.prototype
+    .setExpandEntityReferences = function (expandEntityReferences) {"use strict"; };
+
+/**
+ * @param {?Packages.javax.xml.validation.Schema} schema
+ * @return {undefined}
+ */
+Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.setSchema =
+    function (schema) {"use strict"; };
+
+/**
+ * @return {!Packages.javax.xml.parsers.DocumentBuilder}
+ */
+Packages.javax.xml.parsers.DocumentBuilderFactory.prototype.newDocumentBuilder =
+    function () {"use strict"; };
+
+/**
+ * @const {!Object}
+ */
+Packages.org = {};
+
+/**
+ * @const {!Object}
+ */
+Packages.org.xml = {};
+
+/**
+ * @const {!Object}
+ */
+Packages.org.xml.sax = {};
+
+/**
+ * Rhino builds an implementation of the java interface from an object holding
+ * its methods, so it is called without "new".
+ * @param {!Object} definition
+ * @return {!Object}
+ */
+Packages.org.xml.sax.EntityResolver = function (definition) {"use strict"; };
+
 /**
  * @constructor
  * @param {!Packages.java.io.Reader|!string} reader
