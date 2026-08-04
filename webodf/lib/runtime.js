@@ -1841,6 +1841,19 @@ var webodf = {};
         }
         e.parentNode.insertBefore(df, e);
     }
+    // The five namespaces of the library are gathered here, so that a class may
+    // be looked up by its name. The compiler reports a partial alias for each
+    // of them, JSC_PARTIAL_NAMESPACE, as it may no longer flatten what they
+    // hold, and any way of reading a namespace as a value does it: a map built
+    // when a class is looked up rather than here, or a function returning them
+    // one by one, are reported the same way. Only dropping the lookup by name
+    // would remove it, that this loader exists for.
+    //
+    // The warning is left, as it only shows in the target "compiled.js" of the
+    // build with cmake, that compiles the library and the tests with
+    // ADVANCED_OPTIMIZATIONS to report more problems, and whose output is never
+    // run. The library that ships is compiled with SIMPLE_OPTIMIZATIONS, that
+    // flattens no namespace, and reports none of it.
     var /**@type{!Object.<string,!{dir:string, deps:!Array.<string>}>}*/
         dependencies,
         packages = {
