@@ -131,6 +131,17 @@ else ()
     message(STATUS "No java was found: the types of the sources are not checked, and the tests are not run in rhino.")
 endif ()
 
+# A build that is given a library that was built already builds nothing of it:
+# it neither runs node nor asks for it. That is what a build in a sandbox
+# does, where there is neither node nor a network to install its tools from,
+# see the flatpak of the viewer of the desktop.
+set(WEBODF_PREBUILT_LIBRARY "" CACHE FILEPATH
+    "A webodf.js that was built already, to be used instead of building one")
+if (WEBODF_PREBUILT_LIBRARY AND NOT EXISTS "${WEBODF_PREBUILT_LIBRARY}")
+    message(FATAL_ERROR
+        "WEBODF_PREBUILT_LIBRARY names ${WEBODF_PREBUILT_LIBRARY}, which is not there.")
+endif ()
+
 # Node.js will be downloaded on Windows systems, so check for installed version is below
 # 22.22.2 is the oldest release of node jsdom runs on, that the tests need.
 # The tools of the build are tested with 24, the release under long term
@@ -233,7 +244,9 @@ ENDIF(NODEJS_EXECUTABLE)
 # what it finds, so a node that was installed later, by nvm for instance, is
 # only seen once the entry is dropped: the path is named here, as it is often
 # an older one that is still in the cache.
-if (NODEJS_VERSION VERSION_LESS REQUIRED_NODEJS_VERSION)
+if (WEBODF_PREBUILT_LIBRARY)
+    message(STATUS "The library is taken from ${WEBODF_PREBUILT_LIBRARY}: node is not needed.")
+elseif (NODEJS_VERSION VERSION_LESS REQUIRED_NODEJS_VERSION)
     message(FATAL_ERROR "Node.js is required in version "
         ${REQUIRED_NODEJS_VERSION} " or later, but "
         ${NODEJS_EXECUTABLE} " is " ${NODEJS_VERSION}
@@ -515,7 +528,22 @@ endmacro(WEBODF_PRODUCT_MISSING)
 #############################
 
 # the lib
-add_subdirectory(webodf)
+if (WEBODF_PREBUILT_LIBRARY)
+    # The library was built already and is taken as it is: nothing of it is
+    # read, checked or written here, and neither node nor java is asked for.
+    # A program of this build reads it where it would have been written.
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/webodf/webodf.js
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/webodf
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${WEBODF_PREBUILT_LIBRARY} ${CMAKE_BINARY_DIR}/webodf/webodf.js
+        DEPENDS ${WEBODF_PREBUILT_LIBRARY}
+        COMMENT "The library, taken from ${WEBODF_PREBUILT_LIBRARY}")
+    add_custom_target(webodf.js-target
+        DEPENDS ${CMAKE_BINARY_DIR}/webodf/webodf.js)
+else ()
+    add_subdirectory(webodf)
+endif ()
 
 # the programs/components
 if (WEBODF_PROGRAMS)
@@ -538,7 +566,11 @@ endif ()
 add_custom_target(tests
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "Every test of this build has run.")
-add_dependencies(tests webodf.js-tests)
+# A build that was given a library reads none of its sources, so there is
+# nothing of the library to test here: only the programs are.
+if (TARGET webodf.js-tests)
+    add_dependencies(tests webodf.js-tests)
+endif ()
 foreach (WEBODF_TEST_TARGET
         test-opendocumenttexteditor
         test-opendocumenttextcollab

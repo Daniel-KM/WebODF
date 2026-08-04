@@ -224,6 +224,9 @@ if (UNIX AND NOT APPLE)
     # one that will do is the least version of qt the viewer is built with,
     # see "find_package(Qt6 ...)" in the root: a machine that kept only an
     # older branch has nothing to build against, and is told so.
+    # The library the sandbox is given, written by this build: the manifest
+    # names it beside the sources.
+    set(WEBODF_JS_FILE ${CMAKE_BINARY_DIR}/webodf/webodf.js)
     set(VIEWER_FLATPAK_REPO ${CMAKE_CURRENT_BINARY_DIR}/flatpak-repo)
     set(VIEWER_FLATPAK_RUNTIME_LEAST "6.4")
     set(WEBODF_FLATPAK_RUNTIME "" CACHE STRING
@@ -319,7 +322,7 @@ if (UNIX AND NOT APPLE)
                 ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml true
             COMMAND flatpak build-bundle ${VIEWER_FLATPAK_REPO}
                 ${VIEWER_PRODUCTS}/${VIEWER_ID}-${WEBODF_VERSION}.flatpak ${VIEWER_ID}
-            DEPENDS opendocumentviewer-desktop
+            DEPENDS opendocumentviewer-desktop webodf.js-target
             COMMENT "The flatpak of the viewer of the desktop")
         WEBODF_PRODUCT_MADE(package-flatpak
             "${VIEWER_ID}-${WEBODF_VERSION}.flatpak")
