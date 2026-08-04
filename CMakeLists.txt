@@ -81,7 +81,11 @@ endif ()
 find_package(Java COMPONENTS Runtime REQUIRED)
 
 # Node.js will be downloaded on Windows systems, so check for installed version is below
-SET(REQUIRED_NODEJS_VERSION 0.10.5)
+# 22.22.2 is the oldest release of node jsdom runs on, that the tests need.
+# The tools of the build are tested with 24, the release under long term
+# support. The exact range is in the field "engines" of "package.json", that
+# cmake cannot express.
+SET(REQUIRED_NODEJS_VERSION 22.22.2)
 
 
 #########################################################
@@ -137,58 +141,42 @@ ExternalProject_Add(
 )
 set(JSDOCDIR ${CMAKE_BINARY_DIR}/JsDoc-prefix/src/JsDoc/jsdoc-toolkit)
 
-# Node.js
-set(NODEVERSION 0.10.20)
-if(WIN32)
-    # On windows, it is significantly faster and more reliable to download
-    # a pre-built 32-bit binary
-    set(NODE_BIN_URL "http://nodejs.org/dist/v${NODEVERSION}/node.exe")
-    set(NODE_BIN_MD5 "3bc43fbbfcddc376d5769e9757bd0bca")
-    file(DOWNLOAD "${NODE_BIN_URL}" "${EXTERNALS_DOWNLOAD_DIR}/node-download.exe"
-        SHOW_PROGRESS
-        EXPECTED_MD5 ${NODE_BIN_MD5}
-    )
-    set(NODE ${CMAKE_BINARY_DIR}/NodeJS-prefix/bin/node.exe)
-    set(NPM ${CMAKE_BINARY_DIR}/NodeJS-prefix/bin/npm.exe)
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/NodeJS-prefix
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/NodeJS-prefix/bin
-      COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNALS_DOWNLOAD_DIR}/node-download.exe "${NODE}"
-    )
-    add_custom_target(NodeJS DEPENDS "${NODE}")
-else(WIN32)
-    SET(NODEJS_VERSION 0.0.0)
-    # Debian uses nodejs as binary name, due to conflict with node package (Amateur Packet Radio Node Program)
-    # https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager
-    FIND_PROGRAM(NODEJS_EXECUTABLE
-        NAMES nodejs node
-        PATHS ""
-        DOC "Path to Node.js executable"
-    )
-    IF(NODEJS_EXECUTABLE)
-        execute_process(COMMAND ${NODEJS_EXECUTABLE} --version
-            OUTPUT_VARIABLE NODEJS_VERSION
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
-        string(SUBSTRING ${NODEJS_VERSION} 1 -1 NODEJS_VERSION)
-        MESSAGE (STATUS "Installed Node.js found: ${NODEJS_EXECUTABLE} - ${NODEJS_VERSION}")
-    ELSE(NODEJS_EXECUTABLE)
-        MESSAGE (STATUS "No installed Node.js found. On platforms other than Windows, Node.js is not downloaded, but expected to be installed.")
-    ENDIF(NODEJS_EXECUTABLE)
+# Node.js is expected to be installed, on every platform. Windows used to
+# download a single node.exe, but the build needs npm as well, that comes with
+# the installer only, and the url that binary was at holds the releases of
+# 2013 alone.
+SET(NODEJS_VERSION 0.0.0)
+# Debian uses nodejs as binary name, due to conflict with node package (Amateur Packet Radio Node Program)
+# https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager
+FIND_PROGRAM(NODEJS_EXECUTABLE
+    NAMES nodejs node
+    PATHS ""
+    DOC "Path to Node.js executable"
+)
+IF(NODEJS_EXECUTABLE)
+    execute_process(COMMAND ${NODEJS_EXECUTABLE} --version
+        OUTPUT_VARIABLE NODEJS_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(SUBSTRING ${NODEJS_VERSION} 1 -1 NODEJS_VERSION)
+    MESSAGE (STATUS "Installed Node.js found: ${NODEJS_EXECUTABLE} - ${NODEJS_VERSION}")
+ELSE(NODEJS_EXECUTABLE)
+    MESSAGE (STATUS "No installed Node.js found. Node.js is not downloaded, but expected to be installed.")
+ENDIF(NODEJS_EXECUTABLE)
 
-    # fail if NodeJS version requirement is not satisfied
-    if (${NODEJS_VERSION} VERSION_LESS ${REQUIRED_NODEJS_VERSION})
-        message(FATAL_ERROR "Node.js is required in version " ${REQUIRED_NODEJS_VERSION}  " or later")
-    else()
-        message(STATUS "good Node.js found: " ${NODEJS_VERSION} " (" ${REQUIRED_NODEJS_VERSION} " required.)")
-    endif()
-    set(NODE ${NODEJS_EXECUTABLE})
-    FIND_PROGRAM(NPM
-        NAMES npm
-        PATHS ""
-        DOC "Path to NPM executable"
-    )
-    MESSAGE (STATUS "npm found: " ${NPM})
-    add_custom_target(NodeJS DEPENDS "${NODEJS_EXECUTABLE}")
-endif(WIN32)
+# fail if NodeJS version requirement is not satisfied
+if (${NODEJS_VERSION} VERSION_LESS ${REQUIRED_NODEJS_VERSION})
+    message(FATAL_ERROR "Node.js is required in version " ${REQUIRED_NODEJS_VERSION}  " or later")
+else()
+    message(STATUS "good Node.js found: " ${NODEJS_VERSION} " (" ${REQUIRED_NODEJS_VERSION} " required.)")
+endif()
+set(NODE ${NODEJS_EXECUTABLE})
+FIND_PROGRAM(NPM
+    NAMES npm
+    PATHS ""
+    DOC "Path to NPM executable"
+)
+MESSAGE (STATUS "npm found: " ${NPM})
+add_custom_target(NodeJS DEPENDS "${NODEJS_EXECUTABLE}")
 
 # copy node_modules directory from source to build
 # (this is needed if a module is required in there)
