@@ -107,6 +107,40 @@ function flags(files) {
     return list;
 }
 
+/**
+ * Arguments of a second pass, over the libraries packaged with webodf.js, JSZip
+ * for now. Their types are not checked, as they are not written for the
+ * compiler, but their jsdoc has to parse, as the target "simplecompiled.js" of
+ * the build with cmake compiles them: without this pass, a broken annotation is
+ * only reported by the build with cmake.
+ * @return {!Array.<string>}
+ */
+function packagedFlags() {
+    var list = [
+        "--compilation_level", "WHITESPACE_ONLY",
+        "--warning_level", "VERBOSE",
+        "--env", "CUSTOM",
+        "--language_in", "ECMASCRIPT3",
+        "--language_out", "ECMASCRIPT3",
+        "--js_output_file", "/dev/null"
+    ];
+    // The same groups as the build with cmake, so that a broken annotation is
+    // an error and not a warning. reportUnknownTypes is left out, as are the
+    // checks of the types: WHITESPACE_ONLY does not run them.
+    closure.errorGroupsFor(closure.version).forEach(function (group) {
+        if (group !== "reportUnknownTypes") {
+            list.push("--jscomp_error", group);
+        }
+    });
+    closure.offGroups.forEach(function (group) {
+        list.push("--jscomp_off", group);
+    });
+    fs.readdirSync(path.join(rootDir, "webodf/lib/externs")).forEach(function (name) {
+        list.push("--js", path.join(rootDir, "webodf/lib/externs", name));
+    });
+    return list;
+}
+
 closure.jar().then(function (jarPath) {
     var files = writeGeneratedFiles(),
         flagFile = path.join(files.dir, "flagfile.txt"),
@@ -134,6 +168,10 @@ closure.jar().then(function (jarPath) {
         console.error("Unable to run java, that the closure compiler needs: "
             + result.error.message);
         process.exit(1);
+    }
+    if (result.status === 0 && withTests) {
+        result = child.spawnSync("java",
+            ["-jar", jarPath].concat(packagedFlags()), {stdio: "inherit"});
     }
     process.exit(result.status === null ? 1 : result.status);
 }).catch(function (err) {

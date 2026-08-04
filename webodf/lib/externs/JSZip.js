@@ -562,7 +562,7 @@ Usage:
 /**
  * Representation a of zip file in js
  * @constructor
- * @param {String=|ArrayBuffer=|Uint8Array=} data the data to load, if any (optional).
+ * @param {(string|ArrayBuffer|Uint8Array)=} data the data to load, if any (optional).
  * @param {Object=} options the options for creating this objects (optional).
  */
 function JSZip(data, options) {
@@ -721,7 +721,7 @@ var Uint8ArrayWriter = require('./uint8ArrayWriter');
 /**
  * Returns the raw data of a ZipObject, decompress the content if necessary.
  * @param {ZipObject} file the file to use.
- * @return {String|ArrayBuffer|Uint8Array|Buffer} the data.
+ * @return {string|ArrayBuffer|Uint8Array|Buffer} the data.
  */
 var getRawData = function(file) {
     if (file._data instanceof CompressedObject) {
@@ -746,7 +746,7 @@ var getRawData = function(file) {
 /**
  * Returns the data of a ZipObject in a binary form. If the content is an unicode string, encode it.
  * @param {ZipObject} file the file to use.
- * @return {String|ArrayBuffer|Uint8Array|Buffer} the data.
+ * @return {string|ArrayBuffer|Uint8Array|Buffer} the data.
  */
 var getBinaryData = function(file) {
     var result = getRawData(file),
@@ -766,8 +766,8 @@ var getBinaryData = function(file) {
 
 /**
  * Transform this._data into a string.
- * @param {function} filter a function String -> String, applied if not null on the result.
- * @return {String} the string representing this._data.
+ * @param {function(!string):!string} filter a function String -> String, applied if not null on the result.
+ * @return {string} the string representing this._data.
  */
 var dataToString = function(asUTF8) {
     var result = getRawData(this);
@@ -797,7 +797,7 @@ var dataToString = function(asUTF8) {
  * A simple object representing a file in the zip file.
  * @constructor
  * @param {string} name the name of the file
- * @param {String|ArrayBuffer|Uint8Array|Buffer} data the data
+ * @param {string|ArrayBuffer|Uint8Array|Buffer} data the data
  * @param {Object} options the options of the file
  */
 var ZipObject = function(name, data, options) {
@@ -902,7 +902,7 @@ var prepareFileAttrs = function(o) {
  * Add a file in the current folder.
  * @private
  * @param {string} name the name of the file
- * @param {String|ArrayBuffer|Uint8Array|Buffer} data the data of the file
+ * @param {string|ArrayBuffer|Uint8Array|Buffer} data the data of the file
  * @param {Object} o the options of the file
  * @return {Object} the new file.
  */
@@ -987,8 +987,8 @@ var parentFolder = function (path) {
 /**
  * Returns the path with a slash at the end.
  * @private
- * @param {String} path the path to check.
- * @return {String} the path with a trailing slash.
+ * @param {string} path the path to check.
+ * @return {string} the path with a trailing slash.
  */
 var forceTrailingSlash = function(path) {
     // Check the name ends with a /
@@ -1074,8 +1074,8 @@ var generateCompressedObjectFrom = function(file, compression, compressionOption
 /**
  * Generate the UNIX part of the external file attributes.
  * @param {Object} unixPermissions the unix permissions or null.
- * @param {Boolean} isDir true if the entry is a directory, false otherwise.
- * @return {Number} a 32 bit integer.
+ * @param {boolean} isDir true if the entry is a directory, false otherwise.
+ * @return {number} a 32 bit integer.
  *
  * adapted from http://unix.stackexchange.com/questions/14705/the-zip-formats-external-file-attribute :
  *
@@ -1102,8 +1102,8 @@ var generateUnixExternalFileAttr = function (unixPermissions, isDir) {
 /**
  * Generate the DOS part of the external file attributes.
  * @param {Object} dosPermissions the dos permissions or null.
- * @param {Boolean} isDir true if the entry is a directory, false otherwise.
- * @return {Number} a 32 bit integer.
+ * @param {boolean} isDir true if the entry is a directory, false otherwise.
+ * @return {number} a 32 bit integer.
  *
  * Bit 0     Read-Only
  * Bit 1     Hidden
@@ -1125,7 +1125,7 @@ var generateDosExternalFileAttr = function (dosPermissions, isDir) {
  * @param {ZipObject} file the file content.
  * @param {JSZip.CompressedObject} compressedObject the compressed object.
  * @param {number} offset the current offset from the start of the zip file.
- * @param {String} platform let's pretend we are this platform (change platform dependents fields)
+ * @param {string} platform let's pretend we are this platform (change platform dependents fields)
  * @param {Function} encodeFileName the function to encode the file name / comment.
  * @return {object} the zip parts.
  */
@@ -1301,7 +1301,7 @@ var out = {
     /**
      * Read an existing zip and merge the data in the current JSZip object.
      * The implementation is in jszip-load.js, don't forget to include it.
-     * @param {String|ArrayBuffer|Uint8Array|Buffer} stream  The stream to load
+     * @param {string|ArrayBuffer|Uint8Array|Buffer} stream  The stream to load
      * @param {Object} options Options for loading the stream.
      *  options.base64 : is the stream in base64 ? default : false
      * @return {JSZip} the current JSZip object
@@ -1430,7 +1430,7 @@ var out = {
      * - base64, (deprecated, use type instead) true to generate base64.
      * - compression, "STORE" by default.
      * - type, "base64" by default. Values are : string, base64, uint8array, arraybuffer, blob.
-     * @return {String|Uint8Array|ArrayBuffer|Buffer|Blob} the zip file
+     * @return {string|Uint8Array|ArrayBuffer|Buffer|Blob} the zip file
      */
     generate: function(options) {
         options = utils.extend(options || {}, {
@@ -1924,7 +1924,7 @@ var buf2string = function (buf) {
 /**
  * Transform a javascript string into an array (typed if possible) of bytes,
  * UTF-8 encoded.
- * @param {String} str the string to encode
+ * @param {string} str the string to encode
  * @return {Array|Uint8Array|Buffer} the UTF-8 encoded string.
  */
 exports.utf8encode = function utf8encode(str) {
@@ -1940,7 +1940,7 @@ exports.utf8encode = function utf8encode(str) {
  * Transform a bytes array (or a representation) representing an UTF-8 encoded
  * string into a javascript string.
  * @param {Array|Uint8Array|Buffer} buf the data de decode
- * @return {String} the decoded string.
+ * @return {string} the decoded string.
  */
 exports.utf8decode = function utf8decode(buf) {
     if (support.nodebuffer) {
@@ -1976,7 +1976,7 @@ var nodeBuffer = require('./nodeBuffer');
 /**
  * Convert a string to a "binary string" : a string containing only char codes between 0 and 255.
  * @param {string} str the string to transform.
- * @return {String} the binary string.
+ * @return {string} the binary string.
  */
 exports.string2binary = function(str) {
     var result = "";
@@ -2024,7 +2024,7 @@ function identity(input) {
 
 /**
  * Fill in an array with a string.
- * @param {String} str the string to use.
+ * @param {string} str the string to use.
  * @param {Array|ArrayBuffer|Uint8Array|Buffer} array the array to fill in (will be mutated).
  * @return {Array|ArrayBuffer|Uint8Array|Buffer} the updated array.
  */
@@ -2038,7 +2038,7 @@ function stringToArrayLike(str, array) {
 /**
  * Transform an array-like object to a string.
  * @param {Array|ArrayBuffer|Uint8Array|Buffer} array the array to transform.
- * @return {String} the result.
+ * @return {string} the result.
  */
 function arrayLikeToString(array) {
     // Performances notes :
@@ -2197,8 +2197,8 @@ transform["nodebuffer"] = {
  * Transform an input into any type.
  * The supported output type are : string, array, uint8array, arraybuffer, nodebuffer.
  * If no output type is specified, the unmodified input will be returned.
- * @param {String} outputType the output type.
- * @param {String|Array|ArrayBuffer|Uint8Array|Buffer} input the input to convert.
+ * @param {string} outputType the output type.
+ * @param {string|Array|ArrayBuffer|Uint8Array|Buffer} input the input to convert.
  * @throws {Error} an Error if the browser doesn't support the requested output type.
  */
 exports.transformTo = function(outputType, input) {
@@ -2220,7 +2220,7 @@ exports.transformTo = function(outputType, input) {
  * Return the type of the input.
  * The type will be in a format valid for JSZip.utils.transformTo : string, array, uint8array, arraybuffer.
  * @param {Object} input the input to identify.
- * @return {String} the (lowercase) type of the input.
+ * @return {string} the (lowercase) type of the input.
  */
 exports.getTypeOf = function(input) {
     if (typeof input === "string") {
@@ -2242,7 +2242,7 @@ exports.getTypeOf = function(input) {
 
 /**
  * Throw an exception if the type is not supported.
- * @param {String} type the type to check.
+ * @param {string} type the type to check.
  * @throws {Error} an Error if the browser doesn't support the requested type.
  */
 exports.checkSupport = function(type) {
@@ -2288,7 +2288,7 @@ exports.findCompression = function(compressionMethod) {
 /**
 * Cross-window, cross-Node-context regular expression detection
 * @param  {Object}  object Anything
-* @return {Boolean}        true if the object is a regular expression,
+* @return {boolean}        true if the object is a regular expression,
 * false otherwise
 */
 exports.isRegExp = function (object) {
@@ -2329,7 +2329,7 @@ var jszipProto = require('./object');
 /**
  * All the entries in the zip file.
  * @constructor
- * @param {String|ArrayBuffer|Uint8Array} data the binary stream to load.
+ * @param {string|ArrayBuffer|Uint8Array} data the binary stream to load.
  * @param {Object} loadOptions Options for loading the stream.
  */
 function ZipEntries(data, loadOptions) {
@@ -2584,7 +2584,7 @@ ZipEntries.prototype = {
     },
     /**
      * Read a zip file and create ZipEntries.
-     * @param {String|ArrayBuffer|Uint8Array|Buffer} data the binary string representing a zip file.
+     * @param {string|ArrayBuffer|Uint8Array|Buffer} data the binary string representing a zip file.
      */
     load: function(data) {
         this.prepareReader(data);
@@ -2869,7 +2869,7 @@ ZipEntry.prototype = {
 
     /**
      * Find the unicode path declared in the extra field, if any.
-     * @return {String} the unicode path, null otherwise.
+     * @return {string} the unicode path, null otherwise.
      */
     findExtraFieldUnicodePath: function() {
         var upathField = this.extraFields[0x7075];
@@ -2893,7 +2893,7 @@ ZipEntry.prototype = {
 
     /**
      * Find the unicode comment declared in the extra field, if any.
-     * @return {String} the unicode comment, null otherwise.
+     * @return {string} the unicode comment, null otherwise.
      */
     findExtraFieldUnicodeComment: function() {
         var ucommentField = this.extraFields[0x6375];
