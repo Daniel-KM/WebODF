@@ -121,6 +121,8 @@ office|text::selection {
 .webodf-virtualSelections *::selection {
   background: transparent;
 }
+/* Firefox drew a selection under this name alone until its version 62, and
+   the add-on of manifest 2 is given to Firefox 52 and newer. */
 .webodf-virtualSelections *::-moz-selection {
   background: transparent;
 }
@@ -271,7 +273,6 @@ draw|image {
   left: 0px;
   background-repeat: no-repeat;
   background-size: 100% 100%;
-  -moz-background-size: 100% 100%;
 }
 /* only show the first image in frame */
 draw|frame > draw|image:nth-of-type(n+2) {
@@ -564,9 +565,6 @@ editinfo|editinfo {
     border-top: 1px dashed brown;
 }
 .annotationConnector.angular {
-    -moz-transform-origin: left top;
-    -webkit-transform-origin: left top;
-    -ms-transform-origin: left top;
     transform-origin: left top;
 }
 .annotationConnector.horizontal {
@@ -590,10 +588,6 @@ office|annotation {
     height: 100%;
     display: none;
     background: rgb(198, 238, 184);
-    background: -moz-linear-gradient(90deg, rgb(198, 238, 184) 30%, rgb(180, 196, 159) 100%);
-    background: -webkit-linear-gradient(90deg, rgb(198, 238, 184) 30%, rgb(180, 196, 159) 100%);
-    background: -o-linear-gradient(90deg, rgb(198, 238, 184) 30%, rgb(180, 196, 159) 100%);
-    background: -ms-linear-gradient(90deg, rgb(198, 238, 184) 30%, rgb(180, 196, 159) 100%);
     background: linear-gradient(180deg, rgb(198, 238, 184) 30%, rgb(180, 196, 159) 100%);
     box-shadow: 0 3px 4px -3px #ccc;
 }
@@ -673,9 +667,6 @@ office|annotation text|p {
     pointer-events: all;
     display: none;
 
-    -moz-transform-origin: center center;
-    -webkit-transform-origin: center center;
-    -ms-transform-origin: center center;
     transform-origin: center center;
 }
 
@@ -737,6 +728,15 @@ office|annotation text|p {
     top: 50%;
     left: -4px;
     margin-top: -2.5px; /* half of the height defined in #imageSelector > div */
+}
+
+/* A scrollbar is drawn thin and dark in every engine: firefox reads the two
+   properties of the standard, and the engines of chromium the selectors of
+   webkit below, which are the only ones they know. */
+div.webodf-customScrollbars
+{
+    scrollbar-width: thin;
+    scrollbar-color: #444 transparent;
 }
 
 div.webodf-customScrollbars::-webkit-scrollbar

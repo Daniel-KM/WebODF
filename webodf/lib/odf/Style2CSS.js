@@ -548,8 +548,6 @@ odf.Style2CSS = function Style2CSS() {
             rule += 'text-decoration:' + textDecorationLine + ';\n';
             // CSS3 text-decoration shorthand
             rule += 'text-decoration-line:' + textDecorationLine + ';\n';
-            // CSS3 text-decoration shorthand - FF
-            rule += '-moz-text-decoration-line:' + textDecorationLine + ';\n';
         }
 
         value = props.getAttributeNS(stylens, 'text-line-through-type');
@@ -588,8 +586,6 @@ odf.Style2CSS = function Style2CSS() {
         if (textDecorationStyle) {
             // CSS3
             rule += 'text-decoration-style:' + textDecorationStyle + ';\n';
-            // CSS3 text-decoration shorthand - FF
-            rule += '-moz-text-decoration-style:' + textDecorationStyle + ';\n';
         }
 
         fontName = props.getAttributeNS(stylens, 'font-name')

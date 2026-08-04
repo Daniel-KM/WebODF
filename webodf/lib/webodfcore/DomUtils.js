@@ -67,7 +67,6 @@
                 testContainer.style.position = "absolute";
                 testContainer.style.left = "-99999px";
                 testContainer.style.transform = "scale(2)";
-                testContainer.style["-webkit-transform"] = "scale(2)";
 
                 testElement = document.createElement("div");
                 testContainer.appendChild(testElement);
@@ -88,7 +87,6 @@
                 browserQuirks.unscaledRangeClientRects = Math.abs(directBoundingRect.height - rangeBoundingRect.height) > 2;
 
                 testContainer.style.transform = "";
-                testContainer.style["-webkit-transform"] = "";
                 // Backup current values for documentElement and body's overflows, body height, and body scroll.
                 docOverflow = docElement.style.overflow;
                 bodyOverflow = body.style.overflow;
