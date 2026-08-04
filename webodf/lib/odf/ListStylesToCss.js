@@ -910,6 +910,22 @@
                 /**@type{!number}*/
                 i;
             /**
+             * Whether a list stands inside another list.
+             * @param {!Element} list
+             * @return {!boolean}
+             */
+            function standsInAList(list) {
+                var walk = /**@type{?Element}*/(list.parentElement);
+                while (walk) {
+                    if (walk.namespaceURI === textns
+                            && walk.localName === "list") {
+                        return true;
+                    }
+                    walk = /**@type{?Element}*/(walk.parentElement);
+                }
+                return false;
+            }
+            /**
              * The style a list is written in, its own or the one of the list
              * it stands in.
              * @param {!Element} list
@@ -931,59 +947,38 @@
                     : "";
             }
             /**
-             * How deep a list stands among the lists, from one.
+             * Write the labels of one list and of the lists it holds, in the
+             * order the document is written: a list that stands under an
+             * item is numbered where that item stands and not once the whole
+             * of the list it stands in is numbered, or it would carry the
+             * number of the last item of it.
              * @param {!Element} list
-             * @return {!number}
-             */
-            function levelOfList(list) {
-                var walk = /**@type{?Element}*/(list.parentElement),
-                    /**@type{!number}*/
-                    level = 1;
-                while (walk) {
-                    if (walk.namespaceURI === textns
-                            && walk.localName === "list") {
-                        level += 1;
-                    }
-                    walk = /**@type{?Element}*/(walk.parentElement);
-                }
-                return level;
-            }
-            /**
-             * Write the labels of the items of one list.
-             * @param {!Element} list
+             * @param {!Element} style the "text:list-style"
+             * @param {!number} level from one
+             * @param {!Array.<!number>} held the number each level stands at
              * @return {undefined}
              */
-            function numberOne(list) {
-                var name = styleOfList(list),
-                    level = levelOfList(list),
-                    /**@type{!Element}*/
-                    style,
-                    /**@type{!Array.<!number>}*/
-                    held,
+            function numberOne(list, style, level, held) {
+                var /**@type{?Element}*/
+                    item = list.firstElementChild,
                     /**@type{?Element}*/
-                    item;
-                if (!name || !listStyles) {
-                    return;
-                }
-                style = listStyles[name].element;
-                held = counts.hasOwnProperty(name)
-                    ? counts[name]
-                    : [];
-                counts[name] = held;
-                // A list that does not carry on the numbering of the last
-                // list of its style begins where its style says.
-                if (level === 1
-                        && !list.getAttributeNS(textns, "continue-numbering")
-                        && !list.getAttributeNS(textns, "continue-list")) {
-                    held.length = 0;
-                }
-                item = list.firstElementChild;
+                    under;
                 while (item) {
                     if (item.namespaceURI === textns
-                            && item.localName === "list-item"
-                            && item.firstElementChild
-                            && item.firstElementChild.localName !== "list") {
-                        labelOne(item, style, level, held);
+                            && item.localName === "list-item") {
+                        if (item.firstElementChild
+                                && item.firstElementChild.localName
+                                    !== "list") {
+                            labelOne(item, style, level, held);
+                        }
+                        under = item.firstElementChild;
+                        while (under) {
+                            if (under.namespaceURI === textns
+                                    && under.localName === "list") {
+                                numberOne(under, style, level + 1, held);
+                            }
+                            under = under.nextElementSibling;
+                        }
                     }
                     item = item.nextElementSibling;
                 }
@@ -991,8 +986,33 @@
             if (!listStyles) {
                 return;
             }
+            /**
+             * Write the labels of a list that stands in no other list, and
+             * of everything it holds.
+             * @param {!Element} list
+             * @return {undefined}
+             */
+            function numberWhole(list) {
+                var name = styleOfList(list),
+                    /**@type{!Array.<!number>}*/
+                    held;
+                if (!name || standsInAList(list) || !listStyles) {
+                    return;
+                }
+                held = counts.hasOwnProperty(name)
+                    ? counts[name]
+                    : [];
+                counts[name] = held;
+                // A list that does not carry on the numbering of the last
+                // list of its style begins where its style says.
+                if (!list.getAttributeNS(textns, "continue-numbering")
+                        && !list.getAttributeNS(textns, "continue-list")) {
+                    held.length = 0;
+                }
+                numberOne(list, listStyles[name].element, 1, held);
+            }
             for (i = 0; i < lists.length; i += 1) {
-                numberOne(/**@type{!Element}*/(lists.item(i)));
+                numberWhole(/**@type{!Element}*/(lists.item(i)));
             }
         }
         /**
