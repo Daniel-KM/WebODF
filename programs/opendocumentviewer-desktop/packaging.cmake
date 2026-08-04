@@ -29,9 +29,11 @@
 # * a universal package, an AppImage or a flatpak, that carries qt itself and
 #   runs on any distribution.
 #
-# Each one is a target of its own, and "packages" makes the ones the tools of
-# the machine allow. The tools are looked for rather than required: a machine
-# that has none still builds the viewer.
+# Each one is a target of its own and each one is a product of the build, so
+# "products" makes the ones the tools of this machine allow and names the
+# others at the end, with the tool that is wanting. The tools are looked for
+# rather than required: a machine that has none of them still builds the
+# viewer.
 
 set(VIEWER_STAGE ${CMAKE_CURRENT_BINARY_DIR}/stage)
 set(VIEWER_PRODUCTS ${CMAKE_BINARY_DIR}/products)
@@ -83,9 +85,8 @@ add_custom_target(package-archive
     COMMENT "The archive of the viewer of the desktop")
 
 # The archive is the way the viewer of the desktop is handed over without a
-# tool of a distribution, so it stands among the products beside the add-ons
-# and the editors: "products" builds it and names it with the others. The
-# packages are left to "packages", as each one asks for a tool of its own.
+# tool of a distribution: it stands among the products beside the add-ons and
+# the editors, as every other way of handing it over does.
 WEBODF_PRODUCT(package-archive ${VIEWER_ARCHIVE})
 
 # A package of a system, that names the qt it needs rather than carrying it.
@@ -125,6 +126,10 @@ if (DPKG_DEB)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/data/copy-packages.cmake
         DEPENDS opendocumentviewer-desktop
         COMMENT "The package of debian of the viewer of the desktop")
+    WEBODF_PRODUCT_MADE(package-deb
+        "opendocumentviewer-${WEBODF_VERSION}-${VIEWER_ARCH}.deb")
+else ()
+    WEBODF_PRODUCT_MISSING("the package of debian" "dpkg-deb")
 endif ()
 
 find_program(RPMBUILD rpmbuild)
@@ -138,6 +143,10 @@ if (RPMBUILD)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/data/copy-packages.cmake
         DEPENDS opendocumentviewer-desktop
         COMMENT "The package of fedora of the viewer of the desktop")
+    WEBODF_PRODUCT_MADE(package-rpm
+        "opendocumentviewer-${WEBODF_VERSION}-${VIEWER_ARCH}.rpm")
+else ()
+    WEBODF_PRODUCT_MISSING("the package of fedora" "rpmbuild")
 endif ()
 
 # A universal package carries qt with it and runs on any distribution, where a
@@ -170,7 +179,10 @@ if (UNIX AND NOT APPLE)
             COMMAND ${CMAKE_COMMAND} -E echo "Wrote ${VIEWER_APPIMAGE}"
             DEPENDS opendocumentviewer-desktop
             COMMENT "The AppImage of the viewer of the desktop")
+        WEBODF_PRODUCT_MADE(package-appimage
+            "OpenDocumentViewer-${WEBODF_VERSION}-${VIEWER_ARCH}.AppImage")
     else ()
+        WEBODF_PRODUCT_MISSING("the AppImage" "linuxdeploy")
         add_custom_target(package-appimage
             COMMAND ${CMAKE_COMMAND} -E echo
                 "linuxdeploy is not installed: an AppImage carries qt with it, and the tool is what gathers it, see https://github.com/linuxdeploy/linuxdeploy"
@@ -196,26 +208,14 @@ if (UNIX AND NOT APPLE)
                 ${VIEWER_PRODUCTS}/${VIEWER_ID}-${WEBODF_VERSION}.flatpak ${VIEWER_ID}
             DEPENDS opendocumentviewer-desktop
             COMMENT "The flatpak of the viewer of the desktop")
+        WEBODF_PRODUCT_MADE(package-flatpak
+            "${VIEWER_ID}-${WEBODF_VERSION}.flatpak")
     else ()
+        WEBODF_PRODUCT_MISSING("the flatpak" "flatpak-builder")
         add_custom_target(package-flatpak
             COMMAND ${CMAKE_COMMAND} -E echo
                 "flatpak-builder is not installed: the manifest is written in ${CMAKE_CURRENT_BINARY_DIR}/${VIEWER_ID}.yml, see https://docs.flatpak.org/"
             COMMAND ${CMAKE_COMMAND} -E false
             COMMENT "The flatpak of the viewer of the desktop")
     endif ()
-endif ()
-
-# Every way of handing the viewer over that the tools of this machine allow.
-add_custom_target(packages DEPENDS package-archive)
-if (TARGET package-deb)
-    add_dependencies(packages package-deb)
-endif ()
-if (TARGET package-rpm)
-    add_dependencies(packages package-rpm)
-endif ()
-if (LINUXDEPLOY)
-    add_dependencies(packages package-appimage)
-endif ()
-if (FLATPAK_BUILDER)
-    add_dependencies(packages package-flatpak)
 endif ()

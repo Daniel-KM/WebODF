@@ -452,11 +452,32 @@ endif()
 # beside the path, so that the list follows the targets and not the files,
 # whose names hold the version of the build.
 set_property(GLOBAL PROPERTY WEBODF_PRODUCTS "")
+set_property(GLOBAL PROPERTY WEBODF_PRODUCT_NAMES "")
 set_property(GLOBAL PROPERTY WEBODF_PRODUCT_TARGETS "")
+set_property(GLOBAL PROPERTY WEBODF_PRODUCTS_MISSING "")
 macro(WEBODF_PRODUCT target path)
     set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCTS ${path})
     set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCT_TARGETS ${target})
+    get_filename_component(WEBODF_PRODUCT_NAME_OF ${path} NAME)
+    set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCT_NAMES
+        ${WEBODF_PRODUCT_NAME_OF})
 endmacro(WEBODF_PRODUCT)
+
+# A product a tool of the machine writes among the products itself, whose name
+# that tool settles: it is named in the list and not copied again, and it is
+# looked for by the target rather than by its path.
+macro(WEBODF_PRODUCT_MADE target name)
+    set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCT_TARGETS ${target})
+    set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCT_NAMES ${name})
+endmacro(WEBODF_PRODUCT_MADE)
+
+# What this machine has no tool to make: it is named at the end beside what
+# was made, so that a reader of the list is not left wondering whether a
+# product is missing because it failed or because nothing here could write it.
+macro(WEBODF_PRODUCT_MISSING what tool)
+    set_property(GLOBAL APPEND PROPERTY WEBODF_PRODUCTS_MISSING
+        "${what}, for want of ${tool}")
+endmacro(WEBODF_PRODUCT_MISSING)
 
 #############################
 ## Build Library and programs
@@ -517,11 +538,22 @@ if (WEBODF_PRODUCT_FILES)
         COMMAND ${CMAKE_COMMAND} -E echo ""
         COMMAND ${CMAKE_COMMAND} -E echo
             "The products of this build are in ${WEBODF_PRODUCTS_DIR}:")
-    foreach (WEBODF_PRODUCT_FILE ${WEBODF_PRODUCT_FILES})
-        get_filename_component(WEBODF_PRODUCT_NAME ${WEBODF_PRODUCT_FILE} NAME)
+    get_property(WEBODF_PRODUCT_NAME_LIST GLOBAL PROPERTY WEBODF_PRODUCT_NAMES)
+    foreach (WEBODF_PRODUCT_NAME ${WEBODF_PRODUCT_NAME_LIST})
         list(APPEND WEBODF_PRODUCT_STEPS
             COMMAND ${CMAKE_COMMAND} -E echo "  ${WEBODF_PRODUCT_NAME}")
     endforeach ()
+    get_property(WEBODF_MISSING GLOBAL PROPERTY WEBODF_PRODUCTS_MISSING)
+    if (WEBODF_MISSING)
+        list(APPEND WEBODF_PRODUCT_STEPS
+            COMMAND ${CMAKE_COMMAND} -E echo ""
+            COMMAND ${CMAKE_COMMAND} -E echo
+                "This machine has no tool to make:")
+        foreach (WEBODF_MISSING_ONE ${WEBODF_MISSING})
+            list(APPEND WEBODF_PRODUCT_STEPS
+                COMMAND ${CMAKE_COMMAND} -E echo "  ${WEBODF_MISSING_ONE}")
+        endforeach ()
+    endif ()
     add_custom_target(products ${WEBODF_PRODUCT_STEPS})
     add_dependencies(products ${WEBODF_PRODUCT_TARGET_LIST})
 endif ()
