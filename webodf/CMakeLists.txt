@@ -287,24 +287,6 @@ add_custom_target(syntaxcheck ALL
         compiled.js-target
 )
 
-# rhino tests are disabled for now: rhino runtime lacks (wrappers for)
-# essential necessities such as Uint8Array, Node and NodeFilter
-# RHINOTEST is only defined here and hence undefined to disable test-rhino
-if (RHINOTEST)
-add_custom_target(test-rhino
-    COMMAND ${Java_JAVA_EXECUTABLE} -jar ${RHINO}
-        -debug lib/runtime.js tests/tests.js
-    DEPENDS Rhino
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    SOURCES ${LIBJSFILES}
-)
-add_custom_target(test-simplerhino
-    COMMAND ${Java_JAVA_EXECUTABLE} -jar ${RHINO}
-        ${CMAKE_CURRENT_BINARY_DIR}/simplecompiled.js
-    DEPENDS Rhino simplecompiled.js-target
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
-)
-endif (RHINOTEST)
 
 # The documentation is written by the build with node, with jsdoc 4, as the
 # jsdoc-toolkit 2.4.0 of 2011 the build downloaded is abandoned.

@@ -24,7 +24,7 @@
 
 /*jslint nomen: true, bitwise: true, emptyblock: true, unparam: true */
 /*global window, XMLHttpRequest, require, console, DOMParser, document,
-  process, __dirname, setTimeout, Packages, print,
+  process, __dirname, setTimeout, Packages, print, environment,
   readFile, quit, Buffer, ArrayBuffer, Uint8Array,
   navigator, VBArray, alert, now, clearTimeout, webodf_version,
   globalThis */
@@ -1524,8 +1524,26 @@ function RhinoRuntime() {
     /**
      * @return {!Array.<!string>}
      */
+    /**
+     * Where the classes of the library are read from. Rhino tells a script
+     * neither its own path nor the one of the file that loaded it, where node
+     * has "__dirname", so the one who starts it says it:
+     *
+     *   java -Dwebodf.lib=/path/to/lib -jar rhino.jar runtime.js script.js
+     *
+     * The properties of the machine are read through "environment", that the
+     * shell of rhino declares. Without the property, the library is looked for
+     * in "lib", beside the directory the program was started in, which only
+     * holds when it is started from the sources.
+     * @return {!Array.<!string>}
+     */
     this.libraryPaths = function () {
-        return ["lib"];
+        var named = (String(typeof environment) !== "undefined")
+            ? String(environment["webodf.lib"] || "")
+            : "";
+        return named
+            ? [named]
+            : ["lib"];
     };
     /**
      * @param {!string} dir

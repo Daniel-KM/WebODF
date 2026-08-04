@@ -109,6 +109,13 @@ var Packages;
 var java;
 
 /**
+ * The properties of the java machine, as the shell of rhino declares them.
+ * @const {!Object.<!string,!string>}
+ * @see https://www-archive.mozilla.org/rhino/shell
+ */
+var environment;
+
+/**
  * @see https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/netscape
  */
 var netscape;

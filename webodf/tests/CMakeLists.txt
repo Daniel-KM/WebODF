@@ -33,6 +33,26 @@ add_custom_command(
 add_custom_target(test-node ALL DEPENDS _nodetest/nodetest.timestamp)
 add_dependencies(webodf.js-tests test-node)
 
+# The same suite, in the javascript engine of mozilla, on a java virtual
+# machine: a library that passes two engines leans on the particulars of
+# neither. It runs in a directory of its own, as the one of node does, since a
+# test writes files, and it is told where the library is: rhino tells a script
+# no path of its own, see "libraryPaths" in "runtime.js".
+COPY_FILES(tests_rhinotests ${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_BINARY_DIR}/_rhinotest ${TESTS_TESTFILES} )
+
+add_custom_command(
+    OUTPUT _rhinotest/rhinotest.timestamp
+    COMMAND ${Java_JAVA_EXECUTABLE}
+        -Dwebodf.lib=${CMAKE_CURRENT_SOURCE_DIR}/../lib
+        -jar ${RHINO} ${RUNTIMEJS} tests.js
+    COMMAND ${TOUCHFILE} rhinotest.timestamp
+    WORKING_DIRECTORY _rhinotest
+    DEPENDS Rhino manifest.json-target ${TESTS_LIBJSFILES} ${tests_rhinotests}
+)
+add_custom_target(test-rhino ALL DEPENDS _rhinotest/rhinotest.timestamp)
+add_dependencies(webodf.js-tests test-rhino)
+
 if (BUILD_QTJSRUNTIME)
     COPY_FILES(tests_qtjsruntimetest ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/_qtjsruntimetest ${TESTS_TESTFILES} )
