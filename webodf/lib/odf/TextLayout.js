@@ -3934,8 +3934,11 @@ odf.TextLayout = function TextLayout() {
         plan = new PagePlan(odfroot);
         markPageBreaks(odfroot);
         columnPageOrigins = [];
+        // A row of two pages is what is drawn and what a reader scales to its
+        // window, so the size given is the size of the row.
         columnPageSize = {
-            width: plan.at(0).pageWidth,
+            width: pagesPerRow * (plan.at(0).pageWidth
+                + plan.at(0).pageSeparation) - plan.at(0).pageSeparation,
             height: plan.at(0).pageHeight
         };
         lastPlan = plan;
