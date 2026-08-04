@@ -1,41 +1,20 @@
-/webodf/tests/simple_slide.odp
-#android/bin
-#android/gen
-programs/ios/WebODF.xcodeproj/project.xcworkspace
-programs/ios/WebODF.xcodeproj/xcuserdata
-programs/ios/www/ZoomIn.png
-programs/ios/www/ZoomOut.png
-programs/ios/www/app/
-programs/ios/www/sencha-touch.css
-programs/ios/www/sencha-touch.js
-programs/ios/www/webodf.js
+# What an editor or a system leaves beside the sources.
 .DS_Store
-webodf/webodf.css.js
-build
-*.sw?
 .idea
-node_modules/.bin/
-node_modules/requirejs/
-webodf/coverage/
-node_modules/karma-chrome-launcher/
-node_modules/karma-coffee-preprocessor/
-node_modules/karma-coverage/
-node_modules/karma-firefox-launcher/
-node_modules/karma-html2js-preprocessor/
-node_modules/karma-jasmine/
-node_modules/karma-junit-reporter/
-node_modules/karma-phantomjs-launcher/
-node_modules/karma-requirejs/
-node_modules/karma-script-launcher/
-node_modules/karma/
-fontFaceDeclsTest.odt
-test.odt
-simple.odt
-simpleFrame.odt
-webodf/tests/*.odt
-webodf/tests/odf/newloadsave.odt
+*.sw?
 
-# Build outputs and downloaded tools of the node build.
+# What cmake leaves where it is run: a configuration made in the sources rather
+# than in a directory of its own writes these two, and a stale cache in the
+# sources makes every later build refuse to configure.
+/CMakeCache.txt
+/CMakeFiles/
+/cmake.log
+
+# The build with cmake, that is made in a directory of its own.
+build
+
+# The build with node: its outputs, the tools it downloads and the report of
+# the coverage.
 dist
 .tools
 coverage
@@ -45,6 +24,15 @@ coverage
 node_modules/*
 !node_modules/.package-lock.json
 !node_modules/@xmldom
+
+# The css of the viewer, written as a string of javascript by the build.
+webodf/webodf.css.js
+
+# The documents the tests write beside the ones they read.
+webodf/tests/test.odt
+webodf/tests/fontFaceDeclsTest.odt
+webodf/tests/simple_slide.odp
+webodf/tests/odf/newloadsave.odt
 
 # The library is copied into the assets of the viewer of android.
 programs/opendocumentviewer-android/src/main/assets/webodf.js
