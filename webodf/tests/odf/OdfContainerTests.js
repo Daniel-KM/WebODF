@@ -394,11 +394,11 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
         ]);
     };
     // A document of the real world, the standard itself as OASIS publishes it:
-    // 782 pages, 27 tables, 18 images and 102 objects, written by LibreOffice.
+    // 800 pages, 32 tables, 27 images and 109 objects, written by LibreOffice.
     // It answers the question the small documents of a test never do, which is
     // whether the library still reads what an office writes.
     function loadTheStandard(callback) {
-        t.odf = new odf.OdfContainer("documents/opendocument-v1.3-part3.odt",
+        t.odf = new odf.OdfContainer("documents/opendocument-v1.4-part3.odt",
             function (container) {
                 t.odf = container;
                 r.shouldBe(t, "t.odf.state", "odf.OdfContainer.DONE");
@@ -410,7 +410,7 @@ odf.OdfContainerTests = function OdfContainerTests(runner) {
                     "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
                     "p"
                 ).length;
-                r.shouldBe(t, "t.paragraphs > 10000", "true");
+                r.shouldBe(t, "t.paragraphs > 16000", "true");
                 callback();
             });
     }

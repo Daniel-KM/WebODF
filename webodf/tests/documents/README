@@ -21,5 +21,6 @@ They are read by "OfficeDocumentsTests.js", which asks of each one what a
 test of a document written here never asks: whether the library still
 reads what an office writes.
 
-"opendocument-v1.3-part3.odt" is the standard itself, as OASIS publishes
-it, and is read by "OdfContainerTests.js".
+"opendocument-v1.4-part3.odt" is the standard itself, as OASIS publishes
+it: the schema of OpenDocument 1.4, of 800 pages and 32 tables, that
+"OdfContainerTests.js" reads whole.
