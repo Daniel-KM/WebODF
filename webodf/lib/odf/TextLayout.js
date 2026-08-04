@@ -2524,6 +2524,14 @@ odf.TextLayout = function TextLayout() {
         if (style.getPropertyValue("break-inside") === "avoid") {
             return false;
         }
+        // The lines an office keeps together are the lines of a paragraph: a
+        // section, a list or a table of contents is cut wherever a paragraph
+        // of it may be cut, and the rule of the orphans is read of that
+        // paragraph and not of the whole of what holds it.
+        if (element.namespaceURI !== textns
+                || (element.localName !== "p" && element.localName !== "h")) {
+            return true;
+        }
         head = linesOf(element);
         tail = whole - head;
         if (tail < 1) {
@@ -3268,6 +3276,28 @@ odf.TextLayout = function TextLayout() {
             : null;
     }
     /**
+     * Whether what was cut off an element holds nothing worth a page.
+     *
+     * An element that is cut may leave a copy that holds no word and no
+     * shape of its own: the empty paragraph of a table of contents, for one.
+     * It is thrown away rather than written, as it would take the room of
+     * its spacings on the page that follows and leave a page half empty.
+     * @param {?Element} tail what was cut off
+     * @return {!boolean}
+     */
+    function holdsNothing(tail) {
+        if (!tail) {
+            return true;
+        }
+        if (String(tail.textContent).trim() !== "") {
+            return false;
+        }
+        // A frame, an image or a shape is drawn although it holds no word.
+        return tail.getElementsByTagNameNS(drawns, "frame").length === 0
+            && tail.getElementsByTagNameNS(drawns, "image").length === 0
+            && tail.getElementsByTagNameNS(tablens, "table").length === 0;
+    }
+    /**
      * Whether a table may be cut between two of its rows.
      *
      * A table that says "style:may-break-between-rows" is false is written
@@ -3551,8 +3581,18 @@ odf.TextLayout = function TextLayout() {
                     }
                 }
                 state.waiting.shift();
-                box.appendChild(node);
-                added.push(node);
+                // A copy of what was cut that holds nothing is not written:
+                // it would take the room of its spacings on the page and
+                // leave the page that much emptier.
+                if (node.nodeType !== Node.ELEMENT_NODE
+                        || !/**@type{!Element}*/(node).hasAttributeNS(
+                            webodfhelperns,
+                            "continued"
+                        )
+                        || !holdsNothing(/**@type{!Element}*/(node))) {
+                    box.appendChild(node);
+                    added.push(node);
+                }
             }
             if (added.length === 0) {
                 break;
@@ -3606,6 +3646,12 @@ odf.TextLayout = function TextLayout() {
                         while (rest.firstChild) {
                             node.appendChild(rest.firstChild);
                         }
+                        rest = null;
+                    }
+                    if (rest && holdsNothing(rest)) {
+                        // What was cut off holds nothing: it is thrown away
+                        // rather than sent to the next page, where it would
+                        // take the room of its spacings and no more.
                         rest = null;
                     }
                     if (rest) {
@@ -3763,6 +3809,14 @@ odf.TextLayout = function TextLayout() {
         // of css to the page: the labels of the lists are worked out once
         // and written on the elements, so nothing of the document is counted
         // by them any more, see "numberLists" in "ListStylesToCss.js".
+        // The spacing under a paragraph and the spacing over the next are
+        // added, as an office adds them, and not folded into one as the
+        // browser folds the margins of two elements that follow one another:
+        // a box that lays its children in a column keeps them apart.
+        sheet.insertRule(".webodf-pageBox, office|text, text|section,"
+            + " text|table-of-content, text|index-body, text|index-title"
+            + " {display:flex;flex-direction:column;align-items:stretch;}",
+            sheet.cssRules.length);
         sheet.insertRule(".webodf-pageBox {overflow:hidden;contain:strict;}",
             sheet.cssRules.length);
         while (text.firstChild) {
@@ -3879,8 +3933,9 @@ odf.TextLayout = function TextLayout() {
         for (i = from; i < boxes.length; i += 1) {
             dims = plan.at(i);
             place = pagePlace(plan, i);
-            /**@type{!HTMLElement}*/(boxes[i]).style.left = (place.left
-                + dims.marginLeft) + "px";
+            // The box is the whole of the paper, its margins being its
+            // padding, so it stands where the page stands.
+            /**@type{!HTMLElement}*/(boxes[i]).style.left = place.left + "px";
             /**@type{!HTMLElement}*/(boxes[i]).style.top = (place.top
                 + dims.marginTop) + "px";
         }
@@ -3967,6 +4022,9 @@ odf.TextLayout = function TextLayout() {
                     while (more.firstChild) {
                         over.appendChild(more.firstChild);
                     }
+                    more = null;
+                }
+                if (more && holdsNothing(more)) {
                     more = null;
                 }
                 sent = [];
