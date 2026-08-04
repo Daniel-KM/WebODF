@@ -23,13 +23,17 @@
  */
 
 
-/*global odf, runtime, webodfcore*/
+/*global odf, runtime, webodfcore, Node*/
 /**
  * @constructor
  */
 odf.TextLayout = function TextLayout() {
     "use strict";
-    var domUtils = webodfcore.DomUtils,
+    var /**@type{?odf.ODFDocumentElement}*/
+        styleCacheRoot = null,
+        /**@type{!Object.<!string,?Element>}*/
+        styleCache = {},
+        domUtils = webodfcore.DomUtils,
         odfUtils = odf.OdfUtils,
         fons = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0",
         stylens = "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
@@ -106,10 +110,11 @@ odf.TextLayout = function TextLayout() {
      * @param {!Element} properties
      * @param {!string} name
      * @param {!number} fallback
+     * @param {!string=} ns the namespace of the attribute, "fo" by default
      * @return {!number}
      */
-    function lengthInPx(properties, name, fallback) {
-        var value = properties.getAttributeNS(fons, name),
+    function lengthInPx(properties, name, fallback, ns) {
+        var value = properties.getAttributeNS(ns || fons, name),
             px = fallback;
         // A length in a unit that is not read, "em" for one, throws rather
         // than answering, and a page that is drawn at the size of A4 is better
@@ -148,6 +153,56 @@ odf.TextLayout = function TextLayout() {
             area.gap = lengthInPx(box, gap, 0);
         }
         return area;
+    }
+    /**
+     * The style of a family a name stands for, wherever it is written: the
+     * styles of a document and the ones a document writes for one use of one
+     * element, "office:automatic-styles".
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!string} name
+     * @param {!string} family
+     * @return {?Element}
+     */
+    function styleOf(odfroot, name, family) {
+        var /**@type{!Array.<!Element>}*/
+            roots = [odfroot.automaticStyles, odfroot.styles],
+            /**@type{!string}*/
+            key = family + "/" + name,
+            /**@type{!NodeList}*/
+            styles,
+            /**@type{!Element}*/
+            candidate,
+            /**@type{!number}*/
+            i,
+            /**@type{!number}*/
+            r;
+        if (name === "") {
+            return null;
+        }
+        // A page reads the same few styles as every other page does, and a
+        // document holds thousands of them: they are read once, and the
+        // cache is dropped whenever another document is laid out.
+        if (styleCacheRoot !== odfroot) {
+            styleCacheRoot = odfroot;
+            styleCache = {};
+        }
+        if (styleCache.hasOwnProperty(key)) {
+            return styleCache[key];
+        }
+        styleCache[key] = null;
+        for (r = 0; r < roots.length; r += 1) {
+            styles = roots[r].getElementsByTagNameNS(stylens, "style");
+            for (i = 0; i < styles.length; i += 1) {
+                candidate = /**@type{!Element}*/(styles.item(i));
+                if (candidate.getAttributeNS(stylens, "name") === name
+                        && candidate.getAttributeNS(stylens, "family")
+                            === family) {
+                    styleCache[key] = candidate;
+                    return candidate;
+                }
+            }
+        }
+        return null;
     }
     /**
      * The graphic style of a shape, followed up its parents: a shape names a
@@ -615,9 +670,292 @@ odf.TextLayout = function TextLayout() {
         return meta;
     }
     /**
+     * The paragraphs and the headings a box holds.
+     * @param {!Element} box
+     * @return {!Array.<!Element>}
+     */
+    function paragraphsOf(box) {
+        var /**@type{!Array.<!Element>}*/
+            found = [],
+            /**@type{!Array.<!string>}*/
+            names = ["p", "h"],
+            /**@type{!NodeList}*/
+            nodes,
+            /**@type{!number}*/
+            i,
+            /**@type{!number}*/
+            n;
+        for (n = 0; n < names.length; n += 1) {
+            nodes = box.getElementsByTagNameNS(textns, names[n]);
+            for (i = 0; i < nodes.length; i += 1) {
+                found.push(/**@type{!Element}*/(nodes.item(i)));
+            }
+        }
+        return found;
+    }
+    /**
+     * Read the name a document gives a style behind the stamp of the canvas.
+     *
+     * A header is drawn twice, once for the page and once for the styles of
+     * the canvas, which writes a stamp of its own before the name of each
+     * style it draws a second time: "<time>_webodf_Footer" is "Footer".
+     * @param {!string} name
+     * @return {!string}
+     */
+    function plainStyleName(name) {
+        var mark = name.indexOf("_webodf_");
+        return mark === -1
+            ? name
+            : name.substr(mark + "_webodf_".length);
+    }
+    /**
+     * The tab stops a paragraph is written against, in pixels, each one with
+     * the way what follows it is set against it: "left", "center" or "right".
+     * A header and a footer are written with them, which is how a document
+     * puts a title on the left of a page, a date in the middle and the number
+     * of the page on the right, with a tab between each of them.
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} paragraph
+     * @return {!Array.<!odf.TextLayout.TabStop>}
+     */
+    function tabStopsOf(odfroot, paragraph) {
+        var /**@type{!string}*/
+            name = paragraph.getAttributeNS(textns, "style-name") || "",
+            /**@type{?Element}*/
+            style = null,
+            /**@type{?Element}*/
+            properties = null,
+            /**@type{?Element}*/
+            list = null,
+            /**@type{!number}*/
+            depth = 0,
+            /**@type{!Array.<!odf.TextLayout.TabStop>}*/
+            stops = [],
+            /**@type{?Element}*/
+            node;
+        // The style of the paragraph is an automatic one that says little
+        // and leans on a common one: the stops are taken from the first
+        // style of the line that writes them. A name the canvas stamped is
+        // read as the document wrote it when nothing answers to the stamp.
+        // The depth keeps a style that names itself as its own parent from
+        // turning in a circle.
+        while (name !== "" && !list && depth < 16) {
+            style = styleOf(odfroot, name, "paragraph");
+            if (!style && plainStyleName(name) !== name) {
+                name = plainStyleName(name);
+                style = styleOf(odfroot, name, "paragraph");
+            }
+            properties = style
+                ? domUtils.getDirectChild(style, stylens,
+                    "paragraph-properties")
+                : null;
+            list = properties
+                ? domUtils.getDirectChild(properties, stylens, "tab-stops")
+                : null;
+            if (!list && style) {
+                name = style.getAttributeNS(stylens, "parent-style-name")
+                    || "";
+            } else if (!list && plainStyleName(name) !== name) {
+                name = plainStyleName(name);
+            } else if (!list) {
+                name = "";
+            }
+            depth += 1;
+        }
+        node = list
+            ? list.firstElementChild
+            : null;
+        while (node) {
+            if (node.namespaceURI === stylens && node.localName === "tab-stop") {
+                stops.push({
+                    at: lengthInPx(node, "position", 0, stylens),
+                    type: node.getAttributeNS(stylens, "type") || "left"
+                });
+            }
+            node = node.nextElementSibling;
+        }
+        return stops;
+    }
+    /**
+     * Set the parts of a paragraph against the tab stops it is written with.
+     *
+     * A tab is drawn as a tab of a terminal otherwise, that walks to the next
+     * stop of eight letters, so a title, a date and a number of a page ran
+     * into one another. Each part is laid where its stop says instead, and
+     * against it as its stop asks: the standard calls that "style:type" of a
+     * "style:tab-stop".
+     * @param {!odf.ODFDocumentElement} odfroot
+     * @param {!Element} paragraph
+     * @return {undefined}
+     */
+    function layOutTabStops(odfroot, paragraph) {
+        var doc = paragraph.ownerDocument,
+            htmlns = "http://www.w3.org/1999/xhtml",
+            stops = tabStopsOf(odfroot, paragraph),
+            /**@type{!Array.<!HTMLElement>}*/
+            parts = [],
+            /**@type{!HTMLElement}*/
+            part,
+            /**@type{!HTMLElement}*/
+            line,
+            /**@type{?Node}*/
+            node = paragraph.firstChild,
+            /**@type{?Node}*/
+            next,
+            /**@type{!Array.<!string>}*/
+            pieces,
+            /**@type{!number}*/
+            i;
+        if (stops.length === 0) {
+            return;
+        }
+        // The parts are the nodes between the tabs, the first one before the
+        // first tab.
+        part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "span"));
+        parts.push(part);
+        while (node) {
+            next = node.nextSibling;
+            if (node.nodeType === Node.ELEMENT_NODE
+                    && /**@type{!Element}*/(node).namespaceURI === textns
+                    && /**@type{!Element}*/(node).localName === "tab") {
+                paragraph.removeChild(node);
+                part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns,
+                    "span"));
+                parts.push(part);
+            } else if (node.nodeType === Node.TEXT_NODE
+                    && String(node.textContent).indexOf("\t") !== -1) {
+                // The canvas writes a "text:tab" as a tab of a terminal
+                // before a header is drawn, so a tab is a letter here.
+                pieces = String(node.textContent).split("\t");
+                paragraph.removeChild(node);
+                for (i = 0; i < pieces.length; i += 1) {
+                    if (i > 0) {
+                        part = /**@type{!HTMLElement}*/(doc.createElementNS(
+                            htmlns,
+                            "span"
+                        ));
+                        parts.push(part);
+                    }
+                    if (pieces[i].length > 0) {
+                        part.appendChild(doc.createTextNode(pieces[i]));
+                    }
+                }
+            } else {
+                part.appendChild(node);
+            }
+            node = next;
+        }
+        if (parts.length < 2) {
+            return;
+        }
+        // The parts are laid in a box of the page rather than in the
+        // paragraph: a style set on an element of the document is not the
+        // canvas's to set, and the document is read as broken when it is.
+        line = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "div"));
+        line.style.position = "relative";
+        paragraph.appendChild(line);
+        parts.forEach(function (piece, index) {
+            var /**@type{?odf.TextLayout.TabStop}*/
+                stop = index === 0 ? null : stops[index - 1];
+            piece.style.position = "absolute";
+            piece.style.whiteSpace = "pre";
+            if (!stop) {
+                piece.style.left = "0";
+                line.appendChild(piece);
+                return;
+            }
+            // A stop is written from the left edge of the text of the page,
+            // and a document may put one where the page is no longer wide
+            // enough for it: the last stop is then the right edge itself.
+            piece.style.left = "min(" + stop.at + "px, 100%)";
+            if (stop.type === "center") {
+                piece.style.transform = "translateX(-50%)";
+            } else if (stop.type === "right") {
+                piece.style.transform = "translateX(-100%)";
+            }
+            line.appendChild(piece);
+        });
+        // The parts are laid over one another, so the line keeps the height of
+        // one of them: a part of its own holds the line open.
+        part = /**@type{!HTMLElement}*/(doc.createElementNS(htmlns, "span"));
+        part.textContent = "\u00a0";
+        line.appendChild(part);
+    }
+    /**
+     * Push the parts of the lines apart where they would be written over.
+     *
+     * A part is laid at its stop, and a part that runs past the next stop
+     * would be written over by the one that follows it: the one that follows
+     * is pushed to the right, as a tab of a text does, so nothing is hidden.
+     * A part is never pushed off the page: a line too full for its stops is
+     * drawn tight rather than half of it lost.
+     *
+     * The parts of every page are read before any of them is moved: a read
+     * that follows a write asks the browser to lay the whole page out again,
+     * and a document of a hundred pages would be drawn a hundred times over.
+     * @param {!Array.<!Element>} boxes the headers and the footers drawn
+     * @return {undefined}
+     */
+    function spreadLines(boxes) {
+        var /**@type{!Array.<!Array.<!HTMLElement>>}*/
+            lines = [],
+            /**@type{!Array.<!Array.<!ClientRect>>}*/
+            rects = [],
+            /**@type{!Array.<!number>}*/
+            room = [],
+            /**@type{!Array.<!HTMLElement>}*/
+            boxOf = [];
+        boxes.forEach(function (box) {
+            var found = box.getElementsByTagName("div"),
+                l,
+                line,
+                parts,
+                pieces,
+                i;
+            for (l = 0; l < found.length; l += 1) {
+                line = /**@type{!HTMLElement}*/(found.item(l));
+                parts = line.children;
+                pieces = [];
+                for (i = 0; i < parts.length; i += 1) {
+                    pieces.push(/**@type{!HTMLElement}*/(parts.item(i)));
+                }
+                lines.push(pieces);
+                boxOf.push(line);
+            }
+        });
+        lines.forEach(function (pieces, l) {
+            room.push(boxOf[l].getBoundingClientRect().right);
+            rects.push(pieces.map(function (piece) {
+                return piece.getBoundingClientRect();
+            }));
+        });
+        lines.forEach(function (pieces, l) {
+            var edge = 0,
+                right = room[l];
+            pieces.forEach(function (piece, i) {
+                var rect = rects[l][i],
+                    push;
+                if (rect.width === 0) {
+                    return;
+                }
+                push = 0;
+                if (edge > 0 && rect.left < edge) {
+                    push = Math.min(edge - rect.left,
+                        Math.max(0, right - rect.right));
+                    // The part is already drawn against its stop, and is
+                    // only pushed from where it stands.
+                    piece.style.transform = piece.style.transform
+                        + " translateX(" + push + "px)";
+                }
+                edge = rect.right + push;
+            });
+        });
+    }
+    /**
      * Copy what a master page writes in a header or in a footer, and put the
      * number of the page where the document asks for it. The nodes are of the
      * document, so the styles of the document draw them as they draw the text.
+     * @param {!odf.ODFDocumentElement} odfroot
      * @param {!Element} source the "style:header" or the "style:footer"
      * @param {!HTMLDivElement} box
      * @param {!number} page the number of the page, from one
@@ -625,7 +963,7 @@ odf.TextLayout = function TextLayout() {
      * @param {!Object.<!string,!string>} meta what the document says of itself
      * @return {undefined}
      */
-    function fillPageArea(source, box, page, pages, meta) {
+    function fillPageArea(odfroot, source, box, page, pages, meta) {
         var doc = box.ownerDocument;
         /**
          * @param {!string} name
@@ -644,6 +982,13 @@ odf.TextLayout = function TextLayout() {
         fill("page-count", String(pages));
         Object.keys(meta).forEach(function (name) {
             fill(name, meta[name]);
+        });
+        // A line of a header is written as a line of the document is, so what
+        // the canvas does to a line of the document is done here as well: a
+        // break is a break, a run of spaces is a run of spaces, and a tab
+        // takes the part that follows it to its stop.
+        paragraphsOf(box).forEach(function (paragraph) {
+            layOutTabStops(odfroot, paragraph);
         });
     }
     /**
@@ -974,6 +1319,8 @@ odf.TextLayout = function TextLayout() {
             shapes,
             /**@type{!odf.TextLayout.PageDimensions}*/
             dims,
+            /**@type{!Array.<!Element>}*/
+            drawn = [],
             top,
             n;
         removeBoxes(pagesDiv);
@@ -1019,8 +1366,9 @@ odf.TextLayout = function TextLayout() {
                 // two lines where one was asked for grows into the margin
                 // rather than being cut.
                 box.style.minHeight = dims.header.height + "px";
-                fillPageArea(header, box, n + 1, pages, meta);
+                fillPageArea(odfroot, header, box, n + 1, pages, meta);
                 pagesDiv.appendChild(box);
+                drawn.push(box);
             }
             if (footer) {
                 box = /**@type{!HTMLDivElement}*/(doc.createElementNS(htmlns,
@@ -1032,10 +1380,12 @@ odf.TextLayout = function TextLayout() {
                 box.style.top = (top + dims.pageHeight - dims.marginBottom
                     + dims.footer.gap) + "px";
                 box.style.minHeight = dims.footer.height + "px";
-                fillPageArea(footer, box, n + 1, pages, meta);
+                fillPageArea(odfroot, footer, box, n + 1, pages, meta);
                 pagesDiv.appendChild(box);
+                drawn.push(box);
             }
         }
+        spreadLines(drawn);
     }
     /**
      * Layout the text by resizing frames and updating the numbers of pages.
@@ -1069,6 +1419,12 @@ odf.TextLayout = function TextLayout() {
     order:!number
 }}*/
 odf.TextLayout.PageShape;
+
+/**@typedef{{
+    at:!number,
+    type:!string
+}}*/
+odf.TextLayout.TabStop;
 
 /**@typedef{{
     shapes:!Array.<!odf.TextLayout.PageShape>,
