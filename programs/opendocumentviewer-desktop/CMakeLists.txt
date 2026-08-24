@@ -148,10 +148,14 @@ if (APPLE)
     endif ()
     configure_file(data/Info.plist.in
         ${CMAKE_CURRENT_BINARY_DIR}/Info.plist @ONLY)
+    # The name of the bundle holds no space: the script that qt writes to
+    # deploy the libraries does not quote the path it is given, and a space
+    # would cut it in two. The name that a desktop shows is in the plist,
+    # under "CFBundleDisplayName".
     set_target_properties(opendocumentviewer-desktop PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/Info.plist
-        OUTPUT_NAME "OpenDocument Viewer")
+        OUTPUT_NAME "OpenDocumentViewer")
 endif ()
 
 add_custom_target(product-opendocumentviewer-desktop

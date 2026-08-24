@@ -739,8 +739,11 @@ cmake --install . --prefix dist
 ```
 
 The installation runs "macdeployqt", which gathers the frameworks of qt,
-"QtWebEngineProcess.app" and the resources it reads inside the bundle: "OpenDocument
-Viewer.app" then runs on a machine where qt is not installed.
+"QtWebEngineProcess.app" and the resources it reads inside the bundle:
+"OpenDocumentViewer.app" then runs on a machine where qt is not installed. The
+name of the bundle holds no space, as the script that qt writes to deploy the
+libraries does not quote the path it is given; the name a desktop shows is
+"OpenDocument Viewer", from the plist.
 
 One thing of macos is in the code rather than in the build: a document opened by
 a double click, or by "Open with", is not named on the command line there. The
@@ -755,9 +758,9 @@ Apple, at a hundred dollars a year:
 
 ```sh
 codesign --deep --force --options runtime --sign "Developer ID Application: ..." \
-    "dist/OpenDocument Viewer.app"
+    dist/OpenDocumentViewer.app
 xcrun notarytool submit --wait ...
-xcrun stapler staple "dist/OpenDocument Viewer.app"
+xcrun stapler staple dist/OpenDocumentViewer.app
 ```
 
 ### One place for every product

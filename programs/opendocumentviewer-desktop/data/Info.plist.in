@@ -9,7 +9,7 @@
     <key>CFBundleDisplayName</key>
     <string>OpenDocument Viewer</string>
     <key>CFBundleExecutable</key>
-    <string>opendocumentviewer-desktop</string>
+    <string>OpenDocumentViewer</string>
     <key>CFBundleIconFile</key>
     <string>opendocumentviewer.icns</string>
     <key>CFBundleIdentifier</key>
