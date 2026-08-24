@@ -13,13 +13,15 @@ var fs = require("fs"),
 
 /**
  * Version of the library, from the last tag of the repository, as the build of
- * cmake did. It falls back on the version of the package when git is not
- * available, for example when building from an archive.
+ * cmake did. Only the tags that name a version are taken, so a tag of work in
+ * progress does not become the version. It falls back on the version of the
+ * package when git is not available, for example when building from an
+ * archive, or when no version is tagged yet.
  * @return {string}
  */
 function version() {
     try {
-        return child.execSync("git describe --tags", {
+        return child.execSync("git describe --tags --match \"v[0-9]*\"", {
             cwd: rootDir,
             stdio: ["ignore", "pipe", "ignore"]
         }).toString().trim();
