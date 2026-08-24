@@ -136,6 +136,8 @@ var testFileNames = [
     "odf/OdfContainerTests.js",
     "odf/OdfContainerSafetyTests.js",
     "odf/OdfUtilsTests.js",
+    "odf/OfficeDocumentsTests.js",
+    "odf/PageLayoutTests.js",
     "odf/StyleInfoTests.js",
     "odf/TextStyleApplicatorTests.js",
     "ops/OperationTestHelper.js",

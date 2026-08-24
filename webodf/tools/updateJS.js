@@ -564,7 +564,7 @@ function Main(cmakeListPath) {
      * @return {!string}
      */
     function getLicense(path, content) {
-        var re = new RegExp("^(/[^]*?)(Copyright.*?>)+([^]*?) \\*/", "m"),
+        var re = new RegExp("^(/[^]*?Copyright[^]*? )\\*/", "m"),
             lic,
             match;
         match = re.exec(content);
@@ -572,7 +572,11 @@ function Main(cmakeListPath) {
             console.log("No license was found for " + path);
             process.exit(1);
         }
-        lic = match[1] + match[3];
+        // Every line that holds a holder of the copyright is dropped: a file
+        // can have more than one of them, and the license is the same.
+        lic = match[1].split("\n").filter(function (line) {
+            return line.indexOf("Copyright") === -1;
+        }).join("\n");
         return lic;
     }
 
@@ -649,13 +653,16 @@ function main(f) {
     var pathModule = require("path");
     // recursively read all the files in the lib and tests directories
     f.readFiles(["lib", "tests", "../programs/editor", "../programs/docnosis", "../programs/benchmark"], function (name, isfile) {
-        if (name.indexOf("/dojo-deps/") !== -1) {
+        // The separator of the paths is the one of the platform, and the
+        // names of the files that are skipped are written with a slash.
+        var named = name.split(pathModule.sep).join("/");
+        if (named.indexOf("/dojo-deps/") !== -1) {
             return false;
         }
-        if (name.indexOf("programs/editor/FileSaver.js") !== -1) {
+        if (named.indexOf("programs/editor/FileSaver.js") !== -1) {
             return false;
         }
-        if (name.indexOf("programs/benchmark/require.js") !== -1) {
+        if (named.indexOf("programs/benchmark/require.js") !== -1) {
             return false;
         }
         // only read directories and js files
