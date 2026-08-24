@@ -660,10 +660,15 @@ program opens a window rather than a terminal. What is needed, beside the source
 
 ```sh
 cmake -S ..\webodf -DWEBODF_DESKTOP=ON -DWEBODF_QTJSRUNTIME=ON
-cmake --build . --target test-qtjsruntime
-cmake --build . --target product-opendocumentviewer-desktop
-cmake --install . --prefix dist
+cmake --build . --config Release --target test-qtjsruntime
+cmake --build . --config Release --target product-opendocumentviewer-desktop
+cmake --install . --config Release --prefix dist
 ```
+
+The generator of visual studio holds more than one configuration and pays no
+heed to "CMAKE_BUILD_TYPE": the configuration is named at each build and at the
+installation, otherwise the build writes "Debug" and the installation looks for
+"Release".
 
 The first target runs the tests of the library in the webengine of qt, the whole
 suite of the browser: it is what tells that the library behaves on windows as it
@@ -794,6 +799,39 @@ The tests are run the same way, by one target:
 make -C build tests
 ```
 
+### The release of the products
+
+A tag that names a version publishes the products with the release, on both
+forges and apart: github builds and publishes its own, see
+".github/workflows/release.yml", gitlab builds and publishes its own, see
+".gitlab-ci.yml". Neither pushes a file to the other, and neither holds a
+token of the other: github signs its release with the token of the run, and
+gitlab with the token of the job.
+
+The runners of gitlab are of linux, so what asks for a machine of windows or
+of macos is built by github alone. What asks for a key of its own is built by
+neither, as a key belongs to whoever publishes and not to a forge.
+
+| Product                         | github | gitlab | Why                           |
+|---------------------------------|--------|--------|-------------------------------|
+| library, tgz                    | yes    | yes    | node alone builds it          |
+| add-ons of the browsers, xpi    | yes    | yes    | node alone builds them        |
+| the two editors, zip            | yes    | yes    | node alone builds them        |
+| archive of the desktop, linux   | yes    | yes    | a runner of linux             |
+| package of debian, deb          | yes    | yes    | dpkg-deb, of linux            |
+| package of fedora, rpm          | yes    | yes    | rpmbuild, of linux            |
+| AppImage                        | no     | no     | linuxdeploy, not there        |
+| flatpak                         | no     | no     | flatpak-builder, not there    |
+| archive of the desktop, windows | yes    | no     | a runner of windows           |
+| archive of the desktop, macos   | yes    | no     | a runner of macos             |
+| apk of android                  | no     | no     | it is signed by its publisher |
+| bundle of macos, signed         | no     | no     | it is notarised by Apple      |
+| application of ios              | no     | no     | it is signed by its publisher |
+
+The AppImage and the flatpak would be built by adding their tools to the
+runner of linux: the targets are there and skip themselves when the tool is
+wanting, as they do on any machine.
+
 ### Handing the viewer of the desktop over
 
 A program of the desktop is not a file that is downloaded and read, as an
@@ -814,7 +852,7 @@ else the build is for, see "One place for every product" above.
 | package-deb      | "opendocumentviewer-x.y.z-x86_64.deb"          | dpkg-deb, and qt 6 named as a dependency                  |
 | package-rpm      | "opendocumentviewer-x.y.z-x86_64.rpm"          | rpmbuild, and qt 6 named as a dependency                  |
 | package-appimage | "OpenDocumentViewer-x.y.z-x86_64.AppImage"     | linuxdeploy and its plugin of qt, and it carries qt       |
-| package-flatpak  | "org.webodf.OpenDocumentViewer-x.y.z.flatpak" | flatpak-builder and the runtime of KDE, and it carries qt |
+| package-flatpak  | "org.webodf.OpenDocumentViewer-x.y.z.flatpak"  | flatpak-builder and the runtime of KDE, and it carries qt |
 
 Every one of them is written among the products of the build.
 

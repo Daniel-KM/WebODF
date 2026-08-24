@@ -28,6 +28,9 @@ function main() {
         `require(${JSON.stringify(path.join(__dirname, "lib/dom.js"))}).install();
 require(${JSON.stringify(bundlePath)});
 `);
+    // Some tests write a file in "out", as the targets of the build with cmake
+    // do: the directory is made here too, since a fresh checkout has none.
+    fs.mkdirSync(path.join(sources.testsDir, "out"), {recursive: true});
     // The tests read their documents from the current directory, and require()
     // resolves the dependencies from the directory of the bundle.
     fs.symlinkSync(path.join(rootDir, "node_modules"), path.join(dir, "node_modules"));

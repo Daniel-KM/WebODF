@@ -164,7 +164,10 @@ include(GNUInstallDirs)
 install(TARGETS opendocumentviewer-desktop
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-if (NOT APPLE)
+# The entry of the desktop, the metadata of the store and the icon follow the
+# specifications of the freedesktop: they are of the desktops of linux and of
+# the unix alike, where macos and windows have their own ways.
+if (UNIX AND NOT APPLE)
     install(FILES data/org.webodf.OpenDocumentViewer.desktop
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
     # What a store of software reads of the program, that the tools of the
@@ -179,7 +182,7 @@ if (NOT APPLE)
         ${CMAKE_CURRENT_BINARY_DIR}/org.webodf.OpenDocumentViewer.metainfo.xml
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
 endif ()
-if (NOT APPLE)
+if (UNIX AND NOT APPLE)
     install(FILES ${ICON}
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps
         RENAME org.webodf.OpenDocumentViewer.png)

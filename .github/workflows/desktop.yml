@@ -25,8 +25,11 @@ jobs:
           - name: Windows
             runner: windows-latest
             qt: win64_msvc2022_64
+          # The runner is held at macos 15: the sdk of macos 26 dropped the
+          # framework AGL, that the configuration of Qt 6.8 still asks for,
+          # and the link of the runtime fails without it.
           - name: macOS
-            runner: macos-latest
+            runner: macos-15
             qt: clang_64
 
     steps:
@@ -81,6 +84,10 @@ jobs:
           -DWEBODF_QTJSRUNTIME=ON
           -DCMAKE_BUILD_TYPE=Release
 
+      # "--config" holds for the generators of more than one configuration,
+      # the one of visual studio among them, that pay no heed to
+      # "CMAKE_BUILD_TYPE"; the others take no harm from it.
+
       # The library first: a viewer built on a library that fails its tests is
       # worth nothing. The target runs every suite, in node, in rhino, on the
       # sources and on the file the compiler wrote, and in the webengine of qt.
@@ -88,15 +95,20 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu --no-sandbox
-        run: cmake --build build --target webodf.js-tests
+        run: cmake --build build --config Release --target webodf.js-tests
 
       - name: The viewer
-        run: cmake --build build --target product-opendocumentviewer-desktop
+        run: cmake --build build --config Release --target product-opendocumentviewer-desktop
 
       # What the tools of the platform gather beside the program: the whole of
       # it runs on a machine where qt is not installed.
+      # The prefix is absolute: the script that qt writes to deploy the
+      # libraries builds the path of "qt.conf" from it and refuses a relative
+      # one.
       - name: Install what is deployed
-        run: cmake --install build --prefix build/dist
+        run: >
+          cmake --install build --config Release
+          --prefix ${{ github.workspace }}/build/dist
 
       # An archive rather than the files: a bundle of macos holds symbolic
       # links, that an artifact of loose files loses.
