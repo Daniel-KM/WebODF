@@ -347,24 +347,6 @@ set(DOJO_DOJOX ${CMAKE_BINARY_DIR}/DojoDojox-prefix/src/DojoDojox)
 set(DOJO_UTIL ${CMAKE_BINARY_DIR}/DojoUtil-prefix/src/DojoUtil)
 endif (WEBODF_PROGRAMS)
 
-# Dojo requires a patch on windows
-if(WIN32 AND WEBODF_PROGRAMS)
-    set(DOJOPATCH_URL "http://bugs.dojotoolkit.org/raw-attachment/ticket/15413/node-win-1.8.patch")
-    set(DOJOPATCH_MD5 "51eae664ddbe919c28c4e3082748cd19")
-    set(DOJOPATCH ${EXTERNALS_DOWNLOAD_DIR}/dojo-node.patch)
-
-    file(DOWNLOAD "${DOJOPATCH_URL}" "${DOJOPATCH}"
-        SHOW_PROGRESS
-        EXPECTED_MD5 ${DOJOPATCH_MD5}
-    )
-
-
-    ExternalProject_Add_Step(Dojo applyPatch
-        COMMAND cat ${DOJOPATCH} | patch -p0 -d ${CMAKE_BINARY_DIR}/Dojo-prefix/src/Dojo/util/
-        DEPENDEES build
-    )
-endif(WIN32 AND WEBODF_PROGRAMS)
-
 ##############################
 ## Define custom macros
 ##############################
