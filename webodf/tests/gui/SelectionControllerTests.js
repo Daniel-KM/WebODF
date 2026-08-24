@@ -789,12 +789,20 @@ gui.SelectionControllerTests = function SelectionControllerTests(runner) {
         stylesElement.appendChild(doc.createTextNode("@namespace cursor url(urn:webodf:names:cursor);\n"));
         stylesElement.appendChild(doc.createTextNode("cursor|anchor { display: none; }\n"));
         stylesElement.appendChild(doc.createTextNode("cursor|cursor { display: none; }\n"));
-        // Make text:p behave as normal paragraphs
-        // Ensure font chars are always monospaced so widths are consistent between platforms
-        stylesElement.appendChild(doc.createTextNode("text|p { display: block; font-family: monospace; }\n"));
+        // Make text:p behave as normal paragraphs.
+        // The font is named rather than asked for by the generic "monospace",
+        // whose meaning is the one of the machine and is not always a font of
+        // one width: the tests of the lines lean on every character being as
+        // wide as the next one. The size is named too, so that the scale of
+        // the screen does not move the measures.
+        stylesElement.appendChild(doc.createTextNode("text|p { display: block; font-family: \"DejaVu Sans Mono\", \"Liberation Mono\", \"Courier New\", Courier, monospace; font-size: 16px; letter-spacing: 0; }\n"));
         stylesElement.appendChild(doc.createTextNode("text|p[paragraph-width='2.7'] { width: 2.7em; }\n"));
-        stylesElement.appendChild(doc.createTextNode("text|p[paragraph-width='3'] { width: 3em; }\n"));
-        stylesElement.appendChild(doc.createTextNode("text|p[paragraph-width='4'] { width: 4em; }\n"));
+        // The widths are in "ch", the width of a character of the font that
+        // is used: "em" is the size of the font, whose ratio to the width of
+        // a character is not the same from one monospaced font to another,
+        // and the line would wrap elsewhere from one platform to another.
+        stylesElement.appendChild(doc.createTextNode("text|p[paragraph-width='3'] { width: 4ch; }\n"));
+        stylesElement.appendChild(doc.createTextNode("text|p[paragraph-width='4'] { width: 6ch; }\n"));
         stylesElement.appendChild(doc.createTextNode("text|span[display='block'] { display: block; }\n"));
         doc.getElementsByTagName("head")[0].appendChild(stylesElement);
         t = {
