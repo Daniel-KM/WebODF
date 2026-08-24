@@ -30,7 +30,10 @@ var fs = require("fs"),
         : args.slice(sourceIndex + 1).map(function (name) {
             return path.resolve(name);
         }),
-    jsdoc = path.join(rootDir, "node_modules/.bin/jsdoc"),
+    // The file of javascript of jsdoc, run by node, rather than the script of
+    // "node_modules/.bin": that one is a shell script on unix and a ".cmd" on
+    // windows, and neither name holds on the other system.
+    jsdoc = path.join(rootDir, "node_modules/jsdoc/jsdoc.js"),
     configDir = fs.mkdtempSync(path.join(os.tmpdir(), "webodf-doc-")),
     configPath = path.join(configDir, "jsdoc.json"),
     result;
@@ -43,13 +46,14 @@ fs.writeFileSync(configPath, JSON.stringify({
     opts: {template: "templates/default"}
 }));
 
-result = child.spawnSync(jsdoc, [
+result = child.spawnSync(process.execPath, [
+    jsdoc,
     "--configure", configPath,
     "--destination", outputDir
 ].concat(sourceFiles || sources.libraryFiles()), {stdio: "inherit"});
 fs.rmSync(configDir, {recursive: true, force: true});
 
-if (result.error) {
+if (result.error || !fs.existsSync(jsdoc)) {
     console.error("jsdoc is missing, run: npm install");
     process.exit(1);
 }
