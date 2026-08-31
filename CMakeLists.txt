@@ -44,10 +44,21 @@ else (OVERRULED_WEBODF_VERSION)
     set(WEBODF_VERSION ${CMAKE_MATCH_1})
   else (CMAKE_MATCH_1)
     # get version number from git
-    execute_process(COMMAND git describe --tags --dirty --match "v[0-9]*"
+    # A build of a tag is named after that tag alone: a release is what the
+    # tag says, and a file written in the tree while it is built, which a
+    # machine of integration does, would else add "-dirty" to the name of
+    # every product.
+    execute_process(COMMAND git describe --tags --exact-match --match "v[0-9]*"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       OUTPUT_VARIABLE GIT_WEBODF_VERSION
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET)
+    if (NOT GIT_WEBODF_VERSION)
+      execute_process(COMMAND git describe --tags --dirty --match "v[0-9]*"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_WEBODF_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif ()
     # check version number from git
     string(REGEX MATCH "^v([0-9]+.[0-9]+.[0-9]+((-[0-9]+-[0-9a-z]+)?(-dirty)?)?)$" CHECKED_WEBODF_VERSION "${GIT_WEBODF_VERSION}")
     if (CMAKE_MATCH_1)

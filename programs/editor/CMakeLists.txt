@@ -157,8 +157,11 @@ add_custom_target(more-common-editorfiles-target
 set(OPENDOCUMENTTEXTEDITORDOC_BUILDDIR  ${OPENDOCUMENTTEXTEDITORBUILDDIR}/docs)
 set(OPENDOCUMENTTEXTEDITORCODE_BUILDDIR ${OPENDOCUMENTTEXTEDITORBUILDDIR}/wodotexteditor)
 
+# The output is a file and not the directory itself: msbuild follows files
+# alone, and a directory named as an output is one it never sees written,
+# which it warns of at each build (MSB8064, MSB8065).
 add_custom_command(
-    OUTPUT ${OPENDOCUMENTTEXTEDITORBUILDDIR}
+    OUTPUT ${OPENDOCUMENTTEXTEDITORBUILDDIR}.stamp
     # clean up output dir
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${OPENDOCUMENTTEXTEDITORBUILDDIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTEDITORBUILDDIR}
@@ -184,6 +187,7 @@ add_custom_command(
 
     COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/HOWTO-wodotexteditor.md  ${OPENDOCUMENTTEXTEDITORBUILDDIR}/HOWTO.md
+    COMMAND ${TOUCHFILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}.stamp
 
     DEPENDS dojo-amalgamation.js ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
         editor-webodf.js-target more-common-editorfiles-target
@@ -198,7 +202,7 @@ foreach(AE_FILE ${ALONE_EDITOR_FILES})
         ${AE_FILE}
         ${AE_BUILDFILE}
       DEPENDS
-        ${AE_FILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}
+        ${AE_FILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}.stamp
     )
     list(APPEND OPENDOCUMENTTEXTEDITOR_BUILDFILES ${AE_BUILDFILE})
 endforeach(AE_FILE)
@@ -212,12 +216,12 @@ foreach(AE_FILE ${ALONE_EDITOR_EXAMPLE_FILES})
         ${AE_FILE}
         ${AE_BUILDFILE}
       DEPENDS
-        ${AE_FILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}
+        ${AE_FILE} ${OPENDOCUMENTTEXTEDITORBUILDDIR}.stamp
     )
     list(APPEND OPENDOCUMENTTEXTEDITOR_BUILDFILES ${AE_BUILDFILE})
 endforeach(AE_FILE)
 
-add_custom_target(opendocumenttexteditorbuilddir-target DEPENDS ${OPENDOCUMENTTEXTEDITORBUILDDIR} ${OPENDOCUMENTTEXTEDITOR_BUILDFILES})
+add_custom_target(opendocumenttexteditorbuilddir-target DEPENDS ${OPENDOCUMENTTEXTEDITORBUILDDIR}.stamp ${OPENDOCUMENTTEXTEDITOR_BUILDFILES})
 
 add_custom_command(
     OUTPUT ${OPENDOCUMENTTEXTEDITORDOC_BUILDDIR}/index.html
@@ -263,8 +267,9 @@ WEBODF_PRODUCT(product-opendocumenttexteditor
 
 set(OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR ${OPENDOCUMENTTEXTCOLLABBUILDDIR}/wodo)
 
+# The output is a file, as for the editor above.
 add_custom_command(
-    OUTPUT ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
+    OUTPUT ${OPENDOCUMENTTEXTCOLLABBUILDDIR}.stamp
     # clean up output dir
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
@@ -289,6 +294,7 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory dojox/ ${OPENDOCUMENTTEXTCOLLABCODE_BUILDDIR}/dojox/
 
     COMMAND ${CMAKE_COMMAND} -E copy ${LIBJSLICENSEFILE} ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
+    COMMAND ${TOUCHFILE} ${OPENDOCUMENTTEXTCOLLABBUILDDIR}.stamp
 
     DEPENDS dojo-amalgamation.js ${CMAKE_CURRENT_BINARY_DIR}/webodf.js
         editor-webodf.js-target more-common-editorfiles-target
@@ -303,12 +309,12 @@ foreach(CE_FILE ${COMMON_COLLAB_FILES} ${COMMON_EDITOR_FILES})
         ${CE_FILE}
         ${CE_BUILDFILE}
       DEPENDS
-        ${CE_FILE} ${OPENDOCUMENTTEXTCOLLABBUILDDIR}
+        ${CE_FILE} ${OPENDOCUMENTTEXTCOLLABBUILDDIR}.stamp
     )
     list(APPEND OPENDOCUMENTTEXTCOLLAB_BUILDFILES ${CE_BUILDFILE})
 endforeach(CE_FILE)
 
-add_custom_target(opendocumenttextcollabbuilddir-target DEPENDS ${OPENDOCUMENTTEXTCOLLABBUILDDIR} ${OPENDOCUMENTTEXTCOLLAB_BUILDFILES})
+add_custom_target(opendocumenttextcollabbuilddir-target DEPENDS ${OPENDOCUMENTTEXTCOLLABBUILDDIR}.stamp ${OPENDOCUMENTTEXTCOLLAB_BUILDFILES})
 
 # package opendocumenttexteditor
 add_custom_command(
