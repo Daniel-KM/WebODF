@@ -56,16 +56,28 @@ the container that holds it, and what each of them answers — is written in
 This repository not only contains code for the library webodf.js, but also a few
 products based on it. Here is the complete list:
 
-build target                           | output location (in build/)              | description                              | download/packages
----------------------------------------|------------------------------------------|------------------------------------------|-----------------------------------------------------------------------------
-webodf.js-target                       | webodf/webodf.js                         | the library                              | (see product-library)
-product-library                        | webodf.js-x.y.z.zip                      | zip file with library and API docs       | [WebODF homepage](http://webodf.org/download)
-product-opendocumenttexteditor         | opendocumenttexteditor-x.y.z.zip         | simple to use editor component           | [WebODF homepage](http://webodf.org/download)
-product-opendocumenttextcollab         | opendocumenttextcollab-x.y.z.zip         | collaborative editor component           | [WebODF homepage](http://webodf.org/download)
-product-opendocumentviewer-webext      | opendocumentviewer-firefox-x.y.z.xpi     | ODF viewer add-on for Firefox and Chrome | (delisted from addons.mozilla.org)
-product-opendocumentviewer-thunderbird | opendocumentviewer-thunderbird-x.y.z.xpi | ODF viewer add-on for Thunderbird        | (not published yet)
-product-opendocumentviewer-android     | opendocumentviewer-x.y.z.apk             | ODF viewer application for Android       | (not published yet)
+build target                           | output location (in build/)                         | description                                  |
+---------------------------------------|-----------------------------------------------------|----------------------------------------------|
+webodf.js-target                       | webodf/webodf.js                                    | the library as standalone for any js project |
+product-library                        | node-webodf-x.y.z.tgz                               | the library and the classes it is made of    |
+product-opendocumenttexteditor         | opendocumenttexteditor-x.y.z.zip                    | simple to use editor component               |
+product-opendocumenttextcollab         | opendocumenttextcollab-x.y.z.zip                    | collaborative editor component               |
+product-opendocumentviewer-webext      | opendocumentviewer-firefox-x.y.z.xpi                | ODF viewer add-on for Firefox and Chrome     |
+product-opendocumentviewer-thunderbird | opendocumentviewer-thunderbird-x.y.z.xpi            | ODF viewer add-on for Thunderbird            |
+product-opendocumentviewer-desktop     | opendocumentviewer-x.y.z-*.tar.gz, .deb, .rpm, .zip | ODF viewer for linux, windows and macos      |
+product-opendocumentviewer-android     | opendocumentviewer-x.y.z.apk                        | ODF viewer application for Android           |
 
 ("x.y.z" is a placeholder for the actual version number)
 
-For more details about the different products, please study ["README-Products.md"](README-Products.md).
+A tag that names a version publishes these products with the release, on both
+forges and apart:
+
+* [the releases of github](https://github.com/webodf/WebODF/releases)
+* [the releases of gitlab](https://gitlab.com/Sempia/WebODF/-/releases)
+
+Github builds the viewers of windows and of macos, which its runners of those
+systems alone can build; gitlab, whose runners are of linux, builds what a linux
+builds. What asks for a key of its own is published by neither: the apk of
+android, the bundle of macos and the application of ios. Which product lands
+where is named in ["README-Products.md"](README-Products.md), which tells more
+of the products as well.
