@@ -1,0 +1,90 @@
+# Builds the products and publishes them with the release of gitlab. Github
+# builds and publishes its own, see ".github/workflows/release.yml": neither
+# forge pushes a file to the other.
+#
+# The runners of gitlab.com are of linux, so the products are the ones of
+# linux and the ones no platform is needed for: the archive of the desktop,
+# the packages of debian and of fedora, the add-ons and the library. The
+# viewers of windows and of macos are built by the workflow of github, on the
+# machines of those systems.
+#
+# What needs a key of its own is left out, as there too: the apk of android,
+# the bundle of macos and the application of ios.
+
+stages:
+  - products
+  - release
+
+variables:
+  # The whole history: the version of the build comes from "git describe",
+  # which a shallow clone gives nothing to describe.
+  GIT_DEPTH: "0"
+  PACKAGE: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/webodf
+
+products:
+  stage: products
+  image: debian:trixie
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
+  before_script:
+    - apt-get update
+    - >
+      apt-get install --no-install-recommends -y
+      build-essential cmake ninja-build git curl ca-certificates
+      nodejs npm default-jre-headless rpm
+      qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools
+      libgl-dev fonts-dejavu-core
+    - npm ci
+  script:
+    - >
+      cmake -S . -B build
+      -DWEBODF_DESKTOP=ON
+      -DWEBODF_PROGRAMS=ON
+      -DWEBODF_QTJSRUNTIME=ON
+      -DCMAKE_BUILD_TYPE=Release
+    # The library first: a product built on a library that fails its tests is
+    # worth nothing.
+    - QT_QPA_PLATFORM=offscreen QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu --no-sandbox"
+      cmake --build build --target webodf.js-tests
+    # One target gathers them all in "build/products", and names what this
+    # machine had no tool to write.
+    - cmake --build build --target products
+    - mkdir -p build/products
+    - npm pack --pack-destination build/products
+  artifacts:
+    paths:
+      - build/products
+    expire_in: 1 week
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
+  needs:
+    - job: products
+      artifacts: true
+  script:
+    # Each product goes to the generic package registry of the project, whose
+    # token is the one of the job: no token of a person is needed. The release
+    # then links to each of them by a stable path.
+    - version=${CI_COMMIT_TAG#v}
+    - links=""
+    - |
+      for file in build/products/*; do
+          name=$(basename "$file")
+          url=$PACKAGE/$version/$name
+          curl --fail --silent --show-error --upload-file "$file" \
+              --header "JOB-TOKEN: $CI_JOB_TOKEN" "$url"
+          links="$links --assets-link {\"name\":\"$name\",\"url\":\"$url\",\"link_type\":\"package\",\"filepath\":\"/$name\"}"
+      done
+    # A release that stands already is written to rather than opened again, so
+    # that the pipeline can be run a second time on the same tag.
+    - |
+      if release-cli get --tag-name "$CI_COMMIT_TAG" >/dev/null 2>&1; then
+          action=update
+      else
+          action=create
+      fi
+      eval release-cli $action --tag-name "$CI_COMMIT_TAG" \
+          --description "\"The products of $CI_COMMIT_TAG.\"" $links
