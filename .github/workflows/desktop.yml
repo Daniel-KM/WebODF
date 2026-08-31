@@ -3,7 +3,7 @@
 # them. Two of those systems are ones no one of this project owns, which is
 # what this is for: the branches "if (WIN32)" and "if (APPLE)" of the build are
 # never run anywhere else.
-name: The viewer of the desktop
+name: Viewer of the desktop
 
 on:
   push:
@@ -60,13 +60,8 @@ jobs:
           modules: qtwebengine qtwebchannel qtpositioning
           cache: true
 
-      # Qt WebEngine does not compile with MinGW, so the compiler of microsoft
-      # is put in the environment of the following steps.
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: runner.os == 'Windows'
-
       # The webengine reads these on linux, where a runner carries no desktop.
-      - name: The libraries the engine reads
+      - name: Libraries the engine reads
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -74,9 +69,13 @@ jobs:
               libnss3 libxkbcommon-x11-0 libxcomposite1 libxdamage1 \
               libxrandr2 libxtst6 libasound2t64 fonts-dejavu-core
 
-      - name: The dependencies of the build
+      - name: Dependencies of the build
         run: npm ci
 
+      # No generator is named, so cmake takes the one of visual studio on
+      # windows, which finds the compiler of microsoft itself: nothing has to
+      # put it in the environment beforehand. MinGW, that Qt WebEngine does
+      # not compile with, is never the one taken.
       - name: Configure
         run: >
           cmake -S . -B build
@@ -91,13 +90,13 @@ jobs:
       # The library first: a viewer built on a library that fails its tests is
       # worth nothing. The target runs every suite, in node, in rhino, on the
       # sources and on the file the compiler wrote, and in the webengine of qt.
-      - name: The tests of the library
+      - name: Tests of the library
         env:
           QT_QPA_PLATFORM: offscreen
           QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu --no-sandbox
         run: cmake --build build --config Release --target webodf.js-tests
 
-      - name: The viewer
+      - name: Viewer
         run: cmake --build build --config Release --target product-opendocumentviewer-desktop
 
       # What the tools of the platform gather beside the program: the whole of
@@ -113,11 +112,14 @@ jobs:
       # An archive rather than the files: a bundle of macos holds symbolic
       # links, that an artifact of loose files loses.
       - name: Gather what was installed
-        run: cmake -E tar czf ../opendocumentviewer.tar.gz .
+        run: cmake -E tar czf ../opendocumentviewer-${{ matrix.name }}.tar.gz .
         working-directory: build/dist
 
+      # "archive: false" hands the file over as it is: an artifact is wrapped
+      # in a zip otherwise, and whoever downloads it unpacks twice. The name
+      # of the artifact is then the name of the file.
       - uses: actions/upload-artifact@v7
         with:
-          name: opendocumentviewer-${{ matrix.name }}
-          path: build/opendocumentviewer.tar.gz
+          path: build/opendocumentviewer-${{ matrix.name }}.tar.gz
+          archive: false
           if-no-files-found: error

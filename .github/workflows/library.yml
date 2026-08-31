@@ -2,7 +2,7 @@
 # runs: the tests in node, the same ones in rhino, and the check of the types.
 # It is the short one, that answers on every push, where the build of the
 # viewers is the long one.
-name: The library
+name: Library
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   library:
-    name: The library, with node
+    name: Library, with node
     runs-on: ubuntu-latest
 
     steps:
@@ -33,25 +33,27 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: The dependencies of the build
+      - name: Dependencies of the build
         run: npm ci
 
-      - name: The types of the library and of the tests
+      - name: Types of the library and of the tests
         run: |
           npm run check
           npm run check:tests
 
-      - name: The tests, in node
+      - name: Tests, in node
         run: npm test
 
-      - name: The tests, in rhino
+      - name: Tests, in rhino
         run: npm run test:rhino
 
-      - name: The library
+      - name: Library
         run: npm run build
 
+      # "archive: false" hands the library over as it is, where an artifact
+      # is wrapped in a zip otherwise.
       - uses: actions/upload-artifact@v7
         with:
-          name: webodf.js
           path: dist/webodf.js
+          archive: false
           if-no-files-found: error

@@ -1,0 +1,154 @@
+# Builds every product a machine without a key can make, and publishes them
+# with the release of github. Gitlab builds and publishes its own, see
+# ".gitlab-ci.yml": neither forge pushes a file to the other. What needs a
+# signature is left out: the apk of android, the bundle of macos and the
+# application of ios, whose keys belong to whoever publishes them, see
+# "README-Products.md".
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release of github
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # The library, that no machine of the matrix writes: it is the package
+      # the other projects depend on.
+      - name: Package of the library
+        run: |
+          npm ci
+          mkdir -p products
+          npm pack --pack-destination products
+
+      # The release is opened before the products are built, so that each
+      # machine has one to hand its own to. A release that stands already is
+      # written to rather than opened again, so that the workflow can be run
+      # a second time on the same tag.
+      - name: Release of github
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release upload "$TAG" products/* --clobber
+          else
+              gh release create "$TAG" --title "$TAG" \
+                  --notes "The products of $TAG." products/*
+          fi
+
+  products:
+    name: Products of ${{ matrix.name }}
+    needs: release
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: ubuntu-latest
+            qt: linux_gcc_64
+          - name: Windows
+            runner: windows-latest
+            qt: win64_msvc2022_64
+          # The runner is held at macos 15: the sdk of macos 26 dropped the
+          # framework AGL, that the configuration of Qt 6.8 still asks for,
+          # and the link of the runtime fails without it.
+          - name: macOS
+            runner: macos-15
+            qt: clang_64
+
+    steps:
+      # The whole history: the version of the build comes from "git describe",
+      # which a shallow checkout gives nothing to describe.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # A java runtime runs the closure compiler and rhino.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Qt WebEngine is an extension since 6.8, in a repository of its own; the
+      # modules are the ones the viewer links against.
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.8.2
+          arch: ${{ matrix.qt }}
+          modules: qtwebengine qtwebchannel qtpositioning
+          cache: true
+
+      # The tools that write the packages of linux: what is not found is
+      # skipped by the build, which says so at the end.
+      - name: Tools of the packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+              rpm libnss3 libxkbcommon-x11-0 libxcomposite1 libxdamage1 \
+              libxrandr2 libxtst6 libasound2t64 fonts-dejavu-core
+
+      - name: Dependencies of the build
+        run: npm ci
+
+      # No generator is named, so cmake takes the one of visual studio on
+      # windows, which finds the compiler of microsoft itself: nothing has to
+      # put it in the environment beforehand. MinGW, that Qt WebEngine does
+      # not compile with, is never the one taken.
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DWEBODF_DESKTOP=ON
+          -DWEBODF_PROGRAMS=ON
+          -DWEBODF_QTJSRUNTIME=ON
+          -DCMAKE_BUILD_TYPE=Release
+
+      # The library first: a product built on a library that fails its tests is
+      # worth nothing.
+      - name: Tests of the library
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu --no-sandbox
+        run: cmake --build build --config Release --target webodf.js-tests
+
+      # One target gathers them all in "build/products", and names what this
+      # machine had no tool to write.
+      - name: Products
+        run: cmake --build build --config Release --target products
+
+      # Each machine hands its own products to the release, one file at a
+      # time: an artifact would wrap them in a zip of its own, and whoever
+      # downloads a package of debian wants that file and not a zip holding
+      # it.
+      # The shell is named: powershell, the one of windows, hands the star
+      # over as it stands rather than naming the files it stands for.
+      - name: Products of this machine, in the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ github.ref_name }} build/products/* --clobber
