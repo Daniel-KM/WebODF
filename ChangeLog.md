@@ -1,3 +1,79 @@
+# Changes between 0.5.10 and 0.6.0
+
+## WebODF
+
+### Features
+
+* A text is drawn over pages, as it is printed, and no longer as one run of
+  text: each page is a box of its own, of the size the document writes, with
+  the header and the foot of its master page. A paragraph and a table that
+  cross the end of a page are cut there.
+* The pages are read one at a time or two to a row, as a book is read, and the
+  first page may stand alone on the right.
+* The lists, the headings and the chapters are numbered as an office numbers
+  them, from the outline style of the document and from the list styles, and
+  the numbers run on from page to page.
+* The tabs of a text are laid at the stops its style writes, left, centre,
+  right and character.
+* The notes of the foot are drawn at the foot of the page their number stands
+  on, and the text of that page is shorter by as much.
+* A page and a section are written in the columns they ask for.
+* The formulas a text holds are drawn, read from the MathML the package
+  carries, where an office writes an image beside them that a package need not
+  hold.
+* The links of a document are followed when a reader clicks one.
+* The spacings of two entries of an index are added, as an office adds them:
+  the table of contents of the schema of OpenDocument is drawn on the pages an
+  office draws it on, and every chapter begins within a page of where an office
+  begins it.
+
+### Fixes
+
+* A document that holds no styles, no automatic styles and no master styles is
+  drawn, where a reader looked for a page layout in nothing at all and threw.
+* A table wider than the text of the page is drawn to the width of the text,
+  and a word longer than its column is broken, as an office breaks it.
+* A table whose style says it may not be cut between two of its rows is written
+  whole on the page that follows.
+* A tab stop written for a page of another size is drawn against the edge of
+  the text rather than in the margin.
+* The fonts of a document are asked for by name before the text is broken into
+  pages, as an engine may hold its fonts ready before it draws with them.
+
+### Performance
+
+* A page is measured in one reading rather than one node at a time, and read
+  from what was written last rather than from its head.
+* The first pages are drawn as soon as they are broken, and the rest follow a
+  few at a time.
+* The style a paragraph names is read once, and an element of thousands of
+  nodes is parted before it is written on a page.
+
+## Products
+
+* A viewer of OpenDocument for the desktop, in qt, with its AppImage, its
+  flatpak, its deb, its rpm and its installer of windows.
+* The add-ons of firefox, of chrome and of thunderbird, in manifest v2 and v3.
+* A viewer for android and one for ios.
+* Docnosis reads a document against the schema of the standard.
+* Every product of the build is made by one command, and the build says what is
+  wanting where a tool is not installed.
+
+## Documentation
+
+* What a program may lean on in the library is written in "PUBLIC-API.md".
+* The readmes say how each product is built, tried and handed over, and what
+  each of them runs on.
+
+# Changes between 0.5.9 and 0.5.10
+
+## WebODF
+
+### Fixes
+
+* Save an empty `<office:document-settings/>` element where a document holds no
+  `<office:settings/>` ([#918](https://github.com/webodf/WebODF/pull/918))
+
 # Changes between 0.5.8 and 0.5.9
 
 ## WebODF
