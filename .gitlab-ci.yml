@@ -23,7 +23,10 @@ variables:
 
 products:
   stage: products
-  image: debian:trixie
+  # The image carries node 22, which the build asks for, on debian trixie,
+  # whose packages carry the qt 6.8 the viewer is built against: the node of
+  # trixie itself is a 20 and is too old.
+  image: node:22-trixie
   rules:
     - if: $CI_COMMIT_TAG =~ /^v[0-9]/
   before_script:
@@ -31,7 +34,7 @@ products:
     - >
       apt-get install --no-install-recommends -y
       build-essential cmake ninja-build git curl ca-certificates
-      nodejs npm default-jre-headless rpm
+      default-jre-headless rpm
       qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools
       libgl-dev fonts-dejavu-core
     - npm ci
@@ -51,40 +54,70 @@ products:
     - cmake --build build --target products
     - mkdir -p build/products
     - npm pack --pack-destination build/products
-  artifacts:
-    paths:
-      - build/products
-    expire_in: 1 week
-
-release:
-  stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
-  needs:
-    - job: products
-      artifacts: true
-  script:
     # Each product goes to the generic package registry of the project, whose
-    # token is the one of the job: no token of a person is needed. The release
-    # then links to each of them by a stable path.
-    - version=${CI_COMMIT_TAG#v}
-    - links=""
+    # token is the one of the job: no token of a person is needed. One file of
+    # json is written beside each product, which is the link the release is
+    # given, so that the release has only to send them.
     - |
+      version=${CI_COMMIT_TAG#v}
+      mkdir -p links
       for file in build/products/*; do
           name=$(basename "$file")
           url=$PACKAGE/$version/$name
           curl --fail --silent --show-error --upload-file "$file" \
               --header "JOB-TOKEN: $CI_JOB_TOKEN" "$url"
-          links="$links --assets-link {\"name\":\"$name\",\"url\":\"$url\",\"link_type\":\"package\",\"filepath\":\"/$name\"}"
+          printf '{"name":"%s","url":"%s","link_type":"package","direct_asset_path":"/%s"}' \
+              "$name" "$url" "$name" > "links/$name.json"
       done
-    # A release that stands already is written to rather than opened again, so
-    # that the pipeline can be run a second time on the same tag.
+  artifacts:
+    paths:
+      - build/products
+      - links
+    expire_in: 1 week
+
+release:
+  stage: release
+  # The image is the one of the products, for the client of http it holds: the
+  # image of "release-cli" holds none, and its "update" takes no link, so the
+  # api of the releases is called instead.
+  image: node:22-trixie
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
+  needs:
+    - job: products
+      artifacts: true
+  before_script:
+    - apt-get update
+    - apt-get install --no-install-recommends -y curl ca-certificates
+  script:
+    # A release that stands already is given the links it has not got yet,
+    # rather than opened again, so that the pipeline can be run a second time
+    # on the same tag. A link that is there answers 400, which is not a
+    # failure here.
     - |
-      if release-cli get --tag-name "$CI_COMMIT_TAG" >/dev/null 2>&1; then
-          action=update
+      set -eu
+      api=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases
+      auth="JOB-TOKEN: $CI_JOB_TOKEN"
+      json='Content-Type: application/json'
+      code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+          --header "$auth" "$api/$CI_COMMIT_TAG")
+      if [ "$code" = "404" ]; then
+          links=$(cat links/*.json | sed 's/}{/},{/g')
+          curl --fail --silent --show-error --request POST \
+              --header "$auth" --header "$json" \
+              --data "{\"tag_name\":\"$CI_COMMIT_TAG\",
+                  \"name\":\"$CI_COMMIT_TAG\",
+                  \"description\":\"The products of $CI_COMMIT_TAG.\",
+                  \"assets\":{\"links\":[$links]}}" \
+              "$api"
       else
-          action=create
+          for link in links/*.json; do
+              code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+                  --request POST --header "$auth" --header "$json" \
+                  --data @"$link" "$api/$CI_COMMIT_TAG/assets/links")
+              case $code in
+                  2*|400) ;;
+                  *) echo "the link of $link was refused ($code)"; exit 1 ;;
+              esac
+          done
       fi
-      eval release-cli $action --tag-name "$CI_COMMIT_TAG" \
-          --description "\"The products of $CI_COMMIT_TAG.\"" $links
